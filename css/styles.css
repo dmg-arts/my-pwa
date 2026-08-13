@@ -677,21 +677,36 @@ dialog.modal::backdrop { background: rgb(0 0 0 / 0.5); }
 .scale__opt input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
 .scale__ends { display: flex; justify-content: space-between; font-size: var(--step--1); color: var(--text-faint); margin-top: var(--sp-2); }
 
-/* Anchored scale: named points sit under their number. On a narrow screen the
-   row wraps rather than shrinking the touch targets below 2.75rem. */
-.scale--anchored .scale__opt { flex: 1 1 4.25rem; min-width: 3.5rem; }
-.scale--anchored .scale__opt span:first-of-type { min-height: 2.5rem; }
-.scale__anchor {
-  display: block;
-  margin-top: var(--sp-1);
-  font-size: 0.6875rem;
+/* Word scale: students choose a word, never a number. Options are equal width
+   so no rating looks more prominent than another, and stack on a narrow screen
+   rather than shrinking below a comfortable touch target. */
+.scale--words { gap: var(--sp-2); }
+.scale--words .scale__opt { flex: 1 1 7rem; min-width: 6rem; }
+.scale--words .scale__opt span {
+  min-height: 3rem;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--step-0);
+  font-weight: 560;
   line-height: 1.25;
-  font-weight: 500;
   text-align: center;
-  color: var(--text-muted);
   hyphens: auto;
 }
-.scale__opt input:checked ~ .scale__anchor { color: var(--accent); font-weight: 620; }
+@media (max-width: 30rem) {
+  .scale--words { flex-direction: column; }
+  .scale--words .scale__opt { flex: 1 1 auto; }
+  .scale--words .scale__opt span { min-height: 2.75rem; }
+}
+
+/* Read-only preview of the scale inside the form creator. */
+.scale-preview { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.scale-preview__opt {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: var(--step--1);
+}
 
 .opts { display: grid; gap: var(--sp-2); }
 .opt {

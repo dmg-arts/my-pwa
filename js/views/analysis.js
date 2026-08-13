@@ -14,11 +14,26 @@ import {
   download, toCsv, fmtDate, fmtDateTime, pluralize, mean, median, stdev, round,
   modal, confirmDialog, fromDateInput, groupBy,
   mount, remount } from '../util.js';
-import { AS_CLASSES, SEMESTERS, schoolYears } from '../config.js';
+import { AS_CLASSES, SEMESTERS, schoolYears, nearestAnchor } from '../config.js';
 import { db } from '../storage/index.js';
 import { listStudents } from '../auth.js';
 import { renderForm, formItems } from '../forms.js';
 import { navigate } from '../router.js';
+
+/**
+ * The anchor set the responses in scope were answered on. Forms record their
+ * own wording, so a range that mixes scales falls back to the first one found
+ * rather than describing a score in words it was never rated with.
+ */
+function anchorsInScope(rows, formsById) {
+  for (const response of rows) {
+    const form = formsById?.get(response.formId);
+    for (const item of formItems(form || {})) {
+      if (item.type === 'scale' && item.anchors) return item.anchors;
+    }
+  }
+  return undefined;
+}
 
 export async function renderAnalysis(host) {
   remount(host, spinner('Gathering feedback…'));
@@ -150,6 +165,7 @@ export async function renderAnalysis(host) {
   /* ---------------- panels ---------------- */
 
   function summary(rows, inScope) {
+    const scopeAnchors = anchorsInScope(rows, formsById);
     const values = rows.flatMap((r) => Object.values(r.answers || {}).filter((v) => typeof v === 'number'));
     const stat = (label, value, note) => el('div', { class: 'stat' },
       el('div', { class: 'stat__label' }, label),
@@ -160,8 +176,10 @@ export async function renderAnalysis(host) {
       el('h3', { class: 'section-title' }, 'Overview'),
       el('div', { class: 'grid grid--3' },
         stat('Responses', String(rows.length), `across ${pluralize(inScope.length, 'form')}`),
-        stat('Mean score', values.length ? String(round(mean(values), 2)) : '—', 'all 1–10 questions'),
-        stat('Median', values.length ? String(round(median(values), 2)) : '—', ''),
+        stat('Mean score', values.length ? String(round(mean(values), 2)) : '—',
+          values.length ? `closest to "${nearestAnchor(mean(values), scopeAnchors)}"` : 'all rated questions'),
+        stat('Median', values.length ? String(round(median(values), 2)) : '—',
+          values.length ? `closest to "${nearestAnchor(median(values), scopeAnchors)}"` : ''),
         stat('Spread', values.length > 1 ? `±${round(stdev(values), 2)}` : '—', 'standard deviation')));
   }
 
@@ -185,17 +203,20 @@ export async function renderAnalysis(host) {
     const body = el('tbody');
     for (const { item, form, values } of buckets.values()) {
       const avg = mean(values);
-      const max = Number(item.max ?? 10);
+      const max = Number(item.max ?? 9);
+      const word = nearestAnchor(avg, item.anchors);
       mount(bars, el('div', { class: 'bar-row' },
         el('div', { class: 'truncate', title: item.label }, item.label),
         el('div', { class: 'bar-row__track' },
           el('div', { class: 'bar-row__fill', style: { width: `${(avg / max) * 100}%` } })),
-        el('div', { class: 'bar-row__val' }, `${round(avg, 2)} / ${max}`)));
+        el('div', { class: 'bar-row__val' },
+          word ? `${round(avg, 2)} · ${word}` : `${round(avg, 2)} / ${max}`)));
       mount(body, el('tr', {},
         el('td', {}, item.label),
         el('td', { class: 'muted' }, form.name),
         el('td', { class: 'num' }, String(values.length)),
         el('td', { class: 'num' }, String(round(avg, 2))),
+        el('td', {}, word || '—'),
         el('td', { class: 'num' }, String(round(median(values), 2))),
         el('td', { class: 'num' }, values.length > 1 ? String(round(stdev(values), 2)) : '—')));
     }
@@ -208,6 +229,7 @@ export async function renderAnalysis(host) {
             el('thead', {}, el('tr', {},
               el('th', {}, 'Question'), el('th', {}, 'Form'),
               el('th', { class: 'num' }, 'n'), el('th', { class: 'num' }, 'Mean'),
+              el('th', {}, 'Reads as'),
               el('th', { class: 'num' }, 'Median'), el('th', { class: 'num' }, 'Std dev'))),
             body))));
   }
@@ -347,13 +369,14 @@ export async function renderAnalysis(host) {
     const questionIds = new Set();
     rows.forEach((r) => Object.keys(r.answers || {}).forEach((k) => questionIds.add(k)));
 
-    const labelFor = (id) => {
+    const itemFor = (id) => {
       for (const form of forms) {
         const item = formItems(form).find((q) => q.id === id);
-        if (item) return item.label;
+        if (item) return item;
       }
-      return id;
+      return null;
     };
+    const labelFor = (id) => itemFor(id)?.label || id;
 
     download(`feedback-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(rows, [
       { key: 'feedbackId', label: 'Feedback ID', get: (r) => requestsById.get(r.requestId)?.feedbackId || '' },
@@ -361,10 +384,22 @@ export async function renderAnalysis(host) {
       { key: 'asClass', label: 'AS level', get: (r) => r.asClass || '' },
       { key: 'submittedAt', label: 'Submitted', get: (r) => r.submittedAt },
       { key: 'who', label: 'Respondent', get: (r) => (r.anonymous ? 'anonymous' : r.respondent?.name || '') },
-      ...[...questionIds].map((id) => ({
-        key: id, label: labelFor(id),
-        get: (r) => (Array.isArray(r.answers?.[id]) ? r.answers[id].join('; ') : r.answers?.[id] ?? ''),
-      })),
+      // Both columns: the number for a spreadsheet, the word for a human.
+      ...[...questionIds].flatMap((id) => {
+        const item = itemFor(id);
+        const base = {
+          key: id, label: labelFor(id),
+          get: (r) => (Array.isArray(r.answers?.[id]) ? r.answers[id].join('; ') : r.answers?.[id] ?? ''),
+        };
+        if (item?.type !== 'scale' || !item.anchors) return [base];
+        return [base, {
+          key: `${id}__word`, label: `${labelFor(id)} (rating)`,
+          get: (r) => {
+            const v = r.answers?.[id];
+            return v == null ? '' : (item.anchors[v] ?? item.anchors[String(v)] ?? '');
+          },
+        }];
+      }),
     ]), 'text/csv');
     toast('CSV exported.', 'ok');
   }

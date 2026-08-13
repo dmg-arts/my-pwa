@@ -7,7 +7,7 @@
  */
 
 import { el, makeId, mount, remount } from './util.js';
-import { SCALE_ANCHORS } from './config.js';
+import { scaleValues } from './config.js';
 
 /**
  * Renders every section of `form` into a fragment.
@@ -58,26 +58,39 @@ function buildControl(item, { value, ns, labelId }) {
     case 'scale': {
       const min = Number(item.min ?? 1);
       const max = Number(item.max ?? 5);
-      // Anchors name the odd points. Each anchor is announced to screen readers
-      // as part of the option's label, so the meaning is not carried by the
-      // small print alone.
-      const anchors = item.anchors || (max >= 9 ? SCALE_ANCHORS : {});
-      const group = el('div', { class: 'scale scale--anchored', role: 'radiogroup', 'aria-labelledby': labelId });
+      const anchors = item.anchors || null;
 
-      for (let n = min; n <= max; n++) {
-        const id = `${name}-${n}`;
-        const anchor = anchors[n] || anchors[String(n)];
-        mount(group, el('label', {
-          class: 'scale__opt', for: id, title: anchor || undefined,
-        },
-          el('input', {
-            type: 'radio', id, name, value: String(n), checked: Number(value) === n,
-            'aria-label': anchor ? `${n} — ${anchor}` : String(n),
-          }),
-          el('span', {}, String(n)),
-          anchor && el('span', { class: 'scale__anchor' }, anchor)));
+      // Anchored scale: students pick a word. The numeric value rides along in
+      // the input so the maths downstream is unchanged, but it is never shown —
+      // a number invites people to average it in their heads while answering.
+      if (anchors && Object.keys(anchors).length) {
+        const group = el('div', {
+          class: 'scale scale--words', role: 'radiogroup', 'aria-labelledby': labelId,
+        });
+        for (const n of scaleValues(anchors)) {
+          const id = `${name}-${n}`;
+          const word = anchors[n] ?? anchors[String(n)];
+          mount(group, el('label', { class: 'scale__opt', for: id },
+            el('input', {
+              type: 'radio', id, name, value: String(n), checked: Number(value) === n,
+              'aria-label': word,
+            }),
+            el('span', {}, word)));
+        }
+        return el('div', {}, group,
+          (item.minLabel || item.maxLabel) && el('div', { class: 'scale__ends' },
+            el('span', {}, item.minLabel || ''), el('span', {}, item.maxLabel || '')));
       }
 
+      // Numeric fallback. Forms built before the word scale existed keep the
+      // scale they were created with, so their responses stay comparable.
+      const group = el('div', { class: 'scale', role: 'radiogroup', 'aria-labelledby': labelId });
+      for (let n = min; n <= max; n++) {
+        const id = `${name}-${n}`;
+        mount(group, el('label', { class: 'scale__opt', for: id },
+          el('input', { type: 'radio', id, name, value: String(n), checked: Number(value) === n }),
+          el('span', {}, String(n))));
+      }
       return el('div', {}, group,
         (item.minLabel || item.maxLabel) && el('div', { class: 'scale__ends' },
           el('span', {}, item.minLabel || ''), el('span', {}, item.maxLabel || '')));
@@ -139,11 +152,13 @@ function renderAnswer(item, value) {
   }
   if (item.type === 'scale') {
     const max = Number(item.max ?? 5);
-    const anchors = item.anchors || (max >= 9 ? SCALE_ANCHORS : {});
-    const anchor = anchors[value] || anchors[String(value)];
+    const anchors = item.anchors || null;
+    const word = anchors ? (anchors[value] ?? anchors[String(value)]) : null;
+    // Instructors see the word the cadet chose and the number behind it, since
+    // this is the screen where the two need to be reconciled.
     return el('div', { class: 'row row--wrap' },
-      el('strong', {}, `${value}`), el('span', { class: 'muted' }, `/ ${max}`),
-      anchor && el('span', { class: 'chip' }, anchor),
+      word ? el('strong', {}, word) : el('strong', {}, `${value}`),
+      el('span', { class: 'muted mono' }, word ? `${value} / ${max}` : `/ ${max}`),
       el('div', { class: 'meter', style: { flex: '1', minWidth: '6rem', maxWidth: '10rem' } },
         el('div', { class: 'meter__fill', style: { width: `${(Number(value) / max) * 100}%` } })));
   }

@@ -5,7 +5,7 @@
  * comparable across a detachment:
  *   - Class / Event name and AS level identify what the feedback is about.
  *   - Students are targeted explicitly: everyone, or a chosen subset (min 1).
- *   - Questions are either a 250-word text block or a 1–10 horizontal scale.
+ *   - Questions are either a 250-word text block or a word rating scale.
  *   - Minimum three questions, no maximum.
  *
  * Saving produces two linked records: a form (the questions) and a request
@@ -18,7 +18,7 @@ import {
   makeId, nowIso, fromDateInput, toDateInput, pluralize, emptyState,
   mount, remount } from '../util.js';
 import {
-  AS_CLASSES, SEMESTERS, FORM_RULES, makeFeedbackId,
+  AS_CLASSES, SEMESTERS, FORM_RULES, SCALE_ANCHORS, makeFeedbackId, scaleValues,
   currentSchoolYear, currentSemester, schoolYears,
 } from '../config.js';
 import { db } from '../storage/index.js';
@@ -296,11 +296,11 @@ async function drawCreator(root, params) {
           el('button', {
             type: 'button', class: 'btn btn--sm',
             onclick: () => { draft.questions.push(newQuestion('scale')); draw(); },
-          }, icon('plus'), 'Scale 1–10'),
+          }, icon('plus'), 'Rating question'),
           el('button', {
             type: 'button', class: 'btn btn--sm',
             onclick: () => { draft.questions.push(newQuestion('text')); draw(); },
-          }, icon('plus'), 'Text block'))));
+          }, icon('plus'), 'Written answer'))));
 
     if (!draft.questions.length) {
       mount(card, emptyState({
@@ -332,7 +332,7 @@ async function drawCreator(root, params) {
     };
 
     const typeLabel = question.type === 'scale'
-      ? `Scale ${FORM_RULES.scaleMin}–${FORM_RULES.scaleMax}`
+      ? `Rating · ${scaleValues(SCALE_ANCHORS).length} points`
       : `Text · ${FORM_RULES.textWordLimit} words`;
 
     return el('div', { class: 'qrow' },
@@ -363,19 +363,7 @@ async function drawCreator(root, params) {
         oninput: (e) => { question.label = e.target.value; },
       }), { required: true }),
 
-      question.type === 'scale'
-        ? el('div', { class: 'filters' },
-          field('Label for 1', el('input', {
-            class: 'input', type: 'text', value: question.minLabel || '',
-            placeholder: 'Strongly disagree',
-            oninput: (e) => { question.minLabel = e.target.value; },
-          })),
-          field('Label for 10', el('input', {
-            class: 'input', type: 'text', value: question.maxLabel || '',
-            placeholder: 'Strongly agree',
-            oninput: (e) => { question.maxLabel = e.target.value; },
-          })))
-        : null,
+      question.type === 'scale' ? scalePreview() : null,
 
       el('label', { class: 'check' },
         el('input', {
@@ -383,6 +371,21 @@ async function drawCreator(root, params) {
           onchange: (e) => { question.required = e.target.checked; },
         }),
         el('span', { class: 'check__text' }, 'Required')));
+  }
+
+  /** Shows the exact words a cadet will see, in order. */
+  function scalePreview() {
+    const row = el('div', { class: 'scale-preview' });
+    for (const n of scaleValues(SCALE_ANCHORS)) {
+      mount(row, el('span', { class: 'scale-preview__opt' },
+        el('span', {}, SCALE_ANCHORS[n]),
+        el('span', { class: 'mono faint' }, String(n))));
+    }
+    return el('div', {},
+      el('div', { class: 'field__label' }, 'What students will see'),
+      row,
+      el('div', { class: 'field__hint' },
+        'Cadets choose a word. The number is stored for analysis and is never shown to them.'));
   }
 
   function actionsRow() {
@@ -442,7 +445,9 @@ async function drawCreator(root, params) {
           ? {
             id: q.id, type: 'scale', label: q.label.trim(), required: q.required !== false,
             min: FORM_RULES.scaleMin, max: FORM_RULES.scaleMax,
-            minLabel: q.minLabel || '', maxLabel: q.maxLabel || '',
+            // Copied in, not referenced: if the detachment later changes the
+            // wording, forms already issued keep the words cadets answered on.
+            anchors: { ...SCALE_ANCHORS },
           }
           : {
             id: q.id, type: 'text', label: q.label.trim(), required: q.required !== false,
@@ -497,7 +502,7 @@ function newQuestion(type) {
     type,
     label: '',
     required: true,
-    ...(type === 'scale' ? { minLabel: '', maxLabel: '' } : {}),
+
   };
 }
 
@@ -510,7 +515,5 @@ function flattenQuestions(form) {
     type: item.type === 'scale' ? 'scale' : 'text',
     label: item.label || '',
     required: item.required !== false,
-    minLabel: item.minLabel || '',
-    maxLabel: item.maxLabel || '',
   }));
 }

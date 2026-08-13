@@ -141,18 +141,25 @@ export const FORM_RULES = {
   minQuestions: 3,
   textWordLimit: 250,
   scaleMin: 1,
-  scaleMax: 10,
+  scaleMax: 9,
 };
 
 /**
- * Named points on the rating scale. Anchoring odd numbers gives every rating a
- * word without crowding the row on a phone.
+ * The rating scale.
  *
- * NOTE: these anchors describe a 1–9 scale — with scaleMax at 10, the top point
- * sits above "Outstanding" with no label of its own. Either set scaleMax to 9
- * so the scale ends on an anchor, or add a 10th label. Change SCALE_ANCHORS and
- * FORM_RULES.scaleMax together; existing responses keep the scale they were
- * created with, so old feedback is unaffected either way.
+ * Students choose a *word*; the number behind it is what gets averaged. The
+ * numeric domain is 1–9 and the words sit on the odd points, so "Neutral" (5)
+ * is the true centre and the ends land on real anchors.
+ *
+ * This object drives the UI directly: one option is rendered per entry here.
+ * Five entries means five choices scored 1/3/5/7/9. Adding words for 2, 4, 6
+ * and 8 would turn it into nine choices with no code change — the trade is
+ * finer resolution against asking a cadet to separate nine shades of a
+ * judgement, which tends to add noise rather than signal.
+ *
+ * Changing these words does not touch stored feedback: every form records the
+ * scale it was built with, so old responses keep their original wording and
+ * numbers, and remain comparable among themselves.
  */
 export const SCALE_ANCHORS = {
   1: 'Detrimental',
@@ -161,6 +168,27 @@ export const SCALE_ANCHORS = {
   7: 'Satisfactory',
   9: 'Outstanding',
 };
+
+/** The selectable values of an anchor set, in order. */
+export function scaleValues(anchors = SCALE_ANCHORS) {
+  return Object.keys(anchors).map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+}
+
+/**
+ * The word closest to a computed score, for reporting a mean in the same
+ * vocabulary students answered in. Ties round toward the lower anchor so a
+ * score is never described more favourably than it earned.
+ */
+export function nearestAnchor(value, anchors = SCALE_ANCHORS) {
+  if (!Number.isFinite(value)) return null;
+  const values = scaleValues(anchors);
+  if (!values.length) return null;
+  let best = values[0];
+  for (const candidate of values) {
+    if (Math.abs(candidate - value) < Math.abs(best - value)) best = candidate;
+  }
+  return anchors[best] ?? anchors[String(best)] ?? null;
+}
 
 /* ------------------------------------------------------------------ *
  * Academic term vocabulary — drives the filter controls everywhere.

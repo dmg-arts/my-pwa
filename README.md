@@ -250,14 +250,31 @@ Not yet built:
 
 ### The rating scale
 
-`SCALE_ANCHORS` in `js/config.js` names the odd points:
+**Students pick a word. The number behind it is what gets averaged.**
+
+`SCALE_ANCHORS` in `js/config.js` defines both at once:
 
 ```
-1 Detrimental · 3 Unsatisfactory · 5 Neutral · 7 Satisfactory · 9 Outstanding
+Detrimental (1) · Unsatisfactory (3) · Neutral (5) · Satisfactory (7) · Outstanding (9)
 ```
 
-Note these describe a **1–9** scale. With `FORM_RULES.scaleMax` at 10, the top
-point sits above "Outstanding" with no label of its own. Either drop scaleMax to
-9 so the scale ends on an anchor, or add a 10th label — change both constants
-together. Existing responses keep the scale they were created with, so old
-feedback is unaffected either way.
+The numeric domain is 1–9, so "Neutral" is the true centre and the ends land on
+real anchors. Cadets never see a digit — a visible number invites people to
+average it in their heads while answering. Instructors see both: the response
+viewer shows the word and its value, the analysis table has a *Reads as* column,
+and CSV export emits a numeric column and a word column per question.
+
+This object **drives the UI directly** — one option is rendered per entry. Five
+entries means five choices scored 1/3/5/7/9. Adding words for 2, 4, 6 and 8
+would make it nine choices with no code change; the trade is finer resolution
+against asking a cadet to separate nine shades of one judgement, which tends to
+add noise rather than signal.
+
+Every form records the anchor set it was built with, so changing the wording
+later leaves issued feedback untouched — old responses keep their original words
+and numbers and stay comparable among themselves. Forms created before the word
+scale existed still render as numbers.
+
+`nearestAnchor()` maps a computed score back to a word for reporting. Ties round
+**down**, so a mean is never described more favourably than it earned: a mean of
+6.0 reads as "Neutral", not "Satisfactory".
