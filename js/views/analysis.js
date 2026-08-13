@@ -14,7 +14,7 @@ import {
   download, toCsv, fmtDate, fmtDateTime, pluralize, mean, median, stdev, round,
   modal, confirmDialog, fromDateInput, groupBy,
   mount, remount } from '../util.js';
-import { AS_CLASSES, SEMESTERS, schoolYears, nearestAnchor } from '../config.js';
+import { AS_CLASSES, SEMESTERS, PRIVACY, schoolYears, nearestAnchor } from '../config.js';
 import { db } from '../storage/index.js';
 import { listStudents } from '../auth.js';
 import { renderForm, formItems } from '../forms.js';
@@ -130,10 +130,42 @@ export async function renderAnalysis(host) {
     });
   }
 
+  /**
+   * Splits the filtered responses into what may be shown and what must not.
+   *
+   * The threshold is applied *per form*, not to the total, because that is the
+   * unit an author can be identified within — receipts are per form. Pooling a
+   * thin form into a larger total would not protect it either, since the
+   * feedback-ID filter can isolate it again in one click.
+   */
+  function partition(rows) {
+    const countByRequest = new Map();
+    for (const response of rows) {
+      countByRequest.set(response.requestId, (countByRequest.get(response.requestId) || 0) + 1);
+    }
+
+    const withheld = [];
+    const blocked = new Set();
+    for (const [requestId, count] of countByRequest) {
+      const request = requestsById.get(requestId);
+      // Attributed feedback carries names already; withholding buys nothing.
+      if (!request?.anonymous) continue;
+      if (count >= PRIVACY.minResponsesToShow) continue;
+      blocked.add(requestId);
+      withheld.push({ request, count });
+    }
+
+    return {
+      visible: rows.filter((r) => !blocked.has(r.requestId)),
+      withheld: withheld.sort((a, b) => b.count - a.count),
+    };
+  }
+
   function draw() {
-    const rows = filtered();
+    const all = filtered();
     const inScope = matchingRequests();
-    remount(results, );
+    const { visible, withheld } = partition(all);
+    remount(results);
 
     if (!requests.length) {
       mount(results, emptyState({
@@ -146,26 +178,56 @@ export async function renderAnalysis(host) {
       return;
     }
 
-    mount(results, summary(rows, inScope));
+    if (withheld.length) mount(results, withheldNotice(withheld));
 
-    if (!rows.length) {
+    mount(results, summary(visible));
+
+    if (!visible.length) {
       mount(results, emptyState({
-        iconName: 'filter',
-        title: 'No responses in this range',
-        message: 'Widen the filters, or check the completion table below.',
+        iconName: withheld.length ? 'lock' : 'filter',
+        title: withheld.length ? 'Nothing can be shown yet' : 'No responses in this range',
+        message: withheld.length
+          ? `Anonymous feedback stays hidden until ${PRIVACY.minResponsesToShow} people have responded.`
+          : 'Widen the filters, or check the completion table below.',
       }));
     } else {
-      mount(results, scaleStats(rows));
-      mount(results, comments(rows));
-      mount(results, responseList(rows));
+      mount(results, scaleStats(visible));
+      mount(results, comments(visible));
+      mount(results, responseList(visible));
     }
     mount(results, completion(inScope));
   }
 
+  /** Names what is being held back and exactly what would release it. */
+  function withheldNotice(withheld) {
+    const rows = el('div', { class: 'stack-sm' });
+    for (const { request, count } of withheld) {
+      const needed = PRIVACY.minResponsesToShow - count;
+      mount(rows, el('div', { class: 'row row--between row--wrap' },
+        el('div', {},
+          el('div', { style: { fontWeight: '550' } },
+            request.feedbackId ? `${request.feedbackId} — ${request.title}` : request.title),
+          el('div', { class: 'muted' },
+            `${pluralize(count, 'response')} so far · ${needed} more ${needed === 1 ? 'releases' : 'release'} the results`)),
+        badge('Withheld', 'warn', 'lock')));
+    }
+
+    return notice('warn', `Results withheld for ${pluralize(withheld.length, 'form')}`,
+      el('p', {}, 'With this few responses, a single answer can be traced back to its author by '
+        + 'elimination against the completion list. These forms are excluded from the statistics, '
+        + 'comments and individual responses below — the counts stay visible so you can still chase '
+        + 'the people who owe feedback.'),
+      el('div', { style: { marginTop: 'var(--sp-3)' } }, rows));
+  }
+
   /* ---------------- panels ---------------- */
 
-  function summary(rows, inScope) {
+  function summary(rows) {
     const scopeAnchors = anchorsInScope(rows, formsById);
+    // Count the forms actually represented here, not everything the filters
+    // matched — withheld forms contribute nothing to these numbers, so
+    // including them in the caption would overstate what is being shown.
+    const formsShown = new Set(rows.map((r) => r.requestId)).size;
     const values = rows.flatMap((r) => Object.values(r.answers || {}).filter((v) => typeof v === 'number'));
     const stat = (label, value, note) => el('div', { class: 'stat' },
       el('div', { class: 'stat__label' }, label),
@@ -175,7 +237,7 @@ export async function renderAnalysis(host) {
     return el('section', {},
       el('h3', { class: 'section-title' }, 'Overview'),
       el('div', { class: 'grid grid--3' },
-        stat('Responses', String(rows.length), `across ${pluralize(inScope.length, 'form')}`),
+        stat('Responses', String(rows.length), `across ${pluralize(formsShown, 'form')}`),
         stat('Mean score', values.length ? String(round(mean(values), 2)) : '—',
           values.length ? `closest to "${nearestAnchor(mean(values), scopeAnchors)}"` : 'all rated questions'),
         stat('Median', values.length ? String(round(median(values), 2)) : '—',
@@ -312,6 +374,9 @@ export async function renderAnalysis(host) {
         const outstanding = targeted.filter((s) => !submitted.has(s.username));
         const pct = targeted.length ? Math.round((submitted.size / targeted.length) * 100) : 0;
 
+        const held = request.anonymous && submitted.size > 0
+          && submitted.size < PRIVACY.minResponsesToShow;
+
         mount(cards, el('div', { class: 'card stack-sm' },
           el('div', { class: 'row row--between row--wrap' },
             el('div', {},
@@ -319,8 +384,10 @@ export async function renderAnalysis(host) {
                 request.feedbackId ? `${request.feedbackId} — ${request.title}` : request.title),
               el('div', { class: 'muted' },
                 `${submitted.size} of ${targeted.length} submitted`)),
-            badge(`${pct}%`, pct >= 80 ? 'ok' : pct >= 40 ? 'warn' : 'danger',
-              pct >= 80 ? 'checkCircle' : 'clock')),
+            el('div', { class: 'row row--wrap' },
+              held && badge('Results withheld', 'warn', 'lock'),
+              badge(`${pct}%`, pct >= 80 ? 'ok' : pct >= 40 ? 'warn' : 'danger',
+                pct >= 80 ? 'checkCircle' : 'clock'))),
           el('div', { class: 'meter' }, el('div', { class: 'meter__fill', style: { width: `${pct}%` } })),
           outstanding.length
             ? el('details', {},
@@ -365,7 +432,14 @@ export async function renderAnalysis(host) {
   }
 
   function exportRows() {
-    const rows = filtered();
+    // Export is a disclosure too — it obeys the same threshold, otherwise it
+    // would simply be the way around it.
+    const { visible: rows, withheld } = partition(filtered());
+    if (withheld.length) {
+      toast(`${pluralize(withheld.length, 'form')} withheld from the export — too few responses.`,
+        'warn', 6000);
+    }
+    if (!rows.length) return toast('Nothing to export.', 'warn');
     const questionIds = new Set();
     rows.forEach((r) => Object.keys(r.answers || {}).forEach((k) => questionIds.add(k)));
 
@@ -401,7 +475,7 @@ export async function renderAnalysis(host) {
         }];
       }),
     ]), 'text/csv');
-    toast('CSV exported.', 'ok');
+    return toast('CSV exported.', 'ok');
   }
 
   draw();

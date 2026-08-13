@@ -173,11 +173,39 @@ build refuses to load rather than being silently downgraded. Add one in
 
 ---
 
+## Anonymity and disclosure control
+
+Anonymity has a hard floor. With *n* responses from a known set of *n*
+submitters, the best anyone can do is a 1-in-*n* guess — and at *n*=1 that is a
+certainty. Receipts make the submitters known by design, so a single anonymous
+response shown beside a completion list identifies its author by elimination.
+
+So **anonymous results are withheld until 3 people have responded**
+(`PRIVACY.minResponsesToShow` in `js/config.js`). Below that, the form is
+excluded from the statistics, the comments, the individual responses *and the
+CSV export* — while the counts stay visible so cadre can still chase the people
+who owe feedback. The form creator warns at build time if an anonymous form is
+going to fewer people than the threshold, since such a form could never show
+results.
+
+The threshold is applied **per form**, not to the running total: a form is the
+unit an author can be identified within, and pooling a thin form into a larger
+total would not protect it anyway, because the feedback-ID filter can isolate it
+again in one click.
+
+Attributed (non-anonymous) feedback is never withheld — the names are already
+attached, so withholding would cost visibility and buy nothing.
+
+---
+
 ## Known limits
 
 - **Receipt timing can correlate.** For anonymous feedback, a receipt and a
-  response are written seconds apart. In a small enough cohort, someone with raw
-  Drive access could line them up. Restrict who can read the folder.
+  response are written seconds apart, the response ID encodes its creation time,
+  and both index arrays are in submission order — so someone reading the **raw
+  Drive files** could line them up. The disclosure threshold above does not
+  address this; it defends the app's own screens. Anyone with raw folder access
+  is already inside your trust boundary, so restrict who can read the folder.
 - **The built-in admin password is public.** By design — it is a recovery path,
   not a front door. Create a named admin account.
 - **Concurrent edits overwrite.** Two instructors editing one form last-write-

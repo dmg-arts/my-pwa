@@ -18,7 +18,7 @@ import {
   makeId, nowIso, fromDateInput, toDateInput, pluralize, emptyState,
   mount, remount } from '../util.js';
 import {
-  AS_CLASSES, SEMESTERS, FORM_RULES, SCALE_ANCHORS, makeFeedbackId, scaleValues,
+  AS_CLASSES, SEMESTERS, FORM_RULES, SCALE_ANCHORS, PRIVACY, makeFeedbackId, scaleValues,
   currentSchoolYear, currentSemester, schoolYears,
 } from '../config.js';
 import { db } from '../storage/index.js';
@@ -177,7 +177,7 @@ async function drawCreator(root, params) {
       el('label', { class: 'check' },
         el('input', {
           type: 'checkbox', checked: draft.anonymous,
-          onchange: (e) => { draft.anonymous = e.target.checked; },
+          onchange: (e) => { draft.anonymous = e.target.checked; draw(); },
         }),
         el('span', {},
           el('span', { class: 'check__text' }, 'Keep responses anonymous'),
@@ -203,23 +203,45 @@ async function drawCreator(root, params) {
           el('div', { class: 'choice__desc' }, desc)));
     };
 
+    // Kept out of `picker` so ticking a student can refresh the warning without
+    // rebuilding the list and losing the search box's state.
+    const warningHost = el('div', {});
+
     function drawPicker() {
-      remount(picker, );
+      remount(picker);
       if (draft.audience === 'all') {
         mount(picker, notice('info', null,
           el('p', {}, draft.asClass
             ? `Everyone on the roster at ${draft.asClass} — ${pluralize(eligible().length, 'student')}.`
             : `Everyone on the roster — ${pluralize(eligible().length, 'student')}.`)));
-        return;
+      } else {
+        mount(picker, studentPicker());
       }
-      mount(picker, studentPicker());
+      refreshWarning();
     }
 
-    mount(card, 
+    /**
+     * An anonymous form sent to fewer people than the disclosure threshold can
+     * never show its results — better to say so now than after collecting them.
+     */
+    function refreshWarning() {
+      remount(warningHost);
+      if (!draft.anonymous) return;
+      const size = draft.audience === 'some' ? draft.assignedUsernames.length : eligible().length;
+      if (!size || size >= PRIVACY.minResponsesToShow) return;
+      mount(warningHost, notice('warn', 'This form will never show results',
+        el('p', {}, `It is anonymous and goes to ${pluralize(size, 'student')}, but anonymous `
+          + `results stay hidden until ${PRIVACY.minResponsesToShow} people have responded — `
+          + 'otherwise a single answer can be traced back by elimination. Add more students, or '
+          + 'turn off anonymity so the feedback is attributed and visible.')));
+    }
+
+    mount(card,
       el('div', { class: 'choice-list' },
         choice('all', 'Everyone at this AS level', 'Any student matching the AS level above.'),
         choice('some', 'Selected students', 'Choose individually. At least one is required.')),
-      picker);
+      picker,
+      warningHost);
 
     drawPicker();
     return card;
@@ -260,6 +282,7 @@ async function drawCreator(root, params) {
                 ? [...new Set([...draft.assignedUsernames, student.username])]
                 : draft.assignedUsernames.filter((u) => u !== student.username);
               countLabel.textContent = `${draft.assignedUsernames.length} selected`;
+              refreshWarning();
             },
           }),
           el('span', {},

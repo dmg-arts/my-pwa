@@ -136,6 +136,25 @@ export const FOLDER_TREE_PREVIEW = `TOP-Feedback/
 ├── reports/     exported reports (CSV / JSON)
 └── archive/     closed terms retained for the record`;
 
+/**
+ * Disclosure control for anonymous feedback.
+ *
+ * Anonymity has a hard floor: with n responses from a known set of n
+ * submitters, the best anyone can do is a 1-in-n guess — and at n=1 that is a
+ * certainty. Receipts make the submitters known by design, so a single response
+ * shown next to a completion list identifies its author by elimination.
+ *
+ * Below this many responses, an anonymous form's results are withheld from the
+ * analysis entirely: no statistics, no comments, no individual responses. Only
+ * the counts remain, so cadre can still chase the people who owe feedback.
+ *
+ * This applies to anonymous forms only. On an attributed form the names are
+ * already attached, so withholding would cost visibility and buy nothing.
+ */
+export const PRIVACY = {
+  minResponsesToShow: 3,
+};
+
 /** Standardized form limits, per the form creator specification. */
 export const FORM_RULES = {
   minQuestions: 3,
