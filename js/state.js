@@ -1,0 +1,150 @@
+/**
+ * Device-local state: display settings, the saved storage connection, and the
+ * cadre session. None of this is org data — org data lives in the Drive folder.
+ */
+
+import { LS, DEFAULT_SETTINGS } from './config.js';
+
+/* ------------------------------------------------------------------ *
+ * tiny observable store
+ * ------------------------------------------------------------------ */
+
+function createStore(key, fallback) {
+  let value = load();
+  const listeners = new Set();
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return structuredClone(fallback);
+      return { ...structuredClone(fallback), ...JSON.parse(raw) };
+    } catch {
+      return structuredClone(fallback);
+    }
+  }
+
+  function persist() {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (err) {
+      console.warn(`[state] could not persist ${key}`, err);
+    }
+  }
+
+  return {
+    get: () => value,
+    set(patch) {
+      value = { ...value, ...patch };
+      persist();
+      listeners.forEach((fn) => fn(value));
+      return value;
+    },
+    replace(next) {
+      value = { ...structuredClone(fallback), ...next };
+      persist();
+      listeners.forEach((fn) => fn(value));
+      return value;
+    },
+    reset() {
+      return this.replace({});
+    },
+    subscribe(fn) {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * settings (display preferences)
+ * ------------------------------------------------------------------ */
+
+export const settings = createStore(LS.settings, DEFAULT_SETTINGS);
+
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+/** Writes the current settings onto <html> as data-attributes. */
+export function applySettings(next = settings.get()) {
+  const root = document.documentElement;
+  const theme = next.theme === 'system' ? (prefersDark.matches ? 'dark' : 'light') : next.theme;
+  root.dataset.theme = theme;
+  root.dataset.palette = next.palette || 'default';
+  root.dataset.contrast = next.contrast || 'normal';
+  root.dataset.textsize = next.textSize || 'md';
+  root.dataset.motion = next.reduceMotion ? 'reduced' : 'full';
+
+  // Keep the browser/OS chrome in step with the app.
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) {
+    meta.setAttribute('content', theme === 'dark' ? '#161b22' : '#ffffff');
+  }
+}
+
+settings.subscribe(applySettings);
+prefersDark.addEventListener('change', () => {
+  if (settings.get().theme === 'system') applySettings();
+});
+
+/* ------------------------------------------------------------------ *
+ * connection (which storage backend, and where)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Shape:
+ *   { backend, orgName, folderId, folderName, folderUrl, clientId, connectedAt }
+ * `folderId` is a Drive file id for the `drive` backend; for `folder` it is the
+ * IndexedDB key of the saved FileSystemDirectoryHandle.
+ */
+export const connection = createStore(LS.connection, {
+  backend: null,
+  orgName: '',
+  folderId: '',
+  folderName: '',
+  folderUrl: '',
+  clientId: '',
+  connectedAt: null,
+});
+
+export function isConfigured() {
+  return Boolean(connection.get().backend) && localStorage.getItem(LS.setupComplete) === '1';
+}
+
+export function markSetupComplete(done = true) {
+  if (done) localStorage.setItem(LS.setupComplete, '1');
+  else localStorage.removeItem(LS.setupComplete);
+}
+
+/* ------------------------------------------------------------------ *
+ * cadre session (unlocks the cadre area for a while)
+ * ------------------------------------------------------------------ */
+
+const SESSION_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+export function startCadreSession() {
+  sessionStorage.setItem(LS.cadreSession, String(Date.now() + SESSION_MS));
+}
+
+export function endCadreSession() {
+  sessionStorage.removeItem(LS.cadreSession);
+}
+
+export function hasCadreSession() {
+  const until = Number(sessionStorage.getItem(LS.cadreSession) || 0);
+  if (!until) return false;
+  if (Date.now() > until) {
+    endCadreSession();
+    return false;
+  }
+  return true;
+}
+
+/* ------------------------------------------------------------------ *
+ * student view preferences (last-used filters, remembered name)
+ * ------------------------------------------------------------------ */
+
+export const studentPrefs = createStore(LS.studentPrefs, {
+  studentId: '',
+  schoolYear: '',
+  semester: '',
+  asClass: '',
+});

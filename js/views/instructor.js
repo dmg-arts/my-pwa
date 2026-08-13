@@ -1,0 +1,402 @@
+/**
+ * Instructor Portal. Everything behind an instructor sign-in: creating
+ * feedback, reading responses, analysis, accounts, and database maintenance.
+ *
+ * Sign-in identifies who is at the keyboard on a shared device. It is not a
+ * security boundary — anyone with access to the org's Drive folder can read the
+ * JSON directly. Real access control is Google's folder sharing, which is
+ * exactly the point of letting each detachment own its own Drive.
+ */
+
+import {
+  el, icon, badge, field, select, notice, toast, spinner, emptyState, modal,
+  confirmDialog, fmtDate, fmtDateTime, fmtRelative, pluralize, toDateInput,
+  fromDateInput, makeId, nowIso, download, toCsv,
+  pickFile, readFileAsText, initials,
+  mount, remount } from '../util.js';
+import {
+  SEMESTERS, AS_CLASSES, REQUEST_STATUS, ROLES, schoolYears,
+  currentSchoolYear, currentSemester, isDevMode,
+} from '../config.js';
+import { connection } from '../state.js';
+import { hasRole, currentUser, signOut, listStudents } from '../auth.js';
+import { db } from '../storage/index.js';
+import { navigate } from '../router.js';
+import { renderForm, formItems } from '../forms.js';
+import { renderAnalysis } from './analysis.js';
+import { renderLogin } from './admin.js';
+
+const TABS = [
+  { id: 'requests', label: 'Feedback forms', iconName: 'send' },
+  { id: 'analysis', label: 'Responses & analysis', iconName: 'chart' },
+  { id: 'students', label: 'Students', iconName: 'users' },
+  { id: 'database', label: 'Database', iconName: 'database' },
+];
+
+/** Wraps an instructor view in the sign-in gate. */
+export async function requireInstructor(root, render) {
+  if (hasRole(ROLES.instructor)) return render();
+  return renderLogin(root, ROLES.instructor, 'Instructor Portal', render);
+}
+
+/* ------------------------------------------------------------------ *
+ * Shell
+ * ------------------------------------------------------------------ */
+
+export async function renderInstructor(root, { query }) {
+  return requireInstructor(root, async () => {
+    remount(root, );
+    const activeTab = query.get('tab') || 'requests';
+    const host = el('div', {}, spinner());
+    const session = currentUser();
+
+    const tabBar = el('div', { class: 'tabs', role: 'tablist' });
+    for (const tab of TABS) {
+      mount(tabBar, el('button', {
+        type: 'button', class: 'tab', role: 'tab',
+        'aria-selected': String(tab.id === activeTab),
+        onclick: () => navigate(`/instructor?tab=${tab.id}`),
+      }, tab.label));
+    }
+
+    mount(root, 
+      el('div', { class: 'page-head row row--between row--wrap' },
+        el('div', {},
+          el('h1', { class: 'page-title' }, 'Instructor Portal'),
+          el('p', { class: 'page-sub' },
+            session ? `${session.name} · ${connection.get().orgName || 'Detachment'}`
+              : connection.get().orgName || 'Detachment')),
+        el('div', { class: 'row row--wrap' },
+          session && el('button', {
+            type: 'button', class: 'btn btn--sm',
+            onclick: () => { signOut(); toast('Signed out.', 'ok'); navigate('/home'); },
+          }, icon('lock'), 'Sign out'))),
+
+      isDevMode() && notice('warn', 'Development mode is on',
+        el('p', {}, 'This portal is unlocked without a sign-in on this device. '
+          + 'Turn it off in Settings before fielding the app.')),
+
+      // The two primary actions, called out above the tabs.
+      el('div', { class: 'role-grid', style: { marginBottom: 'var(--sp-5)' } },
+        el('button', {
+          type: 'button', class: 'role-card',
+          onclick: () => navigate('/instructor/create/new'),
+        },
+          el('span', { class: 'role-card__icon' }, icon('plus')),
+          el('span', { class: 'role-card__title' }, 'Create Feedback'),
+          el('span', { class: 'role-card__desc' },
+            'Build a standardized form, choose the class or event, and issue it to students.')),
+        el('button', {
+          type: 'button', class: 'role-card',
+          onclick: () => navigate('/instructor?tab=analysis'),
+        },
+          el('span', { class: 'role-card__icon' }, icon('chart')),
+          el('span', { class: 'role-card__title' }, 'Feedback Response and Analysis'),
+          el('span', { class: 'role-card__desc' },
+            'Filter by date, class, AS level or feedback ID. See scores, comments and who still owes feedback.'))),
+
+      tabBar,
+      host);
+
+    const renderers = {
+      requests: tabRequests,
+      analysis: (node) => renderAnalysis(node),
+      students: tabStudents,
+      database: tabDatabase,
+    };
+    try {
+      await (renderers[activeTab] || tabRequests)(host);
+    } catch (err) {
+      remount(host, notice('danger', 'Could not load this tab', el('p', {}, err.message)));
+    }
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Tab: requests
+ * ------------------------------------------------------------------ */
+
+async function tabRequests(host) {
+  const [requests, counts] = await Promise.all([db.listRequests(), db.responseCounts()]);
+  const state = { status: '', schoolYear: '', semester: '', asClass: '', search: '' };
+  const list = el('div', {});
+
+  const draw = () => {
+    const visible = requests
+      .filter((r) => !state.status || r.status === state.status)
+      .filter((r) => !state.schoolYear || r.schoolYear === state.schoolYear)
+      .filter((r) => !state.semester || r.semester === state.semester)
+      .filter((r) => !state.asClass || r.asClass === state.asClass)
+      .filter((r) => !state.search
+        || `${r.feedbackId || ''} ${r.title}`.toLowerCase().includes(state.search.toLowerCase()));
+
+    remount(list, );
+    if (!visible.length) {
+      mount(list, emptyState({
+        iconName: 'send',
+        title: requests.length ? 'Nothing matches these filters' : 'No feedback forms yet',
+        message: requests.length ? null : 'Create one to put a form in front of your students.',
+        action: el('button', {
+          type: 'button', class: 'btn btn--primary',
+          onclick: () => navigate('/instructor/create/new'),
+        }, icon('plus'), 'Create feedback'),
+      }));
+      return;
+    }
+
+    const rows = el('div', { class: 'list' });
+    for (const request of visible) {
+      const count = counts.byRequest?.[request.id] || 0;
+      const status = REQUEST_STATUS[request.status] || REQUEST_STATUS.draft;
+      const audience = request.assignedUsernames?.length
+        ? `${pluralize(request.assignedUsernames.length, 'student')} selected`
+        : 'Everyone at this AS level';
+
+      mount(rows, el('button', {
+        type: 'button', class: 'list__item',
+        onclick: () => navigate(`/instructor/create/${request.id}`),
+      },
+        el('span', { class: 'list__main' },
+          el('span', { class: 'list__title', style: { display: 'block' } },
+            request.feedbackId
+              ? [el('span', { class: 'mono faint' }, `${request.feedbackId} `), request.title]
+              : request.title),
+          el('span', { class: 'list__meta', style: { display: 'block' } },
+            [request.asClass, request.semester, request.schoolYear].filter(Boolean).join(' \u00b7 '),
+            ` \u00b7 ${audience}`),
+          el('span', { class: 'list__meta', style: { display: 'block' } },
+            request.dueAt ? `Due ${fmtDate(request.dueAt)}` : 'No due date',
+            ` \u00b7 created ${fmtRelative(request.createdAt)}`)),
+        el('span', { class: 'list__aside' },
+          badge(pluralize(count, 'response'), count ? 'info' : 'neutral', 'inbox'),
+          badge(status.label, status.tone),
+          icon('chevronRight', { cls: 'list__chev' }))));
+    }
+    mount(list, rows);
+  };
+
+  const years = schoolYears();
+  remount(host, 
+    el('div', { class: 'row row--between row--wrap', style: { marginBottom: 'var(--sp-4)' } },
+      el('h2', { class: 'section-title', style: { margin: '0' } }, 'Feedback forms'),
+      el('button', {
+        type: 'button', class: 'btn btn--primary',
+        onclick: () => navigate('/instructor/create/new'),
+      }, icon('plus'), 'Create feedback')),
+    el('div', { class: 'card', style: { padding: 'var(--sp-4)', marginBottom: 'var(--sp-4)' } },
+      el('div', { class: 'filters' },
+        field('Status', select(
+          [{ value: '', label: 'All statuses' },
+            ...Object.entries(REQUEST_STATUS).map(([value, meta]) => ({ value, label: meta.label }))],
+          { value: state.status, onchange: (e) => { state.status = e.target.value; draw(); } })),
+        field('School year', select([{ value: '', label: 'All years' }, ...years.map((y) => ({ value: y, label: y }))],
+          { onchange: (e) => { state.schoolYear = e.target.value; draw(); } })),
+        field('Semester', select([{ value: '', label: 'All' }, ...SEMESTERS.map((s) => ({ value: s, label: s }))],
+          { onchange: (e) => { state.semester = e.target.value; draw(); } })),
+        field('AS level', select([{ value: '', label: 'All' }, ...AS_CLASSES.map((c) => ({ value: c.code, label: c.code }))],
+          { onchange: (e) => { state.asClass = e.target.value; draw(); } })),
+        field('Search', el('input', {
+          class: 'input', type: 'search', placeholder: 'Feedback ID or name\u2026',
+          oninput: (e) => { state.search = e.target.value; draw(); },
+        })))),
+    list);
+  draw();
+}
+
+/* ------------------------------------------------------------------ *
+ * Tab: students (read-only \u2014 accounts are managed by an admin)
+ * ------------------------------------------------------------------ */
+
+async function tabStudents(host) {
+  const students = await listStudents();
+  const state = { search: '', asClass: '' };
+  const table = el('div', {});
+
+  function paint() {
+    const rows = students
+      .filter((s) => !state.asClass || s.asClass === state.asClass)
+      .filter((s) => !state.search
+        || `${s.name} ${s.username}`.toLowerCase().includes(state.search.toLowerCase()));
+
+    if (!rows.length) {
+      remount(table, emptyState({
+        iconName: 'users',
+        title: students.length ? 'No students match' : 'No student accounts yet',
+        message: students.length ? 'Try a different filter.'
+          : 'A database administrator creates student accounts and usernames.',
+        action: el('button', {
+          type: 'button', class: 'btn btn--primary', onclick: () => navigate('/admin'),
+        }, icon('database'), 'Open Database Administration'),
+      }));
+      return;
+    }
+
+    const body = el('tbody');
+    for (const student of rows) {
+      mount(body, el('tr', {},
+        el('td', {}, student.name),
+        el('td', { class: 'mono' }, student.username),
+        el('td', {}, student.asClass || '\u2014'),
+        el('td', {}, student.section || '\u2014')));
+    }
+    remount(table, el('div', { class: 'table-wrap' },
+      el('table', { class: 'table' },
+        el('thead', {}, el('tr', {},
+          el('th', {}, 'Name'), el('th', {}, 'Username'),
+          el('th', {}, 'AS level'), el('th', {}, 'Section'))),
+        body)));
+  }
+
+  remount(host, 
+    el('div', { class: 'row row--between row--wrap', style: { marginBottom: 'var(--sp-4)' } },
+      el('h2', { class: 'section-title', style: { margin: '0' } }, `Students (${students.length})`),
+      el('button', { type: 'button', class: 'btn btn--sm', onclick: () => navigate('/admin') },
+        icon('database'), 'Manage accounts')),
+    notice('info', 'Usernames are how students identify themselves',
+      el('p', {}, 'A student types their username on the feedback form. It is checked against this '
+        + 'list at submission, and each username can submit a given form only once.')),
+    el('div', { class: 'card', style: { padding: 'var(--sp-4)', margin: 'var(--sp-4) 0' } },
+      el('div', { class: 'filters' },
+        field('AS level', select(
+          [{ value: '', label: 'All levels' }, ...AS_CLASSES.map((c) => ({ value: c.code, label: c.label }))],
+          { onchange: (e) => { state.asClass = e.target.value; paint(); } })),
+        field('Search', el('input', {
+          class: 'input', type: 'search', placeholder: 'Name or username\u2026',
+          oninput: (e) => { state.search = e.target.value; paint(); },
+        })))),
+    table);
+  paint();
+}
+
+/* ------------------------------------------------------------------ *
+ * Tab: database
+ * ------------------------------------------------------------------ */
+
+async function tabDatabase(host) {
+  const conn = connection.get();
+  const [stats, status] = await Promise.all([db.stats(), db.status()]);
+
+  const statCard = (label, value, note = null) =>
+    el('div', { class: 'stat' },
+      el('div', { class: 'stat__label' }, label),
+      el('div', { class: 'stat__value' }, String(value)),
+      note && el('div', { class: 'stat__note' }, note));
+
+  async function exportBundle() {
+    try {
+      const bundle = await db.exportBundle();
+      download(`top-feedback-backup-${new Date().toISOString().slice(0, 10)}.json`,
+        JSON.stringify(bundle, null, 2));
+      toast('Backup downloaded.', 'ok');
+    } catch (err) {
+      toast(`Export failed: ${err.message}`, 'danger', 7000);
+    }
+  }
+
+  async function importBundle() {
+    const file = await pickFile('.json,application/json');
+    if (!file) return;
+    const mode = await modal({
+      title: 'Import backup',
+      body: el('div', {},
+        el('p', {}, 'Merge keeps what is already here and adds the backup on top. '
+          + 'Replace deletes every current record first.'),
+        notice('warn', 'Replace cannot be undone', el('p', {}, 'Export a backup first if you are unsure.'))),
+      actions: [
+        { label: 'Cancel', value: null },
+        { label: 'Replace', value: 'replace', variant: 'danger' },
+        { label: 'Merge', value: 'merge', variant: 'primary', autofocus: true },
+      ],
+    });
+    if (!mode) return;
+    try {
+      const counts = await db.importBundle(JSON.parse(await readFileAsText(file)), { mode });
+      toast(`Imported ${counts.requests} requests, ${counts.responses} responses, ${counts.forms} forms.`, 'ok', 6000);
+      navigate('/instructor?tab=database');
+    } catch (err) {
+      toast(`Import failed: ${err.message}`, 'danger', 8000);
+    }
+  }
+
+  async function wipe() {
+    if (!(await confirmDialog('Delete every record?',
+      'Requests, responses, form templates and the roster will all be deleted. '
+      + 'The folder structure stays. This cannot be undone.',
+      { confirmLabel: 'Delete everything', danger: true }))) return;
+    const typed = await promptText('Type DELETE to confirm');
+    if (typed !== 'DELETE') return toast('Cancelled — nothing was deleted.', 'warn');
+    await db.wipeData();
+    toast('All records deleted.', 'ok');
+    return navigate('/instructor?tab=database');
+  }
+
+  remount(host, 
+    el('h2', { class: 'section-title' }, 'Database'),
+
+    el('div', { class: 'grid grid--3', style: { marginBottom: 'var(--sp-5)' } },
+      statCard('Requests', stats.requests, `${stats.openRequests} open`),
+      statCard('Responses', stats.responses),
+      statCard('Students', stats.students),
+      statCard('Templates', stats.forms)),
+
+    el('div', { class: 'card stack' },
+      el('h3', { class: 'section-title' }, 'Connection'),
+      el('div', { class: 'row row--between row--wrap' },
+        el('div', {},
+          el('div', { style: { fontWeight: '570' } }, backendLabel(conn.backend)),
+          el('div', { class: 'muted' }, status.detail || '')),
+        el('span', { class: 'conn', dataset: { status: status.status } },
+          el('span', { class: 'conn__dot' }), el('span', {}, status.status))),
+      conn.folderUrl && el('a', { class: 'btn btn--sm', href: conn.folderUrl, target: '_blank', rel: 'noopener' },
+        icon('external'), 'Open folder in Google Drive'),
+      el('div', { class: 'row row--wrap' },
+        el('button', { type: 'button', class: 'btn btn--sm', onclick: () => navigate('/settings') },
+          icon('settings'), 'Change location'),
+        el('button', {
+          type: 'button', class: 'btn btn--sm',
+          onclick: async () => {
+            try {
+              await db.initialize({ seed: false });
+              toast('Folder structure verified.', 'ok');
+            } catch (err) { toast(err.message, 'danger', 7000); }
+          },
+        }, icon('refresh'), 'Verify folders'))),
+
+    el('div', { class: 'card stack', style: { marginTop: 'var(--sp-5)' } },
+      el('h3', { class: 'section-title' }, 'Backup and restore'),
+      el('p', { class: 'muted' },
+        'A backup is a single JSON file containing every record. It imports into any '
+        + 'TOP-Feedback install, which is also how you migrate from this device to Google Drive.'),
+      el('div', { class: 'row row--wrap' },
+        el('button', { type: 'button', class: 'btn', onclick: exportBundle }, icon('download'), 'Export backup'),
+        el('button', { type: 'button', class: 'btn', onclick: importBundle }, icon('upload'), 'Import backup'))),
+
+    el('div', { class: 'card stack', style: { marginTop: 'var(--sp-5)' } },
+      el('h3', { class: 'section-title' }, 'Danger zone'),
+      notice('danger', 'Deleting records is permanent',
+        el('p', {}, db.backendId === 'drive'
+          ? 'Files are moved to the Drive trash, where Google keeps them for 30 days.'
+          : 'Deleted records cannot be recovered from here.')),
+      el('div', { class: 'row row--wrap' },
+        el('button', { type: 'button', class: 'btn btn--danger', onclick: wipe }, icon('trash'), 'Delete all records'))),
+  );
+}
+
+function backendLabel(backend) {
+  return {
+    drive: 'Google Drive (organization account)',
+    folder: 'Synced folder on this computer',
+    local: 'This device only',
+  }[backend] || 'Not configured';
+}
+
+/** Small text prompt built on the modal helper. */
+async function promptText(title) {
+  const input = el('input', { class: 'input', type: 'text', autocomplete: 'off' });
+  const ok = await modal({
+    title,
+    body: input,
+    actions: [{ label: 'Cancel', value: false }, { label: 'Confirm', value: true, variant: 'danger' }],
+  });
+  return ok ? input.value.trim() : null;
+}

@@ -1,0 +1,39 @@
+{
+  "name": "TOP-Feedback",
+  "short_name": "TOP-FB",
+  "id": "/top-feedback",
+  "description": "Student and cadre feedback for AFROTC detachments. Each organization keeps its data in its own Google Drive.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "any",
+  "background_color": "#f4f6f9",
+  "theme_color": "#1c4f8b",
+  "categories": ["education", "productivity"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "./icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Student feedback",
+      "short_name": "Student",
+      "description": "See open feedback requests",
+      "url": "./index.html#/student",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Cadre",
+      "short_name": "Cadre",
+      "description": "Manage requests and reports",
+      "url": "./index.html#/cadre",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

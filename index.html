@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-palette="default" data-contrast="normal" data-textsize="md">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>TOP-Feedback</title>
+  <meta name="description" content="Student and cadre feedback for AFROTC detachments. Your data stays in your own Google Drive.">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="color-scheme" content="light dark">
+
+  <!-- iOS standalone -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="TOP-FB">
+  <link rel="apple-touch-icon" href="./icons/icon-180.png">
+
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./css/styles.css">
+
+  <script>
+    // Resolve the theme before first paint so the app never flashes white on a
+    // dark device. Mirrors applySettings() in js/state.js.
+    (function () {
+      try {
+        var saved = JSON.parse(localStorage.getItem('topfb.settings.v1') || '{}');
+        var theme = saved.theme || 'system';
+        if (theme === 'system') {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        var root = document.documentElement;
+        root.dataset.theme = theme;
+        if (saved.palette) root.dataset.palette = saved.palette;
+        if (saved.contrast) root.dataset.contrast = saved.contrast;
+        if (saved.textSize) root.dataset.textsize = saved.textSize;
+      } catch (e) { /* first run, or storage blocked — defaults are fine */ }
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#view">Skip to content</a>
+
+  <div class="app">
+    <header class="appbar" id="appbar">
+      <!-- built by js/app.js -->
+    </header>
+
+    <main class="main" id="view" tabindex="-1">
+      <noscript>
+        <div class="notice notice--warn">
+          <div>
+            <strong class="notice__title">JavaScript is required</strong>
+            TOP-Feedback runs entirely in your browser and needs JavaScript enabled.
+          </div>
+        </div>
+      </noscript>
+    </main>
+
+    <footer class="appfoot">
+      TOP-Feedback — your detachment's data stays in your own Google account.
+    </footer>
+  </div>
+
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
