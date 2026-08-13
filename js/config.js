@@ -166,25 +166,33 @@ export const FORM_RULES = {
 /**
  * The rating scale.
  *
- * Students choose a *word*; the number behind it is what gets averaged. The
- * numeric domain is 1–9 and the words sit on the odd points, so "Neutral" (5)
- * is the true centre and the ends land on real anchors.
+ * Students choose a *word*; the number behind it is what gets averaged and is
+ * never shown to them. All nine points are named, so the full 1–9 resolution is
+ * actually reachable rather than only the odd values.
  *
- * This object drives the UI directly: one option is rendered per entry here.
- * Five entries means five choices scored 1/3/5/7/9. Adding words for 2, 4, 6
- * and 8 would turn it into nine choices with no code change — the trade is
- * finer resolution against asking a cadet to separate nine shades of a
- * judgement, which tends to add noise rather than signal.
+ * The vocabulary alternates by design. Odd points carry the direction —
+ * Detrimental, Unfavorable, Neutral, Favorable, Outstanding — and even points
+ * carry the magnitude of the step either side of centre, paired symmetrically:
+ * Significant (2) mirrors Major (8), Minor (4) mirrors Slight (6). Position in
+ * the row supplies the direction for the magnitude words, which is why the
+ * options are always rendered in numeric order and never re-sorted.
  *
- * Changing these words does not touch stored feedback: every form records the
+ * This object drives the UI directly: one option is rendered per entry, so
+ * changing the vocabulary or the number of points needs no code change.
+ *
+ * Changing these words does not touch stored feedback — every form records the
  * scale it was built with, so old responses keep their original wording and
- * numbers, and remain comparable among themselves.
+ * numbers and remain comparable among themselves.
  */
 export const SCALE_ANCHORS = {
   1: 'Detrimental',
-  3: 'Unsatisfactory',
+  2: 'Significant',
+  3: 'Unfavorable',
+  4: 'Minor',
   5: 'Neutral',
-  7: 'Satisfactory',
+  6: 'Slight',
+  7: 'Favorable',
+  8: 'Major',
   9: 'Outstanding',
 };
 

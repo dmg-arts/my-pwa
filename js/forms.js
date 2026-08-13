@@ -67,7 +67,13 @@ function buildControl(item, { value, ns, labelId }) {
         const group = el('div', {
           class: 'scale scale--words', role: 'radiogroup', 'aria-labelledby': labelId,
         });
-        for (const n of scaleValues(anchors)) {
+        const points = scaleValues(anchors);
+        // Published to CSS so the row lays out as exactly one column per point
+        // — a scale that wraps mid-way reads as two groups rather than one
+        // continuum. Custom properties need setProperty; Object.assign skips them.
+        group.style.setProperty('--scale-count', String(points.length));
+
+        for (const n of points) {
           const id = `${name}-${n}`;
           const word = anchors[n] ?? anchors[String(n)];
           mount(group, el('label', { class: 'scale__opt', for: id },
