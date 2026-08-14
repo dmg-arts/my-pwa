@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TOP-Feedback — Installation and Setup Guide</title>
+<style>
+  @page {
+    size: Letter;
+    margin: 18mm 16mm 20mm;
+    @bottom-center { content: counter(page); }
+  }
+  @page :first { margin: 0; }
+
+  :root {
+    --navy: #1c4f8b;
+    --ink: #14181f;
+    --ink-2: #4d5866;
+    --ink-3: #7b8593;
+    --rule: #d8dee8;
+    --tint: #eef3fa;
+    --warn-bg: #fdf6e6;
+    --warn-line: #c9992e;
+    --danger-bg: #fdeceb;
+    --danger-line: #a02724;
+    --ok-bg: #e8f4ed;
+    --ok-line: #1c6b3f;
+    --mono: "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: var(--sans); color: var(--ink);
+    font-size: 10.2pt; line-height: 1.5;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+
+  /* ---------- cover ---------- */
+  .cover {
+    height: 279mm; padding: 40mm 24mm 24mm;
+    background: var(--navy); color: #fff;
+    display: flex; flex-direction: column;
+    page-break-after: always;
+  }
+  .cover__mark {
+    width: 20mm; height: 20mm; border-radius: 4mm; background: #fff;
+    display: flex; align-items: center; justify-content: center; margin-bottom: 14mm;
+  }
+  .cover__mark svg { width: 12mm; height: 12mm; }
+  .cover h1 { font-size: 34pt; line-height: 1.08; margin: 0 0 6mm; letter-spacing: -0.02em; font-weight: 700; }
+  .cover .sub { font-size: 14pt; opacity: .92; margin: 0 0 3mm; font-weight: 400; }
+  .cover .meta { margin-top: auto; font-size: 9.5pt; opacity: .8; border-top: 1px solid rgba(255,255,255,.3); padding-top: 5mm; }
+  .cover .meta strong { display: block; font-size: 11pt; opacity: 1; margin-bottom: 1.5mm; }
+
+  /* ---------- structure ---------- */
+  h2 {
+    font-size: 16pt; margin: 0 0 4mm; padding-bottom: 2.5mm;
+    border-bottom: 2px solid var(--navy); color: var(--navy);
+    letter-spacing: -0.01em; page-break-after: avoid;
+  }
+  h2 .num {
+    font-family: var(--mono); font-size: 10pt; color: #fff; background: var(--navy);
+    padding: 1mm 2.5mm; border-radius: 2mm; margin-right: 3mm; vertical-align: 2px;
+  }
+  h3 { font-size: 11.5pt; margin: 6mm 0 2mm; color: var(--ink); page-break-after: avoid; }
+  h4 { font-size: 10.2pt; margin: 4mm 0 1.5mm; color: var(--ink-2); page-break-after: avoid; }
+  p { margin: 0 0 3mm; }
+  section { page-break-before: always; }
+  section.first { page-break-before: avoid; }
+
+  /* ---------- steps ---------- */
+  ol.steps { counter-reset: s; list-style: none; padding: 0; margin: 0 0 4mm; }
+  ol.steps > li {
+    counter-increment: s; position: relative;
+    padding: 0 0 4mm 11mm; page-break-inside: avoid;
+  }
+  ol.steps > li::before {
+    content: counter(s);
+    position: absolute; left: 0; top: -0.5mm;
+    width: 7mm; height: 7mm; border-radius: 50%;
+    background: var(--navy); color: #fff;
+    font-family: var(--mono); font-size: 9pt; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+  }
+  ol.steps > li > strong { display: block; margin-bottom: 1mm; }
+  ol.steps ul { margin: 1.5mm 0 0; padding-left: 5mm; }
+  ol.steps li li { margin-bottom: 1mm; }
+
+  /* ---------- callouts ---------- */
+  .note {
+    border-left: 3px solid var(--navy); background: var(--tint);
+    padding: 3mm 4mm; margin: 0 0 4mm; border-radius: 0 2mm 2mm 0;
+    page-break-inside: avoid;
+  }
+  .note--warn { border-color: var(--warn-line); background: var(--warn-bg); }
+  .note--danger { border-color: var(--danger-line); background: var(--danger-bg); }
+  .note--ok { border-color: var(--ok-line); background: var(--ok-bg); }
+  .note p:last-child { margin-bottom: 0; }
+  .note strong.title { display: block; margin-bottom: 1mm; }
+
+  /* ---------- tables ---------- */
+  table { width: 100%; border-collapse: collapse; margin: 0 0 4mm; font-size: 9.4pt; page-break-inside: avoid; }
+  th, td { text-align: left; padding: 2mm 3mm; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { background: var(--tint); color: var(--navy); font-size: 8.6pt; text-transform: uppercase; letter-spacing: .05em; }
+  td.k { white-space: nowrap; font-family: var(--mono); font-size: 8.8pt; }
+
+  code {
+    font-family: var(--mono); font-size: 9pt;
+    background: #f2f5f9; border: 1px solid var(--rule);
+    padding: 0.3mm 1.2mm; border-radius: 1mm;
+  }
+  pre {
+    font-family: var(--mono); font-size: 8.8pt; line-height: 1.45;
+    background: #f7f9fc; border: 1px solid var(--rule); border-radius: 2mm;
+    padding: 3mm 4mm; margin: 0 0 4mm; overflow: hidden; white-space: pre-wrap;
+    page-break-inside: avoid;
+  }
+
+  figure { margin: 0 0 5mm; page-break-inside: avoid; }
+  figure img { width: 100%; border: 1px solid var(--rule); border-radius: 2mm; display: block; }
+  figcaption { font-size: 8.6pt; color: var(--ink-3); margin-top: 1.5mm; }
+
+  .lead { font-size: 11pt; color: var(--ink-2); margin-bottom: 5mm; }
+  .checklist { list-style: none; padding: 0; margin: 0 0 4mm; }
+  .checklist li {
+    padding: 2mm 0 2mm 8mm; border-bottom: 1px solid var(--rule);
+    position: relative; page-break-inside: avoid;
+  }
+  .checklist li::before {
+    content: ""; position: absolute; left: 0; top: 2.6mm;
+    width: 4mm; height: 4mm; border: 1.2px solid var(--ink-3); border-radius: 1mm;
+  }
+  .toc { list-style: none; padding: 0; margin: 0; }
+  .toc li { padding: 2mm 0; border-bottom: 1px solid var(--rule); display: flex; gap: 4mm; }
+  .toc .n { font-family: var(--mono); color: var(--navy); font-weight: 600; min-width: 8mm; }
+  .toc .d { color: var(--ink-3); font-size: 9.2pt; }
+</style>
+</head>
+<body>
+
+<!-- ============================= COVER ============================= -->
+<div class="cover">
+  <div class="cover__mark">
+    <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+      <path d="M148 262 L212 326 L364 174" fill="none" stroke="#1c4f8b" stroke-width="54"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <h1>TOP-Feedback</h1>
+  <p class="sub">Installation and Setup Guide</p>
+  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators</p>
+  <div class="meta">
+    <strong>Before you start</strong>
+    Allow about 45 minutes for a first-time setup using Google Drive. You will need
+    the detachment's Google account credentials and permission to create a Google Cloud
+    project on that account. No servers, databases or software licences are required.
+  </div>
+</div>
+
+<!-- ============================= CONTENTS ============================= -->
+<section class="first">
+  <h2>What this guide covers</h2>
+  <p class="lead">
+    TOP-Feedback is a web app that runs in a browser and stores every record in a Google Drive
+    folder your detachment owns. There is no vendor, no server and no shared database — which is
+    why setup involves your own Google account rather than an account with us.
+  </p>
+
+  <ol class="toc">
+    <li><span class="n">1</span><span><strong>Decide where your data will live</strong><span class="d"> — three options, and how to choose</span></span></li>
+    <li><span class="n">2</span><span><strong>Prepare the Google account</strong><span class="d"> — folder, Cloud project, Drive API, OAuth client</span></span></li>
+    <li><span class="n">3</span><span><strong>Publish the app</strong><span class="d"> — free hosting, or run it from one computer</span></span></li>
+    <li><span class="n">4</span><span><strong>Run the setup wizard</strong><span class="d"> — connect the app to your folder</span></span></li>
+    <li><span class="n">5</span><span><strong>Create the administrator account</strong><span class="d"> — and turn off development mode</span></span></li>
+    <li><span class="n">6</span><span><strong>Create accounts</strong><span class="d"> — instructors and cadets, one at a time or by CSV</span></span></li>
+    <li><span class="n">7</span><span><strong>Install on phones and laptops</strong><span class="d"> — add to home screen</span></span></li>
+    <li><span class="n">8</span><span><strong>Verify and hand over</strong><span class="d"> — a checklist before first use</span></span></li>
+    <li><span class="n">—</span><span><strong>Troubleshooting and reference</strong><span class="d"> — common problems, folder layout, backups</span></span></li>
+  </ol>
+
+  <h3>What you will need</h3>
+  <table>
+    <tr><th style="width:34%">Item</th><th>Why</th></tr>
+    <tr><td>A Google account owned by the detachment</td><td>Holds every record. Use a shared unit account, not a personal one.</td></tr>
+    <tr><td>Permission to create a Google Cloud project</td><td>Required once, to let the app talk to that account's Drive.</td></tr>
+    <tr><td>Somewhere to publish the app</td><td>Any static web host. Several free options are listed in Part 3.</td></tr>
+    <tr><td>A current browser</td><td>Chrome, Edge, Safari or Firefox, on any device.</td></tr>
+  </table>
+
+  <div class="note note--ok">
+    <strong class="title">You are not signing up for anything</strong>
+    <p>TOP-Feedback has no accounts with a vendor, no subscription and no data-processing
+    agreement to sign, because no data ever reaches anyone but you. Everything below sets up
+    <em>your</em> Google account to hold <em>your</em> detachment's feedback.</p>
+  </div>
+</section>
+
+<!-- ============================= PART 1 ============================= -->
+<section>
+  <h2><span class="num">1</span>Decide where your data will live</h2>
+  <p class="lead">Pick one. You can change later, but moving records between options is a manual export and import, so it is worth choosing correctly now.</p>
+
+  <table>
+    <tr>
+      <th style="width:22%">Option</th><th style="width:26%">Best for</th><th>What it means</th>
+    </tr>
+    <tr>
+      <td><strong>Google Drive</strong><br><span style="color:var(--ok-line);font-size:8.6pt">RECOMMENDED</span></td>
+      <td>Any detachment with more than one device</td>
+      <td>Records live in a Drive folder on your Google account. Works on phones, tablets and computers, and everyone sees the same data. Needs the one-time Google setup in Part 2.</td>
+    </tr>
+    <tr>
+      <td><strong>Synced folder</strong></td>
+      <td>A single office computer</td>
+      <td>Points at the TOP-Feedback folder inside Google Drive for Desktop. Google's own client handles syncing. Desktop Chrome or Edge only — no phones.</td>
+    </tr>
+    <tr>
+      <td><strong>This device only</strong></td>
+      <td>Trying the app out</td>
+      <td>Everything stays in one browser. Nothing syncs, nothing is shared, and clearing site data erases it. Fine for evaluation — export a backup and import it once you move to Drive.</td>
+    </tr>
+  </table>
+
+  <div class="note note--warn">
+    <strong class="title">Why a browser cannot simply be pointed at a Drive folder path</strong>
+    <p>Web pages have no access to the file system, and a phone has no synced Drive folder at all.
+    The Google Drive option therefore connects through Google's own Drive service rather than a
+    folder path. This is the reason Part 2 exists.</p>
+  </div>
+
+  <p><strong>If you are evaluating the app</strong>, choose <em>This device only</em>, skip to Part 4,
+  and come back to Part 2 when you are ready to go live. Nothing is lost — Part 8 explains how to
+  carry your trial data across.</p>
+</section>
+
+<!-- ============================= PART 2 ============================= -->
+<section>
+  <h2><span class="num">2</span>Prepare the Google account</h2>
+  <p class="lead">Do this once, on the Google account that will own the data. About 20 minutes.</p>
+
+  <h3>2a. Create the folder</h3>
+  <ol class="steps">
+    <li><strong>Sign in to the detachment's Google account.</strong>
+      Use a shared unit account. If you use a personal account, the data leaves with the person.</li>
+    <li><strong>Open Google Drive and create a folder named <code>TOP-Feedback</code>.</strong>
+      The name is a convention, not a requirement, but it makes the folder obvious later.</li>
+    <li><strong>Share the folder with the cadre who need access.</strong>
+      Give <em>Editor</em> access to anyone who will use the Instructor Portal.
+      <ul>
+        <li>Anyone with access to this folder can read every record directly, including the raw
+        feedback. Share it only with people entitled to see all of it.</li>
+      </ul>
+    </li>
+    <li><strong>Copy the folder's web address.</strong>
+      With the folder open, copy the URL from the browser address bar. It looks like
+      <code>https://drive.google.com/drive/folders/1A2b3C…</code> — you will paste this in Part 4.</li>
+  </ol>
+
+  <h3>2b. Allow the app to reach that Drive</h3>
+  <p>Google requires any app that touches a Drive account to be registered with that account. This
+  is free and takes about ten minutes.</p>
+
+  <ol class="steps">
+    <li><strong>Go to <code>console.cloud.google.com</code></strong> signed in as the same Google account.</li>
+    <li><strong>Create a new project.</strong> Name it something recognisable, such as
+      <em>Det 025 Feedback</em>. Wait for it to finish creating and make sure it is the selected
+      project in the bar at the top.</li>
+    <li><strong>Enable the Google Drive API.</strong>
+      <ul>
+        <li>Navigate to <em>APIs &amp; Services → Library</em>.</li>
+        <li>Search for <strong>Google Drive API</strong> and open it.</li>
+        <li>Click <strong>Enable</strong>.</li>
+      </ul>
+    </li>
+    <li><strong>Configure the OAuth consent screen.</strong>
+      <ul>
+        <li>Go to <em>APIs &amp; Services → OAuth consent screen</em>.</li>
+        <li>If your account is on Google Workspace, choose <strong>Internal</strong> — this is
+        simplest and needs no review.</li>
+        <li>If it is a standard Gmail account, choose <strong>External</strong>, then add each
+        cadre member's Google address under <em>Test users</em>. Without this they will see a
+        "not verified" block when signing in.</li>
+        <li>Fill in the app name and support email. Nothing else is required.</li>
+      </ul>
+    </li>
+    <li><strong>Create an OAuth client ID.</strong>
+      <ul>
+        <li>Go to <em>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</em>.</li>
+        <li>Application type: <strong>Web application</strong>.</li>
+        <li>Under <strong>Authorised JavaScript origins</strong>, add the exact address the app will
+        be served from — see Part 3 if you do not have it yet. For example
+        <code>https://det025.github.io</code>. Include the scheme, exclude any path or trailing slash.</li>
+        <li>Leave <em>Authorised redirect URIs</em> empty. The app does not use them.</li>
+        <li>Click <strong>Create</strong> and copy the <strong>Client ID</strong>. It ends in
+        <code>.apps.googleusercontent.com</code>.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <div class="note">
+    <strong class="title">The Client ID is not a password</strong>
+    <p>It identifies the app to Google and is designed to be public — it is visible in any browser
+    that loads the page. Access is controlled by Google sign-in and by who you shared the folder
+    with, not by keeping this string secret. There is no client <em>secret</em> to protect.</p>
+  </div>
+
+  <div class="note note--warn">
+    <strong class="title">If you change where the app is hosted</strong>
+    <p>You must add the new address to <strong>Authorised JavaScript origins</strong> or sign-in will
+    fail with a redirect error. Changes can take a few minutes to take effect.</p>
+  </div>
+</section>
+
+<!-- ============================= PART 3 ============================= -->
+<section>
+  <h2><span class="num">3</span>Publish the app</h2>
+  <p class="lead">
+    TOP-Feedback is a folder of files with no build step and no backend, so it can be served from
+    anywhere that serves static files.
+  </p>
+
+  <div class="note note--warn">
+    <strong class="title">HTTPS is required</strong>
+    <p>Offline support, installation to a home screen, and Google sign-in all require a secure
+    connection. Every hosting option below provides HTTPS automatically. Opening the files directly
+    from a hard drive will <em>not</em> work.</p>
+  </div>
+
+  <h3>Option A — free static hosting (recommended)</h3>
+  <table>
+    <tr><th style="width:26%">Host</th><th>Notes</th></tr>
+    <tr><td>GitHub Pages</td><td>Free. Push the folder to a repository and enable Pages in the settings. Address looks like <code>https://yourname.github.io/top-feedback</code>.</td></tr>
+    <tr><td>Netlify or Cloudflare Pages</td><td>Free tier. Drag the folder onto their dashboard — no command line needed.</td></tr>
+    <tr><td>Your institution's web server</td><td>Copy the folder into any directory served over HTTPS.</td></tr>
+  </table>
+
+  <h3>Option B — run it from one computer</h3>
+  <p>Useful for a trial, or where the detachment cannot publish to the web. Requires Python 3,
+  which is pre-installed on macOS and Linux.</p>
+  <pre>cd top-feedback
+python3 serve.py              # then open http://localhost:8000
+
+python3 serve.py --https      # needed to reach it from a phone</pre>
+  <p>The <code>--https</code> option generates a self-signed certificate and prints an address on
+  your local network. Phones will warn that the certificate is untrusted; accept it once. This is
+  fine for testing, but use Option A for real use.</p>
+
+  <div class="note">
+    <strong class="title">Whichever you choose, note the exact address</strong>
+    <p>You need it for <em>Authorised JavaScript origins</em> in Part 2, step 5.</p>
+  </div>
+</section>
+
+<!-- ============================= PART 4 ============================= -->
+<section>
+  <h2><span class="num">4</span>Run the setup wizard</h2>
+  <p class="lead">Open the app's address in a browser. On a folder that has never been set up, the
+  wizard starts automatically.</p>
+
+  <ol class="steps">
+    <li><strong>Name the detachment.</strong> This appears in the app header and on exported reports.</li>
+    <li><strong>Choose your storage option</strong> from Part 1.</li>
+    <li><strong>Connect.</strong>
+      <ul>
+        <li><strong>Google Drive:</strong> paste the Client ID from Part 2b and the folder link from
+        Part 2a, then click <em>Sign in and connect</em>. A Google window opens; sign in as the
+        detachment account and grant access. The wizard confirms the folder name when it succeeds.</li>
+        <li><strong>Synced folder:</strong> click <em>Select folder…</em> and choose the
+        TOP-Feedback folder inside your Google Drive for Desktop directory.</li>
+        <li><strong>This device only:</strong> nothing to connect.</li>
+      </ul>
+    </li>
+    <li><strong>Create the folders.</strong> The wizard shows exactly what it will create and then
+    builds it. Existing data is never touched, so it is safe to point a second device at the same
+    folder and run the wizard again.</li>
+  </ol>
+
+  <figure>
+    <img src="SHOT_SETUP_STORAGE" alt="The setup wizard's storage selection screen">
+    <figcaption>Step 2 of the wizard. Options unavailable on the current device are greyed out with the reason.</figcaption>
+  </figure>
+
+  <figure>
+    <img src="SHOT_SETUP_FOLDERS" alt="The folder structure the wizard creates">
+    <figcaption>Step 4 shows the folder structure before creating it. Each record is a plain JSON file you can read in Drive.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================= PART 5 ============================= -->
+<section>
+  <h2><span class="num">5</span>Create the administrator account</h2>
+
+  <p class="lead">A built-in administrator always works, so a detachment can never lock itself out
+  of its own database. Your first job is to replace it for day-to-day use.</p>
+
+  <ol class="steps">
+    <li><strong>From the home screen, open <em>Database Administration</em>.</strong></li>
+    <li><strong>Sign in with the built-in administrator.</strong>
+      <ul>
+        <li>Username: <code>Admin</code> &nbsp;(not case sensitive)</li>
+        <li>Password: <code>#admin-Password</code></li>
+      </ul>
+    </li>
+    <li><strong>Create a named administrator account</strong> for yourself, using the prompt at the
+    top of the console. Give it both the <em>Database admin</em> and <em>Instructor</em> roles.
+    Minimum eight characters for the password.</li>
+    <li><strong>Sign out and sign back in as your named account</strong> to confirm it works.</li>
+    <li><strong>Check that development mode is off.</strong> Go to <em>Settings → Access</em>. It
+    should read "Sign-in is enforced". If it does not, turn development mode off.</li>
+  </ol>
+
+  <div class="note note--danger">
+    <strong class="title">The built-in password is the same for every installation</strong>
+    <p>It is published in this guide and readable in the app's source. It exists as a recovery path,
+    not as a front door — it is only as private as your Drive folder. Create named accounts and use
+    those. Anyone who can reach your app and knows this pair can open the admin console, which is
+    why the folder's Drive sharing is the control that actually matters.</p>
+  </div>
+
+  <div class="note note--warn">
+    <strong class="title">Development mode</strong>
+    <p>This setting unlocks the Instructor Portal and admin console on one device without signing
+    in. It exists for building and demonstrating the app. It must be off before any cadet can reach
+    the device. The app shows a warning banner on every affected screen while it is on.</p>
+  </div>
+</section>
+
+<!-- ============================= PART 6 ============================= -->
+<section>
+  <h2><span class="num">6</span>Create accounts</h2>
+  <p class="lead">Everyone signs in — cadets included. That is what makes "one submission per
+  student" mean something rather than relying on an honour system.</p>
+
+  <table>
+    <tr><th style="width:22%">Role</th><th style="width:16%">Password</th><th>Can do</th></tr>
+    <tr><td><strong>Student</strong></td><td>6+ characters</td><td>See feedback assigned to them and submit it once.</td></tr>
+    <tr><td><strong>Instructor</strong></td><td>8+ characters</td><td>Create feedback, read responses, run analysis.</td></tr>
+    <tr><td><strong>Database admin</strong></td><td>8+ characters</td><td>Create and edit accounts, reset any password, maintain the database.</td></tr>
+  </table>
+
+  <h3>One at a time</h3>
+  <ol class="steps">
+    <li>In <em>Database Administration</em>, click <strong>Create account</strong>.</li>
+    <li>Enter the person's name. A username is suggested automatically as
+    <code>last.first</code> — edit it if you prefer.</li>
+    <li>Tick the roles they need, set a password, and choose their AS level.</li>
+    <li>Click <strong>Save</strong>.</li>
+  </ol>
+
+  <h3>A whole class at once</h3>
+  <ol class="steps">
+    <li>Prepare a CSV with a <code>name</code> column. Optional columns:
+    <code>username</code>, <code>class</code>, <code>password</code>.</li>
+    <li>Click <strong>Import students CSV</strong> and choose the file.</li>
+    <li>A password is generated for anyone without one, in a format cadets can read off a printed
+    list, such as <code>tango-delta47</code>.</li>
+    <li><strong>Download the credentials list when prompted.</strong></li>
+  </ol>
+
+  <div class="note note--danger">
+    <strong class="title">The credentials list can only be read once</strong>
+    <p>Passwords are stored only as hashes, so the app cannot show them again. If you close that
+    dialog without downloading, you must reset each password individually. Download it, distribute
+    it, then delete the file.</p>
+  </div>
+
+  <h3>Resetting a forgotten password</h3>
+  <p>Click the padlock icon on any account row. There is no email out of this app, so hand the new
+  password over in person. The dialog suggests one you can read aloud.</p>
+</section>
+
+<!-- ============================= PART 7 ============================= -->
+<section>
+  <h2><span class="num">7</span>Install on phones and laptops</h2>
+  <p class="lead">TOP-Feedback can be added to a home screen so it opens like an ordinary app, works
+  offline, and does not need anyone to remember a web address.</p>
+
+  <table>
+    <tr><th style="width:22%">Device</th><th>How</th></tr>
+    <tr><td>iPhone / iPad</td><td>Open the address in <strong>Safari</strong>, tap the Share button, then <em>Add to Home Screen</em>. Safari is required — other browsers on iOS cannot install web apps.</td></tr>
+    <tr><td>Android</td><td>Open in Chrome. Tap the menu, then <em>Install app</em> or <em>Add to Home screen</em>.</td></tr>
+    <tr><td>Windows / macOS</td><td>In Chrome or Edge, click the install icon in the address bar, or use <em>Settings → Access → Install this app</em> inside TOP-Feedback.</td></tr>
+  </table>
+
+  <div class="note note--ok">
+    <strong class="title">What works offline</strong>
+    <p>The app opens and a cadet can fill in a form with no signal. A submission made offline is
+    saved on the device, shown as pending in the header, and sent automatically when the connection
+    returns. Nothing is lost. Reading existing feedback does need a connection.</p>
+  </div>
+</section>
+
+<!-- ============================= PART 8 ============================= -->
+<section>
+  <h2><span class="num">8</span>Verify and hand over</h2>
+  <p class="lead">Work through this before letting cadets use the app for real.</p>
+
+  <ul class="checklist">
+    <li><strong>The app opens over HTTPS</strong> at the address you published.</li>
+    <li><strong>Settings → Access reads "Sign-in is enforced"</strong> — development mode is off.</li>
+    <li><strong>A named administrator account exists</strong> and you have signed in with it.</li>
+    <li><strong>The connection indicator in the header reads "ready"</strong> on a device other than the one you set up on.</li>
+    <li><strong>The Drive folder contains the app's folders</strong> — open it in Drive and confirm you can see <code>config</code>, <code>users</code>, <code>forms</code> and the rest.</li>
+    <li><strong>A test cadet account can sign in</strong> and see feedback assigned to them.</li>
+    <li><strong>A test submission appears</strong> in the Instructor Portal under Responses &amp; Analysis.</li>
+    <li><strong>You have exported a backup</strong> from Instructor Portal → Database → Export backup.</li>
+    <li><strong>The credentials list has been distributed</strong> and the downloaded file deleted.</li>
+  </ul>
+
+  <h3>Moving trial data into Drive</h3>
+  <p>If you evaluated using <em>This device only</em>:</p>
+  <ol class="steps">
+    <li>On the trial device, go to <em>Instructor Portal → Database → Export backup</em> and save the JSON file.</li>
+    <li>Go to <em>Settings → Re-run setup</em> and connect to Google Drive as in Part 4.</li>
+    <li>Return to <em>Database → Import backup</em>, choose the file, and select <strong>Merge</strong>.</li>
+  </ol>
+
+  <h3>Routine maintenance</h3>
+  <table>
+    <tr><th style="width:26%">Task</th><th style="width:20%">How often</th><th>Where</th></tr>
+    <tr><td>Export a backup</td><td>End of each term</td><td>Instructor Portal → Database</td></tr>
+    <tr><td>Review accounts, deactivate leavers</td><td>Start of each term</td><td>Database Administration</td></tr>
+    <tr><td>Rebuild indexes (only if counts look wrong)</td><td>Rarely</td><td>Database Administration</td></tr>
+  </table>
+</section>
+
+<!-- ============================= TROUBLESHOOTING ============================= -->
+<section>
+  <h2>Troubleshooting</h2>
+  <table>
+    <tr><th style="width:38%">What you see</th><th>What to do</th></tr>
+    <tr>
+      <td>"Could not connect" when signing in to Google</td>
+      <td>The app's address is not listed under <em>Authorised JavaScript origins</em>. Add it exactly, including <code>https://</code> and with no trailing slash. Wait a few minutes.</td>
+    </tr>
+    <tr>
+      <td>Google shows "app is not verified" or blocks sign-in</td>
+      <td>The OAuth consent screen is set to <em>External</em> and this person is not a test user. Add their Google address under <em>Test users</em>, or switch to <em>Internal</em> if you use Workspace.</td>
+    </tr>
+    <tr>
+      <td>The sign-in popup does not open</td>
+      <td>Popups are blocked for the site. Allow them and try again.</td>
+    </tr>
+    <tr>
+      <td>"The folder or file was not found"</td>
+      <td>The folder link is wrong, or the signed-in account does not have access to it. Re-copy the link and confirm sharing.</td>
+    </tr>
+    <tr>
+      <td>Header shows "offline" with a pending count</td>
+      <td>Normal. Work is saved on the device and sends automatically. Click the pending badge to retry now.</td>
+    </tr>
+    <tr>
+      <td>A cadet cannot see a form</td>
+      <td>Check its status is <em>Open</em>, the open date has passed, the due date has not, and the AS level matches theirs. If it targets named students, check they are on the list.</td>
+    </tr>
+    <tr>
+      <td>"Results withheld" instead of analysis</td>
+      <td>Working as designed. Anonymous results stay hidden until three people have responded, because a single response can be traced to its author by elimination.</td>
+    </tr>
+    <tr>
+      <td>Nobody can sign in as an administrator</td>
+      <td>Use the built-in account in Part 5, then reset the affected password.</td>
+    </tr>
+    <tr>
+      <td>Response counts look wrong</td>
+      <td>Database Administration → <em>Rebuild indexes</em>. Counts are a cache and can lag; this rebuilds them from the underlying records.</td>
+    </tr>
+  </table>
+</section>
+
+<!-- ============================= REFERENCE ============================= -->
+<section>
+  <h2>Reference</h2>
+
+  <h3>What gets created in your folder</h3>
+  <pre>TOP-Feedback/
+├── config/      detachment profile and shared settings
+├── users/       accounts — cadets, instructors, admins
+├── forms/       feedback form definitions
+├── requests/    feedback issued to students, each with an ID
+├── responses/   submitted feedback, one folder per form
+├── receipts/    who submitted (kept apart from what they said)
+├── reports/     exported reports
+└── archive/     closed terms retained for the record</pre>
+
+  <h3>Things worth understanding before you field this</h3>
+
+  <h4>Anonymity is real, and it has a limit</h4>
+  <p>On an anonymous form the cadet's username is used to verify them and to write a
+  <em>receipt</em>, then discarded. The response record carries no name, and receipts live in a
+  different folder. This is what lets the app say "two cadets still owe feedback" about responses
+  nobody can attribute. The limit: with very few responses, a single answer can be identified by
+  elimination, so anonymous results stay hidden until three people have responded.</p>
+
+  <h4>Sign-in is not encryption</h4>
+  <p>Passwords are stored as PBKDF2 hashes, but anyone with access to the Drive folder can read
+  every record directly regardless of what the app shows them. Folder sharing is the real access
+  control. Share it only with people entitled to read all of it.</p>
+
+  <h4>The safety screen is a prompt, not a finding</h4>
+  <p>Written answers are automatically checked for language about hazing, harassment,
+  discrimination, violence, self-harm, substances and integrity. A match means read that response
+  now — it cannot tell "we discussed hazing prevention" from "I was hazed". A clear screen is not
+  proof that nothing was reported. Follow your detachment's own reporting procedures.</p>
+
+  <h4>Safety alerts override the anonymity threshold</h4>
+  <p>If a flagged answer appears on a form whose results are otherwise withheld, the app tells you
+  it exists and lets you open it behind a warning that doing so may identify the author. A
+  disclosure cannot wait for a third response to arrive.</p>
+
+  <h3>Getting help</h3>
+  <p>Diagnostics are available at <em>Settings → Download diagnostics</em>. The file records the app
+  version, storage configuration and browser, and contains no feedback data — it is safe to share
+  when asking for help.</p>
+</section>
+
+</body>
+</html>

@@ -18,6 +18,21 @@ and no shared database, and writes only to storage the detachment controls.
 
 ---
 
+## Documentation
+
+Two documents live in `docs/`, generated from the real app:
+
+| File | For | Contents |
+|---|---|---|
+| `TOP-Feedback-Setup-Guide.pdf` | Whoever installs it | 16 pages: choosing storage, the Google Cloud setup, publishing, the wizard, accounts, installing on devices, a verification checklist, and troubleshooting. |
+| `TOP-Feedback-Introduction.pptx` | Briefing cadre or a commander | 17 slides with speaker notes: what it does, how each role uses it, and the anonymity and safety design. |
+
+Both are rebuilt by the scripts in `tools/docs/` — see the README there. Every
+screenshot in them is the live app with seeded data, nothing mocked up, so the
+documents cannot quietly drift from what the app does.
+
+---
+
 ## Running it
 
 There is no build step and no dependencies. Any static HTTPS host will serve it.
@@ -336,6 +351,8 @@ manifest.json           PWA manifest
 service-worker.js       precached shell, network-first navigation, never caches Drive
 serve.py                dev server (http, or --https for phones)
 tools/make_icons.py     icon generator, standard library only
+tools/docs/             regenerates the PDF guide and the PPTX deck
+docs/                   the generated guide and deck
 css/styles.css          design system: tokens, themes, color-vision palettes
 js/
   app.js                bootstrap, routes, app bar, PWA plumbing
