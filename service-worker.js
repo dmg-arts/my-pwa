@@ -13,7 +13,7 @@
  * Bump CACHE_VERSION on release to roll users onto new assets.
  */
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `topfb-shell-${CACHE_VERSION}`;
 
 const SHELL = [
@@ -21,6 +21,10 @@ const SHELL = [
   './index.html',
   './manifest.json',
   './css/styles.css',
+  './js/analysis/lexicon.js',
+  './js/analysis/stats.js',
+  './js/analysis/text.js',
+  './js/analysis/wordcloud.js',
   './js/app.js',
   './js/auth.js',
   './js/config.js',

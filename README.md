@@ -9,8 +9,8 @@ and no shared database, and writes only to storage the detachment controls.
   class and due date.
 - **Instructor Portal** — behind an instructor sign-in. **Create Feedback**
   builds a standardized form; **Feedback Response and Analysis** filters
-  responses by date, class, AS level or feedback ID and shows who still owes
-  feedback.
+  responses, runs statistics on the ratings, reads the written answers, and
+  screens everything for safety concerns.
 - **Database Administration** — behind an admin sign-in. Creates and manages
   every account for the detachment, and resets any password.
 - **Settings** — where the database lives, plus light/dark, color-vision
@@ -243,6 +243,71 @@ queue, where a replayed write is stale by construction.
 
 ---
 
+## Analysis
+
+Two halves, both running entirely on the device.
+
+### Ratings
+
+Per question: mean, median, mode, range, standard deviation, and a distribution
+histogram across every scale point. Plus three things a mean alone hides:
+
+- **Agreement** — an ordinal consensus score (Tastle & Wierman) from 0 to 1.
+  Chosen over standard deviation because it is defined for ordinal scales and
+  answers the question cadre actually ask: *do they agree?*
+- **Split opinion** — 1-D k-means looking for two genuine groups. A mean of 5
+  can mean everyone shrugged, or that half the flight thought it was outstanding
+  and half thought it was harmful. Same number, opposite situations, and only
+  the second needs acting on. When a split is found the app says so and tells
+  you the mean describes nobody.
+- **Outliers** — by modified z-score against the median and MAD, not the mean
+  and standard deviation, because with six responses one extreme rating drags
+  the mean toward itself and hides what you are looking for. Also flags
+  *respondents* who rate consistently apart from the group, which is usually
+  more useful than a single odd answer.
+
+Plus breakdowns by AS level, term or form, with cohorts below the disclosure
+threshold suppressed.
+
+**Every routine states its minimum and returns nothing rather than guessing.**
+Dispersion needs 5 responses, outliers need 6. A confident-looking number
+computed from four data points is worse than no number.
+
+### Written answers
+
+- **Sentiment** — a lexicon with negation, intensifiers and clause breaks, so
+  "not helpful" and "extremely helpful" score correctly. Answers are ranked
+  most-negative-first, since that is what an instructor should read first.
+  Answers the lexicon cannot read are still shown, labelled *Not scored* — never
+  hidden.
+- **Word cloud** — sized by how many *people* used a word, not how often it
+  appears, so one long answer cannot dominate. Backed by a ranked table that
+  carries the real numbers and is what a screen reader gets. Select any word to
+  read the answers containing it.
+- **Safety screen** — every written answer is checked against word lists for
+  hazing, sexual harassment, discrimination, violence, self-harm, substance
+  concerns and integrity. Matches are shown highlighted, in context.
+
+> **The safety screen is a prompt to read a response, never a finding.** It
+> matches words, not meaning — it cannot tell "we discussed hazing prevention"
+> from "I was hazed". Equally, a clear screen is not proof that nothing was
+> reported; it only means no listed phrase appeared. The lists live in
+> `js/analysis/lexicon.js` and are meant to be edited.
+
+**Safety screening deliberately overrides the disclosure threshold.** A
+disclosure of hazing or a cadet in crisis cannot wait for a third response to
+arrive. On a withheld form the app says a flagged answer exists but keeps the
+content behind a click that states plainly that opening it may identify the
+author — the privacy cost is made explicit rather than either hidden or
+silently paid.
+
+There is no sentiment API, no cloud NLP and no telemetry. That is a deliberate
+constraint, not an omission: the feedback must never leave the detachment's own
+Drive, which rules out a large model and makes a curated lexicon the honest
+choice. The trade is accuracy, and every output is labelled accordingly.
+
+---
+
 ## Known limits
 
 - **Receipt timing can correlate.** For anonymous feedback, a receipt and a
@@ -256,6 +321,10 @@ queue, where a replayed write is stale by construction.
 - **Concurrent edits are checked, not locked.** See below.
 - **No password self-service.** There is no email out of this app, so a
   forgotten password is reset by an admin in person.
+- **Sentiment reads words, not meaning.** Sarcasm, quotation and context all
+  defeat it. It is a triage aid for deciding what to read first.
+- **The safety lexicon is English-only and literal.** It will miss disclosures
+  phrased in ways no list anticipates.
 
 ---
 
@@ -284,6 +353,11 @@ js/
     idb.js              IndexedDB wrapper
   auth.js               accounts, sign-in, roles, username and password rules
   migrations.js         forward-only schema upgrades, one entry per version
+  analysis/
+    stats.js            descriptive stats, agreement, clustering, outliers
+    text.js             sentiment, word frequency, safety screening
+    lexicon.js          the word lists — meant to be edited
+    wordcloud.js        SVG cloud plus its accessible table
   views/
     setup.js            first-run wizard
     home.js             the three entry points + settings
@@ -315,10 +389,11 @@ request, fill it out, read it, report on it, back it up.
 
 Not yet built:
 
-- **The analysis maths.** The page does counts, means, medians, spread and
-  distributions, and tracks completion per student. Trends across terms,
-  per-instructor baselines and outlier flagging come next.
-- **Concurrent-edit protection** (Drive `If-Match` on revision ids).
+- **Trends across terms.** Everything today analyses one filtered slice. Asking
+  "is this instructor improving year on year" needs a time series the app does
+  not yet assemble.
+- **Per-instructor baselines.** Comparing a score against that instructor's own
+  history, rather than against the flight, needs the trend work first.
 
 ### The rating scale
 

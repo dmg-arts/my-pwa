@@ -19,6 +19,12 @@ import { db } from '../storage/index.js';
 import { listStudents } from '../auth.js';
 import { renderForm, formItems } from '../forms.js';
 import { navigate } from '../router.js';
+import {
+  describe, histogram, consensus, describeConsensus, findClusters,
+  findOutliers, findRespondentOutliers, compareSegments, MIN_FOR_OUTLIERS,
+} from '../analysis/stats.js';
+import { summariseSentiment, wordFrequencies, phraseFrequencies, screenAll, highlight } from '../analysis/text.js';
+import { renderWordCloud, renderTermTable } from '../analysis/wordcloud.js';
 
 /**
  * The anchor set the responses in scope were answered on. Forms record their
@@ -182,6 +188,10 @@ export async function renderAnalysis(host) {
 
     mount(results, summary(visible));
 
+    // The safety screen runs on everything in scope, including forms whose
+    // results are withheld — see safetyPanel() for why.
+    mount(results, safetyPanel(all, withheld));
+
     if (!visible.length) {
       mount(results, emptyState({
         iconName: withheld.length ? 'lock' : 'filter',
@@ -191,8 +201,8 @@ export async function renderAnalysis(host) {
           : 'Widen the filters, or check the completion table below.',
       }));
     } else {
-      mount(results, scaleStats(visible));
-      mount(results, comments(visible));
+      mount(results, quantitativePanel(visible));
+      mount(results, textPanel(visible));
       mount(results, responseList(visible));
     }
     mount(results, completion(inScope));
@@ -245,7 +255,10 @@ export async function renderAnalysis(host) {
         stat('Spread', values.length > 1 ? `±${round(stdev(values), 2)}` : '—', 'standard deviation')));
   }
 
-  function scaleStats(rows) {
+  /* ---------------- quantitative ---------------- */
+
+  /** Every rated question in scope, with its values and its scale. */
+  function ratedQuestions(rows) {
     const buckets = new Map();
     for (const response of rows) {
       const form = formsById.get(response.formId);
@@ -255,17 +268,39 @@ export async function renderAnalysis(host) {
         const value = response.answers?.[item.id];
         if (!Number.isFinite(value)) continue;
         const key = `${form.id}::${item.id}`;
-        if (!buckets.has(key)) buckets.set(key, { item, form, values: [] });
+        if (!buckets.has(key)) buckets.set(key, { item, form, values: [], rows: [] });
         buckets.get(key).values.push(value);
+        buckets.get(key).rows.push(response);
       }
     }
-    if (!buckets.size) return el('section', {});
+    return [...buckets.values()];
+  }
 
+  function quantitativePanel(rows) {
+    const questions = ratedQuestions(rows);
+    const section = el('section', {},
+      el('h3', { class: 'section-title' }, 'Ratings'));
+
+    if (!questions.length) {
+      mount(section, el('p', { class: 'muted' }, 'No rated questions in this range.'));
+      return section;
+    }
+
+    // Compact overview first: with several rated questions the detailed cards
+    // are a lot of scrolling, and the common need is to scan them all at once.
+    mount(section, overviewBars(questions));
+    for (const q of questions) mount(section, questionCard(q));
+    mount(section, segmentCard(rows));
+    mount(section, raterCard(rows, questions));
+    return section;
+  }
+
+  /** Every rated question as one bar each, for scanning. */
+  function overviewBars(questions) {
     const bars = el('div', { class: 'bars' });
-    const body = el('tbody');
-    for (const { item, form, values } of buckets.values()) {
-      const avg = mean(values);
+    for (const { item, values } of questions) {
       const max = Number(item.max ?? 9);
+      const avg = mean(values);
       const word = nearestAnchor(avg, item.anchors);
       mount(bars, el('div', { class: 'bar-row' },
         el('div', { class: 'truncate', title: item.label }, item.label),
@@ -273,62 +308,476 @@ export async function renderAnalysis(host) {
           el('div', { class: 'bar-row__fill', style: { width: `${(avg / max) * 100}%` } })),
         el('div', { class: 'bar-row__val' },
           word ? `${round(avg, 2)} · ${word}` : `${round(avg, 2)} / ${max}`)));
-      mount(body, el('tr', {},
-        el('td', {}, item.label),
-        el('td', { class: 'muted' }, form.name),
-        el('td', { class: 'num' }, String(values.length)),
-        el('td', { class: 'num' }, String(round(avg, 2))),
-        el('td', {}, word || '—'),
-        el('td', { class: 'num' }, String(round(median(values), 2))),
-        el('td', { class: 'num' }, values.length > 1 ? String(round(stdev(values), 2)) : '—')));
     }
-
-    return el('section', {},
-      el('h3', { class: 'section-title' }, 'Rated questions'),
-      el('div', { class: 'card stack' }, bars,
-        el('div', { class: 'table-wrap', style: { marginTop: 'var(--sp-4)' } },
-          el('table', { class: 'table' },
-            el('thead', {}, el('tr', {},
-              el('th', {}, 'Question'), el('th', {}, 'Form'),
-              el('th', { class: 'num' }, 'n'), el('th', { class: 'num' }, 'Mean'),
-              el('th', {}, 'Reads as'),
-              el('th', { class: 'num' }, 'Median'), el('th', { class: 'num' }, 'Std dev'))),
-            body))));
+    return el('div', { class: 'card stack' },
+      el('div', { class: 'eyebrow' }, 'All rated questions'), bars);
   }
 
-  function comments(rows) {
-    const found = [];
+  /** One rated question: summary, distribution, agreement, split, outliers. */
+  function questionCard({ item, form, values }) {
+    const min = Number(item.min ?? 1);
+    const max = Number(item.max ?? 9);
+    const points = item.anchors
+      ? Object.keys(item.anchors).map(Number).sort((a, b) => a - b)
+      : Array.from({ length: max - min + 1 }, (_, i) => min + i);
+
+    const stats = describe(values);
+    const agreement = consensus(values, min, max);
+    const reading = describeConsensus(agreement);
+    const clusters = findClusters(values, { min, max });
+    const outliers = findOutliers(values);
+    const word = nearestAnchor(stats.mean, item.anchors);
+
+    const card = el('div', { class: 'card stack', style: { marginBottom: 'var(--sp-4)' } },
+      el('div', { class: 'row row--between row--wrap' },
+        el('div', {},
+          el('div', { style: { fontWeight: '620' } }, item.label),
+          el('div', { class: 'muted' }, form.name)),
+        el('div', { class: 'row row--wrap' },
+          reading && badge(reading.label, reading.tone),
+          badge(`n = ${stats.n}`, 'neutral'))),
+
+      // Headline numbers.
+      el('div', { class: 'grid grid--3' },
+        statTile('Mean', String(stats.mean), word ? `reads as "${word}"` : ''),
+        statTile('Median', String(stats.median),
+          stats.mode ? `most common: ${stats.mode.values.map((v) => item.anchors?.[v] || v).join(', ')}` : ''),
+        statTile('Range', `${stats.min}–${stats.max}`, `spread of ${stats.range}`),
+        statTile('Std dev', stats.stdev == null ? '—' : String(stats.stdev),
+          stats.reliable ? '' : 'too few to be meaningful')),
+
+      distributionChart(histogram(values, points), item.anchors, max));
+
+    if (agreement != null) {
+      mount(card, el('div', {},
+        el('div', { class: 'eyebrow' }, 'Agreement'),
+        el('div', { class: 'row row--wrap' },
+          el('div', { class: 'meter', style: { flex: '1', minWidth: '10rem' } },
+            el('div', { class: 'meter__fill', style: { width: `${agreement * 100}%` } })),
+          el('span', { class: 'mono muted' }, agreement.toFixed(2))),
+        el('div', { class: 'field__hint' },
+          '1.00 means everyone chose the same rating; 0.00 means the group is split between the extremes.')));
+    }
+
+    if (clusters?.split) {
+      const [lowGroup, highGroup] = clusters.groups;
+      mount(card, notice('warn', 'Opinion is split, not merely average',
+        el('p', {}, `Two distinct groups: ${pluralize(lowGroup.size, 'response')} around `
+          + `${describePoint(lowGroup.centre, item.anchors)}, and ${pluralize(highGroup.size, 'response')} around `
+          + `${describePoint(highGroup.centre, item.anchors)}. The mean of ${stats.mean} sits between them and `
+          + 'describes nobody — read both groups rather than the average.')));
+    }
+
+    if (!outliers.supported) {
+      mount(card, el('p', { class: 'field__hint' },
+        `Outlier detection needs at least ${MIN_FOR_OUTLIERS} responses — currently ${stats.n}.`));
+    } else if (outliers.outliers.length) {
+      mount(card, notice('info', `${pluralize(outliers.outliers.length, 'unusual rating')}`,
+        el('p', {}, 'Sitting far from the rest of the group: '
+          + outliers.outliers.map((o) => describePoint(o.value, item.anchors)).join(', ')
+          + `. The group's median is ${describePoint(outliers.median, item.anchors)}.`),
+        el('p', { class: 'field__hint', style: { marginTop: 'var(--sp-2)' } },
+          'Unusual is not wrong — a lone dissenting view is often the one worth reading.')));
+    }
+
+    return card;
+  }
+
+  function describePoint(value, anchors) {
+    const word = anchors ? nearestAnchor(value, anchors) : null;
+    return word ? `${word} (${round(value, 1)})` : String(round(value, 1));
+  }
+
+  function statTile(label, value, note) {
+    return el('div', { class: 'stat' },
+      el('div', { class: 'stat__label' }, label),
+      el('div', { class: 'stat__value' }, value),
+      note && el('div', { class: 'stat__note' }, note));
+  }
+
+  /** Histogram across the scale, so shape is visible rather than inferred. */
+  function distributionChart(bins, anchors, max) {
+    const peak = Math.max(...bins.map((b) => b.count), 1);
+    const chart = el('div', { class: 'hist' });
+    for (const bin of bins) {
+      mount(chart, el('div', { class: 'hist__col', title: `${bin.count} response(s)` },
+        el('div', { class: 'hist__bar-wrap' },
+          el('div', {
+            class: `hist__bar${bin.count ? '' : ' hist__bar--empty'}`,
+            style: { height: `${(bin.count / peak) * 100}%` },
+          }, bin.count ? el('span', { class: 'hist__count' }, String(bin.count)) : null)),
+        el('div', { class: 'hist__label' }, anchors?.[bin.value] || String(bin.value))));
+    }
+    void max;
+    return el('div', {},
+      el('div', { class: 'eyebrow', style: { marginBottom: 'var(--sp-2)' } }, 'Distribution'),
+      chart);
+  }
+
+  /** Means compared across cohorts. */
+  function segmentCard(rows) {
+    const valuesOf = (r) => Object.values(r.answers || {}).filter((v) => typeof v === 'number');
+    const dimensions = [
+      { id: 'asClass', label: 'AS level', key: (r) => r.asClass },
+      { id: 'semester', label: 'Term', key: (r) => [r.schoolYear, r.semester].filter(Boolean).join(' ') },
+      { id: 'form', label: 'Form', key: (r) => requestsById.get(r.requestId)?.title },
+    ];
+
+    const host = el('div', {});
+    const paint = (dimension) => {
+      const { segments, suppressed, spread } = compareSegments(rows, dimension.key, valuesOf,
+        { minSize: PRIVACY.minResponsesToShow });
+      remount(host);
+      if (!segments.length) {
+        mount(host, el('p', { class: 'muted' },
+          `No cohort has ${PRIVACY.minResponsesToShow} or more ratings yet.`));
+        return;
+      }
+      const body = el('tbody');
+      for (const seg of segments) {
+        mount(body, el('tr', {},
+          el('td', {}, seg.label),
+          el('td', { class: 'num' }, String(seg.n)),
+          el('td', { class: 'num' }, String(seg.mean)),
+          el('td', { class: 'num' }, String(seg.median)),
+          el('td', { class: 'num' }, seg.stdev == null ? '—' : String(seg.stdev))));
+      }
+      mount(host,
+        el('div', { class: 'table-wrap' },
+          el('table', { class: 'table' },
+            el('thead', {}, el('tr', {},
+              el('th', {}, dimension.label), el('th', { class: 'num' }, 'Ratings'),
+              el('th', { class: 'num' }, 'Mean'), el('th', { class: 'num' }, 'Median'),
+              el('th', { class: 'num' }, 'Std dev'))),
+            body)),
+        spread != null && spread >= 1
+          ? notice('info', 'Cohorts differ',
+            el('p', {}, `${spread} points between the highest and lowest ${dimension.label.toLowerCase()}.`))
+          : null,
+        suppressed
+          ? el('p', { class: 'field__hint' },
+            `${suppressed} cohort(s) hidden — fewer than ${PRIVACY.minResponsesToShow} ratings.`)
+          : null);
+    };
+
+    const card = el('div', { class: 'card stack' },
+      el('div', { class: 'row row--between row--wrap' },
+        el('div', { class: 'eyebrow' }, 'Breakdown by cohort'),
+        select(dimensions.map((d) => ({ value: d.id, label: d.label })), {
+          onchange: (e) => paint(dimensions.find((d) => d.id === e.target.value)),
+          cls: 'select',
+        })),
+      host);
+    paint(dimensions[0]);
+    return card;
+  }
+
+  /** Respondents who rate consistently away from the group. */
+  function raterCard(rows, questions) {
+    const items = [...new Map(questions.map((q) => [q.item.id, q.item])).values()];
+    const result = findRespondentOutliers(rows, items);
+
+    const card = el('div', { class: 'card stack', style: { marginTop: 'var(--sp-4)' } },
+      el('div', { class: 'eyebrow' }, 'Consistently different raters'));
+
+    if (!result.supported) {
+      mount(card, el('p', { class: 'field__hint' }, `${result.reason} — currently ${rows.length}.`));
+      return card;
+    }
+    if (!result.respondents.length) {
+      mount(card, el('p', { class: 'muted' }, 'Nobody rated consistently apart from the group.'));
+      return card;
+    }
+
+    for (const row of result.respondents) {
+      const direction = row.drift > 0 ? 'above' : 'below';
+      mount(card, el('div', { class: 'row row--between row--wrap' },
+        el('div', {},
+          el('div', { style: { fontWeight: '550' } },
+            row.response.anonymous ? 'An anonymous respondent'
+              : (row.response.respondent?.name || 'Unnamed')),
+          el('div', { class: 'muted' },
+            `Rated ${Math.abs(row.drift)} points ${direction} the group median across `
+            + `${pluralize(row.answered, 'question')}`)),
+        badge(row.drift > 0 ? 'More positive' : 'More critical',
+          row.drift > 0 ? 'ok' : 'warn')));
+    }
+    mount(card, el('p', { class: 'field__hint' },
+      'One person rating consistently apart may be a genuine dissenting experience or simply a '
+      + 'harsher scale. Read their written answers before drawing a conclusion.'));
+    return card;
+  }
+
+  /* ---------------- written feedback ---------------- */
+
+  /** Every text answer in scope, with where it came from. */
+  function textEntries(rows) {
+    const entries = [];
     for (const response of rows) {
       const form = formsById.get(response.formId);
       if (!form) continue;
       for (const item of formItems(form)) {
         if (item.type !== 'text') continue;
-        const value = response.answers?.[item.id];
-        if (value) {
-          found.push({
-            question: item.label, text: value,
-            when: response.submittedAt,
-            request: requestsById.get(response.requestId)?.title || '—',
-          });
-        }
+        const text = response.answers?.[item.id];
+        if (!text || !String(text).trim()) continue;
+        entries.push({
+          id: `${response.id}:${item.id}`,
+          text: String(text),
+          question: item.label,
+          request: requestsById.get(response.requestId)?.title || '—',
+          when: response.submittedAt,
+          response,
+        });
       }
     }
-    const section = el('section', {}, el('h3', { class: 'section-title' }, `Written feedback (${found.length})`));
-    if (!found.length) {
+    return entries;
+  }
+
+  function textPanel(rows) {
+    const entries = textEntries(rows);
+    const section = el('section', {},
+      el('h3', { class: 'section-title' }, `Written feedback (${entries.length})`));
+
+    if (!entries.length) {
       mount(section, el('p', { class: 'muted' }, 'No written answers in this range.'));
       return section;
     }
+
+    const host = el('div', {});
+    const views = [
+      { id: 'sentiment', label: 'Sentiment', render: () => sentimentView(entries) },
+      { id: 'cloud', label: 'Word cloud', render: () => cloudView(entries) },
+      { id: 'read', label: 'Read all', render: () => readView(entries) },
+    ];
+
+    const tabs = el('div', { class: 'tabs', role: 'tablist' });
+    const show = (view) => {
+      for (const btn of tabs.querySelectorAll('.tab')) {
+        btn.setAttribute('aria-selected', String(btn.dataset.view === view.id));
+      }
+      remount(host, view.render());
+    };
+    for (const view of views) {
+      mount(tabs, el('button', {
+        type: 'button', class: 'tab', role: 'tab', dataset: { view: view.id },
+        'aria-selected': String(view.id === 'sentiment'),
+        onclick: () => show(view),
+      }, view.label));
+    }
+
+    mount(section, tabs, host);
+    show(views[0]);
+    return section;
+  }
+
+  function sentimentView(entries) {
+    const summary = summariseSentiment(entries.map((e) => e.text));
+    const wrap = el('div', { class: 'stack' });
+
+    if (summary.average == null) {
+      mount(wrap,
+        notice('info', 'No sentiment could be read',
+          el('p', {}, 'None of the written answers contain words in the sentiment lexicon. '
+            + 'The answers themselves are below — read them directly.')),
+        el('div', { class: 'stack-sm' }, ...entries.map((entry) => el('div', { class: 'quote' },
+          el('div', { class: 'eyebrow', style: { marginBottom: 'var(--sp-2)' } }, entry.question),
+          entry.text,
+          el('footer', {}, `${fmtDate(entry.when)} · ${entry.request}`)))));
+      return wrap;
+    }
+
+    const total = summary.buckets.positive + summary.buckets.neutral + summary.buckets.negative;
+    mount(wrap,
+      el('div', { class: 'grid grid--3' },
+        statTile('Overall', summary.label, `score ${summary.average} on a -5 to +5 scale`),
+        statTile('Positive', String(summary.buckets.positive), pct(summary.buckets.positive, total)),
+        statTile('Neutral or mixed', String(summary.buckets.neutral), pct(summary.buckets.neutral, total)),
+        statTile('Negative', String(summary.buckets.negative), pct(summary.buckets.negative, total))),
+
+      notice('info', 'How to read this',
+        el('p', {}, 'Sentiment here is a lexicon count, not comprehension. It cannot read sarcasm, '
+          + 'context or a cadet quoting someone else, and it runs on this device precisely so the '
+          + 'feedback never leaves your Drive. Use it to decide what to read first — never as a '
+          + 'substitute for reading.')));
+
+    if (summary.unreadable) {
+      mount(wrap, el('p', { class: 'field__hint' },
+        `${summary.unreadable} answer(s) contained no recognised sentiment words and are not counted above.`));
+    }
+
+    // Every answer appears. Scored ones come first, most negative at the top —
+    // those are what an instructor should read first — and answers the lexicon
+    // could not read follow rather than vanishing, because an answer with no
+    // recognised sentiment word is still feedback somebody wrote.
+    const ranked = summary.scored
+      .map((row, i) => ({ ...row, entry: entries[i] }))
+      .sort((a, b) => {
+        if (Boolean(a.hits.length) !== Boolean(b.hits.length)) return a.hits.length ? -1 : 1;
+        return a.score - b.score;
+      });
+
+    const list = el('div', { class: 'stack-sm' });
+    for (const row of ranked) {
+      mount(list, el('div', { class: 'quote' },
+        el('div', { class: 'row row--between row--wrap', style: { marginBottom: 'var(--sp-2)' } },
+          el('span', { class: 'eyebrow' }, row.entry.question),
+          row.hits.length
+            ? badge(`${row.label} · ${row.score}`, row.tone)
+            : badge('Not scored', 'neutral')),
+        row.entry.text,
+        el('footer', {}, `${fmtDate(row.entry.when)} · ${row.entry.request}`)));
+    }
+    mount(wrap,
+      el('div', { class: 'eyebrow' }, `All ${pluralize(ranked.length, 'answer')}, most negative first`),
+      list);
+    return wrap;
+  }
+
+  function pct(part, total) {
+    return total ? `${Math.round((part / total) * 100)}% of scored answers` : '';
+  }
+
+  function cloudView(entries) {
+    const texts = entries.map((e) => e.text);
+    const terms = wordFrequencies(texts, { limit: 60 });
+    const phrases = phraseFrequencies(texts, { limit: 12 });
+    const wrap = el('div', { class: 'stack' });
+
+    if (!terms.length) {
+      mount(wrap, el('p', { class: 'muted' }, 'Not enough distinct words to build a cloud.'));
+      return wrap;
+    }
+
+    const matches = el('div', {});
+    const showMatches = (term) => {
+      const re = new RegExp(`\\b${term.stem}`, 'i');
+      const hits = entries.filter((e) => re.test(e.text));
+      remount(matches,
+        el('div', { class: 'eyebrow' }, `"${term.term}" — ${pluralize(hits.length, 'response')}`),
+        el('div', { class: 'stack-sm' }, ...hits.map((e) => el('div', { class: 'quote' },
+          el('div', { html: highlight(e.text, [{ matched: term.term }]) }),
+          el('footer', {}, `${e.question} · ${fmtDate(e.when)}`)))));
+    };
+
+    const cloud = renderWordCloud(terms, { onSelect: showMatches });
+    mount(wrap,
+      el('div', { class: 'card' }, cloud),
+      el('p', { class: 'field__hint' },
+        'Sized by how many people used the word, not how often it appears, so one long answer '
+        + 'cannot dominate. Select a word to read the answers containing it.'),
+      phrases.length ? el('div', {},
+        el('div', { class: 'eyebrow', style: { marginBottom: 'var(--sp-2)' } }, 'Common pairs'),
+        el('div', { class: 'row row--wrap' },
+          ...phrases.map((p) => el('span', { class: 'chip' }, p.phrase,
+            el('span', { class: 'mono faint' }, String(p.count)))))) : null,
+      el('div', {},
+        el('div', { class: 'eyebrow', style: { marginBottom: 'var(--sp-2)' } }, 'Ranked terms'),
+        renderTermTable(terms, { onSelect: showMatches })),
+      matches);
+    return wrap;
+  }
+
+  function readView(entries) {
     const list = el('div', { class: 'stack' });
-    for (const [question, group] of groupBy(found, (c) => c.question)) {
+    for (const [question, group] of groupBy(entries, (e) => e.question)) {
       const card = el('div', { class: 'card stack-sm' }, el('div', { class: 'eyebrow' }, question));
-      for (const comment of group) {
-        mount(card, el('blockquote', { class: 'quote' }, comment.text,
-          el('footer', {}, `${fmtDate(comment.when)} · ${comment.request}`)));
+      for (const entry of group) {
+        mount(card, el('blockquote', { class: 'quote' }, entry.text,
+          el('footer', {}, `${fmtDate(entry.when)} · ${entry.request}`)));
       }
       mount(list, card);
     }
-    mount(section, list);
+    return list;
+  }
+
+  /* ---------------- safety screening ---------------- */
+
+  /**
+   * Screens every written answer in scope for language that needs a person to
+   * read it now.
+   *
+   * This runs across *all* responses, including forms whose results are
+   * withheld for anonymity. A disclosure of hazing or a cadet in crisis cannot
+   * wait for a third response to arrive, and suppressing it silently would be
+   * the worse failure. The privacy cost is real and is stated rather than
+   * hidden: on a withheld form the content stays behind a deliberate click that
+   * says plainly it may identify the author.
+   */
+  function safetyPanel(rows, withheld) {
+    const blocked = new Set(withheld.map((w) => w.request.id));
+    const entries = textEntries(rows);
+    const result = screenAll(entries);
+
+    if (!result.flaggedEntries) {
+      return el('section', {},
+        el('div', { class: 'notice notice--ok' },
+          icon('checkCircle'),
+          el('div', {},
+            el('strong', { class: 'notice__title' }, 'Safety screen: nothing flagged'),
+            el('p', {}, `${pluralize(result.scanned, 'written answer')} checked against the `
+              + 'hazing, harassment, discrimination, violence, self-harm, substance and integrity '
+              + 'word lists. A clear screen is not proof that nothing was reported — it only means '
+              + 'no listed phrase appeared.'))));
+    }
+
+    const section = el('section', {},
+      el('h3', { class: 'section-title' }, 'Safety screen'),
+      notice('danger', `${pluralize(result.flaggedEntries, 'answer')} flagged for review`,
+        el('p', {}, 'These contain language matching the safety and security word lists. '
+          + 'A match is a prompt to read the response, not a finding — the list cannot tell '
+          + '"we discussed hazing prevention" from "I was hazed". Read each one and follow your '
+          + 'detachment\'s reporting procedures.')));
+
+    for (const category of result.categories) {
+      const card = el('div', { class: 'card stack', style: { marginTop: 'var(--sp-4)' } },
+        el('div', { class: 'row row--between row--wrap' },
+          el('div', {},
+            el('div', { style: { fontWeight: '620' } }, category.label),
+            el('div', { class: 'muted' }, category.note)),
+          badge(category.severity === 'critical' ? 'Critical' : 'Elevated',
+            category.severity === 'critical' ? 'danger' : 'warn', 'alert')));
+
+      for (const entry of category.entries) {
+        const isWithheld = blocked.has(entry.response.requestId);
+        const body = el('div', {});
+
+        if (isWithheld) {
+          // Alert without exposing: the instructor learns a flagged answer
+          // exists and chooses, knowingly, whether to read it.
+          mount(body,
+            notice('warn', 'This form\'s results are withheld for anonymity',
+              el('p', {}, `Only ${pluralize(
+                rows.filter((r) => r.requestId === entry.response.requestId).length, 'response')} `
+                + 'has been submitted, so opening this may identify who wrote it.'),
+              el('div', { style: { marginTop: 'var(--sp-3)' } },
+                el('button', {
+                  type: 'button', class: 'btn btn--sm btn--danger',
+                  onclick: (e) => {
+                    e.currentTarget.closest('.notice').remove();
+                    mount(body, flaggedQuote(entry));
+                  },
+                }, icon('eye'), 'Show anyway — this may identify the author'))));
+        } else {
+          mount(body, flaggedQuote(entry));
+        }
+        mount(card, body);
+      }
+      mount(section, card);
+    }
+
+    mount(section, el('p', { class: 'field__hint' },
+      'The word lists live in js/analysis/lexicon.js and are meant to be edited — add the terms '
+      + 'your detachment actually uses.'));
     return section;
+  }
+
+  function flaggedQuote(entry) {
+    return el('div', { class: 'quote quote--flagged' },
+      el('div', { class: 'row row--wrap', style: { marginBottom: 'var(--sp-2)' } },
+        el('span', { class: 'eyebrow' }, entry.question),
+        ...entry.matches.slice(0, 4).map((m) => badge(m.matched, 'danger'))),
+      el('div', { html: highlight(entry.text, entry.matches) }),
+      el('footer', {}, `${fmtDate(entry.when)} · ${entry.request}`));
   }
 
   function responseList(rows) {
@@ -372,7 +821,11 @@ export async function renderAnalysis(host) {
           ? students.filter((s) => request.assignedUsernames.includes(s.username))
           : students.filter((s) => !request.asClass || !s.asClass || s.asClass === request.asClass);
         const outstanding = targeted.filter((s) => !submitted.has(s.username));
-        const pct = targeted.length ? Math.round((submitted.size / targeted.length) * 100) : 0;
+        // With nobody on the roster matching this form there is no denominator,
+        // so completion is unknown rather than 0% — reporting a red zero next to
+        // "8 submitted" would be three contradictory statements at once.
+        const known = targeted.length > 0;
+        const pct = known ? Math.round((submitted.size / targeted.length) * 100) : null;
 
         const held = request.anonymous && submitted.size > 0
           && submitted.size < PRIVACY.minResponsesToShow;
@@ -382,20 +835,30 @@ export async function renderAnalysis(host) {
             el('div', {},
               el('div', { style: { fontWeight: '570' } },
                 request.feedbackId ? `${request.feedbackId} — ${request.title}` : request.title),
-              el('div', { class: 'muted' },
-                `${submitted.size} of ${targeted.length} submitted`)),
+              el('div', { class: 'muted' }, known
+                ? `${submitted.size} of ${targeted.length} submitted`
+                : `${pluralize(submitted.size, 'response')} received`)),
             el('div', { class: 'row row--wrap' },
               held && badge('Results withheld', 'warn', 'lock'),
-              badge(`${pct}%`, pct >= 80 ? 'ok' : pct >= 40 ? 'warn' : 'danger',
-                pct >= 80 ? 'checkCircle' : 'clock'))),
-          el('div', { class: 'meter' }, el('div', { class: 'meter__fill', style: { width: `${pct}%` } })),
-          outstanding.length
-            ? el('details', {},
-              el('summary', { class: 'muted' }, `${pluralize(outstanding.length, 'student')} outstanding`),
-              el('div', { class: 'row row--wrap', style: { marginTop: 'var(--sp-2)' } },
-                ...outstanding.map((s) => el('span', { class: 'chip' }, s.name,
-                  el('span', { class: 'mono faint' }, s.username)))))
-            : el('div', { class: 'muted' }, 'Everyone targeted has responded.')));
+              known
+                ? badge(`${pct}%`, pct >= 80 ? 'ok' : pct >= 40 ? 'warn' : 'danger',
+                  pct >= 80 ? 'checkCircle' : 'clock')
+                : badge('No roster match', 'neutral', 'users'))),
+          known
+            ? el('div', { class: 'meter' }, el('div', { class: 'meter__fill', style: { width: `${pct}%` } }))
+            : null,
+          !known
+            ? el('div', { class: 'muted' },
+              request.asClass
+                ? `No active student accounts at ${request.asClass}, so completion cannot be measured.`
+                : 'No active student accounts, so completion cannot be measured.')
+            : outstanding.length
+              ? el('details', {},
+                el('summary', { class: 'muted' }, `${pluralize(outstanding.length, 'student')} outstanding`),
+                el('div', { class: 'row row--wrap', style: { marginTop: 'var(--sp-2)' } },
+                  ...outstanding.map((s) => el('span', { class: 'chip' }, s.name,
+                    el('span', { class: 'mono faint' }, s.username)))))
+              : el('div', { class: 'muted' }, 'Everyone targeted has responded.')));
       }
       remount(host2, cards.childNodes.length ? cards
         : el('p', { class: 'muted' }, 'No forms match these filters.'));
