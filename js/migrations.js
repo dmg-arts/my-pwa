@@ -21,7 +21,7 @@
  *     record wholesale, so a half-finished run leaves usable data.
  */
 
-import { APP } from './config.js';
+import { APP, INDEXES } from './config.js';
 import { nowIso, makeId } from './util.js';
 
 /**
@@ -130,6 +130,47 @@ export const MIGRATIONS = [
       if (anonymous) {
         report(`${anonymous} anonymous responses could not be receipted (expected — they carry no name)`);
       }
+    },
+  },
+
+  {
+    to: 3,
+    describe: 'Receipts split into one file per student',
+    async run({ db, report }) {
+      // v2 kept every receipt for a form in a single array. A whole flight
+      // submitting at once meant concurrent read-modify-writes on that one
+      // document, and a dropped receipt let a cadet submit twice while showing
+      // as outstanding — a loss nothing could rebuild, because an anonymous
+      // response carries no name. One file per student removes the shared
+      // document, so the race cannot happen.
+      let moved = 0;
+      let forms = 0;
+
+      for (const request of await db.listRequests()) {
+        const legacyPath = INDEXES.legacyReceiptsFor(request.id);
+        const legacy = await db.readRaw(legacyPath);
+        if (!legacy?.receipts?.length) continue;
+
+        forms++;
+        for (const row of legacy.receipts) {
+          const username = String(row.username || '').trim().toLowerCase();
+          if (!username || username.startsWith('_')) continue;
+          await db.writeRaw(INDEXES.receiptFor(request.id, username), {
+            schemaVersion: APP.schemaVersion,
+            requestId: request.id,
+            username,
+            submittedAt: row.submittedAt || nowIso(),
+            migratedFromIndex: true,
+          });
+          moved++;
+        }
+        // The old array is left in place on purpose: it costs nothing, and a
+        // device still running v2 keeps working against the same folder until
+        // everyone has updated.
+      }
+
+      if (moved) report(`Split ${moved} receipts across ${forms} forms into individual files`);
+      else report('No legacy receipt arrays to split');
     },
   },
 ];

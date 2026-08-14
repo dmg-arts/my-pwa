@@ -9,13 +9,13 @@
 export const APP = {
   name: 'TOP-Feedback',
   shortName: 'TOP-FB',
-  version: '0.2.0',
+  version: '0.3.0',
   /**
    * Bump when the on-disk record shape changes, and add a matching entry to
    * MIGRATIONS in js/migrations.js. The runner upgrades a detachment's existing
    * records to this version on startup.
    */
-  schemaVersion: 2,
+  schemaVersion: 3,
 };
 
 /**
@@ -121,8 +121,21 @@ export const INDEXES = {
   responseCounts: 'responses/_counts.json',
   /** responses/<requestId>/_index.json — every response for one request */
   responsesFor: (requestId) => `responses/${requestId}/_index.json`,
-  /** receipts/<requestId>/_index.json — usernames that have submitted */
-  receiptsFor: (requestId) => `receipts/${requestId}/_index.json`,
+  /**
+   * receipts/<requestId>/<username>.json — one file per student per form.
+   *
+   * Deliberately NOT one array in one document. Every cadet in a flight submits
+   * within minutes of each other, and a shared array means read-modify-write
+   * races that silently drop a receipt — which would let that student submit
+   * twice and leave them showing as outstanding forever. A lost receipt is also
+   * the one loss that cannot be rebuilt, because an anonymous response carries
+   * no name to reconstruct it from. Separate paths make the race impossible
+   * rather than merely detectable.
+   */
+  receiptFor: (requestId, username) => `receipts/${requestId}/${username}.json`,
+  receiptsFolder: (requestId) => `receipts/${requestId}`,
+  /** Pre-v3 layout, still read so an un-migrated folder keeps working. */
+  legacyReceiptsFor: (requestId) => `receipts/${requestId}/_index.json`,
 };
 
 export const FOLDER_TREE_PREVIEW = `TOP-Feedback/

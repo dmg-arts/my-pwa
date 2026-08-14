@@ -15,7 +15,7 @@
 
 import {
   el, icon, field, select, notice, toast, spinner, confirmDialog, badge,
-  makeId, nowIso, fromDateInput, toDateInput, pluralize, emptyState,
+  makeId, nowIso, fromDateInput, toDateInput, pluralize, emptyState, fmtDateTime,
   mount, remount } from '../util.js';
 import {
   AS_CLASSES, SEMESTERS, FORM_RULES, SCALE_ANCHORS, PRIVACY, makeFeedbackId, scaleValues,
@@ -73,6 +73,11 @@ async function drawCreator(root, params) {
       return {
         requestId,
         formId: request.formId,
+        // The revisions this editing session started from. A save states them,
+        // so a change made by someone else in the meantime is caught instead of
+        // being quietly overwritten.
+        requestRev: Number(request.rev) || 0,
+        formRev: Number(form?.rev) || 0,
         feedbackId: request.feedbackId || '',
         eventName: request.eventName || request.title || '',
         asClass: request.asClass || '',
@@ -91,6 +96,8 @@ async function drawCreator(root, params) {
     return {
       requestId: null,
       formId: null,
+      requestRev: undefined,   // new record: nothing to conflict with
+      formRev: undefined,
       feedbackId: makeFeedbackId(requests.map((r) => r.feedbackId)),
       eventName: '',
       asClass: '',
@@ -485,7 +492,8 @@ async function drawCreator(root, params) {
     if (problem) return toast(problem, 'warn', 5000);
 
     try {
-      const form = await db.saveForm(toFormRecord());
+      const form = await db.saveForm(toFormRecord(), { expectRev: draft.formRev });
+      draft.formRev = form.rev;
       const request = await db.saveRequest({
         id: draft.requestId || makeId('req'),
         feedbackId: draft.feedbackId,
@@ -503,15 +511,62 @@ async function drawCreator(root, params) {
         audience: draft.audience,
         status,
         createdAt: nowIso(),
-      });
+      }, { expectRev: draft.requestRev });
       resetFormDraft();
       toast(status === 'open'
         ? `${request.feedbackId} issued to students.`
         : `${request.feedbackId} saved as a draft.`, 'ok');
       return navigate('/instructor?tab=requests');
     } catch (err) {
+      if (err.conflict) return resolveConflict(err, status);
       return toast(`Could not save: ${err.message}`, 'danger', 8000);
     }
+  }
+
+  /**
+   * Another instructor saved this form while it was open here. Rather than
+   * picking a winner silently, show what changed and let this person decide —
+   * losing ten minutes of question-writing to a background overwrite is the
+   * failure worth avoiding.
+   */
+  async function resolveConflict(err, status) {
+    const theirs = err.theirs || {};
+    const choice = await modal({
+      title: 'Someone else changed this feedback',
+      body: el('div', { class: 'stack' },
+        notice('warn', 'Your changes have not been saved yet',
+          el('p', {}, 'Another instructor saved this form while you were editing it. '
+            + 'Choose which version to keep.')),
+        el('div', { class: 'card stack-sm' },
+          el('div', { class: 'eyebrow' }, 'Their version'),
+          el('div', { style: { fontWeight: '570' } }, theirs.title || theirs.name || '—'),
+          theirs.updatedAt && el('div', { class: 'muted' }, `Saved ${fmtDateTime(theirs.updatedAt)}`)),
+        el('div', { class: 'card stack-sm' },
+          el('div', { class: 'eyebrow' }, 'Your version'),
+          el('div', { style: { fontWeight: '570' } }, draft.eventName || '—'),
+          el('div', { class: 'muted' }, `${pluralize(draft.questions.length, 'question')}`))),
+      actions: [
+        { label: 'Cancel', value: null },
+        { label: 'Discard mine, load theirs', value: 'theirs' },
+        { label: 'Keep mine, overwrite theirs', value: 'mine', variant: 'danger' },
+      ],
+    });
+
+    if (choice === 'theirs') {
+      resetFormDraft();
+      toast('Loaded the other version.', 'ok');
+      return navigate(`/instructor/create/${editingId}`);
+    }
+    if (choice === 'mine') {
+      // Deliberate overwrite: re-read the current revisions and save over them.
+      const [freshReq, freshForm] = await Promise.all([
+        db.getRequest(draft.requestId), db.getForm(draft.formId),
+      ]);
+      draft.requestRev = Number(freshReq?.rev) || 0;
+      draft.formRev = Number(freshForm?.rev) || 0;
+      return save(status);
+    }
+    return undefined;
   }
 }
 

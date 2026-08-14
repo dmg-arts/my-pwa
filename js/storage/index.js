@@ -245,17 +245,22 @@ export const db = {
     return requireAdapter().readDoc(`${DB_LAYOUT.folders.forms}/${id}.json`);
   },
 
-  async saveForm(form) {
+  /**
+   * @param {object} form
+   * @param {{expectRev?: number}} options  omit to overwrite unconditionally;
+   *   pass the rev the editor loaded to be told about a concurrent change.
+   */
+  async saveForm(form, { expectRev } = {}) {
     const record = {
       schemaVersion: APP.schemaVersion,
       ...form,
       id: form.id || makeId('form'),
       createdAt: form.createdAt || nowIso(),
-      updatedAt: nowIso(),
     };
-    await requireAdapter().writeDoc(`${DB_LAYOUT.folders.forms}/${record.id}.json`, record);
+    const saved = await writeChecked(
+      `${DB_LAYOUT.folders.forms}/${record.id}.json`, record, expectRev);
     invalidate(DB_LAYOUT.folders.forms);
-    return record;
+    return saved;
   },
 
   async deleteForm(id) {
@@ -274,17 +279,18 @@ export const db = {
     return requireAdapter().readDoc(`${DB_LAYOUT.folders.requests}/${id}.json`);
   },
 
-  async saveRequest(request) {
+  /** @param {{expectRev?: number}} options — see saveForm. */
+  async saveRequest(request, { expectRev } = {}) {
     const record = {
       schemaVersion: APP.schemaVersion,
       ...request,
       id: request.id || makeId('req'),
       createdAt: request.createdAt || nowIso(),
-      updatedAt: nowIso(),
     };
-    await requireAdapter().writeDoc(`${DB_LAYOUT.folders.requests}/${record.id}.json`, record);
+    const saved = await writeChecked(
+      `${DB_LAYOUT.folders.requests}/${record.id}.json`, record, expectRev);
     invalidate(DB_LAYOUT.folders.requests);
-    return record;
+    return saved;
   },
 
   async deleteRequest(id) {
@@ -297,24 +303,42 @@ export const db = {
   },
 
   /* ---------------- responses ----------------
-   * Reads go through per-request roll-up indexes. Writing a response costs
-   * three writes (record, request index, global counts); reading a term's
-   * worth of feedback costs one read per request instead of one per response,
-   * which is the difference between ~12 API calls and several thousand.
+   * The per-response file is the source of truth. The index is a *cache*: it is
+   * never written on the submission path, only rebuilt on read when it is found
+   * to have drifted. That keeps a submission to writes on paths nobody else
+   * touches, so a whole flight submitting at once cannot lose anyone's data.
    * -------------------------------------------------------------------- */
 
-  /** Responses for one request, from its index, falling back to a full walk. */
+  /**
+   * Responses for one request.
+   *
+   * Costs two calls: a folder listing to learn the true record count, and a
+   * read of the index. If they disagree the index is stale — someone submitted
+   * since it was built — so it is rebuilt from the files and rewritten. Both
+   * calls are O(1) in the amount of feedback, and the rebuild is idempotent, so
+   * two readers racing to repair the same index produce identical content.
+   */
   async listResponses(requestId, { rebuild = false } = {}) {
+    const folder = `${DB_LAYOUT.folders.responses}/${requestId}`;
     const indexPath = INDEXES.responsesFor(requestId);
+
     if (!rebuild) {
       const cached = cacheGet(indexPath);
       if (cached !== undefined) return cached;
-      const index = await readDoc(indexPath);
-      if (index?.responses) return cacheSet(indexPath, index.responses);
+
+      const [entries, index] = await Promise.all([
+        listFolder(folder),
+        readDoc(indexPath),
+      ]);
+      const actual = entries.filter((e) => !e.name.startsWith('_')).length;
+      if (index?.responses && index.responses.length === actual) {
+        return cacheSet(indexPath, index.responses);
+      }
     }
-    // No index yet (or a rebuild was asked for): read every file and write one.
-    const responses = await readCollection(`${DB_LAYOUT.folders.responses}/${requestId}`);
+
+    const responses = await readCollection(folder);
     await writeResponseIndex(requestId, responses);
+    await noteCount(requestId, responses.length);
     return cacheSet(indexPath, responses);
   },
 
@@ -324,17 +348,21 @@ export const db = {
     const cached = cacheGet(key);
     if (cached !== undefined) return cached;
 
-    const requestIds = await knownRequestIds();
     const out = [];
-    for (const requestId of requestIds) {
+    for (const requestId of await knownRequestIds()) {
       out.push(...await this.listResponses(requestId));
     }
     return cacheSet(key, out);
   },
 
   /**
-   * Response counts without reading any response. One document read, so the
-   * home screen stays cheap no matter how much feedback has accumulated.
+   * Response counts without reading any response — one document read, so the
+   * home screen stays cheap however much feedback accumulates.
+   *
+   * Best-effort by design: it is refreshed whenever a form's index is rebuilt
+   * and by "Rebuild indexes", but it is never written on the submission path,
+   * so it can lag briefly after a burst of submissions. It drives a badge, and
+   * a wrong badge is a far better trade than a lost response.
    */
   async responseCounts() {
     const cached = cacheGet(INDEXES.responseCounts);
@@ -344,6 +372,13 @@ export const db = {
     return cacheSet(INDEXES.responseCounts, await rebuildCounts(this));
   },
 
+  /**
+   * Writes one response file and nothing else.
+   *
+   * No index and no counter are touched here. Those are shared documents, and
+   * updating them would mean a read-modify-write that a simultaneous submission
+   * can clobber. Readers repair them instead.
+   */
   async saveResponse(response) {
     const record = {
       schemaVersion: APP.schemaVersion,
@@ -353,24 +388,26 @@ export const db = {
     };
     const path = `${DB_LAYOUT.folders.responses}/${record.requestId}/${record.id}.json`;
     const { queued } = await writeDoc(path, record);
-
-    // Keep the roll-ups in step. Read the current index before invalidating so
-    // a queued (offline) write still lands in the local view of the data.
-    const existing = await this.listResponses(record.requestId).catch(() => []);
-    const merged = [...existing.filter((r) => r.id !== record.id), record];
-    await writeResponseIndex(record.requestId, merged);
-    await bumpCounts(record.requestId, merged.length);
-
     invalidate(DB_LAYOUT.folders.responses);
     return { ...record, queued };
   },
 
   async deleteResponse(requestId, responseId) {
     await deleteDoc(`${DB_LAYOUT.folders.responses}/${requestId}/${responseId}.json`);
-    const remaining = (await this.listResponses(requestId)).filter((r) => r.id !== responseId);
-    await writeResponseIndex(requestId, remaining);
-    await bumpCounts(requestId, remaining.length);
     invalidate(DB_LAYOUT.folders.responses);
+    // Repair immediately rather than waiting for a reader to notice the drift.
+    await this.listResponses(requestId, { rebuild: true });
+  },
+
+  /** Direct document access, for migrations that move data between layouts. */
+  async readRaw(path) {
+    return readDoc(path);
+  },
+
+  async writeRaw(path, data) {
+    const result = await writeDoc(path, data);
+    invalidate(path);
+    return result;
   },
 
   /** Repairs every index by re-reading the underlying records. */
@@ -379,55 +416,70 @@ export const db = {
     const requestIds = await knownRequestIds();
     let responses = 0;
     for (const requestId of requestIds) {
-      const rows = await this.listResponses(requestId, { rebuild: true });
-      responses += rows.length;
+      responses += (await this.listResponses(requestId, { rebuild: true })).length;
     }
     const counts = await rebuildCounts(this);
     return { requests: requestIds.length, responses, counts };
   },
 
   /* ---------------- receipts ----------------
-   * A receipt records THAT a username submitted, in a folder separate from
-   * WHAT they wrote. That separation is what lets the app block a second
-   * submission and show who still owes feedback, without ever putting a name
-   * beside an anonymous answer.
+   * One file per student per form, at receipts/<requestId>/<username>.json.
+   * Two cadets never write the same path, so simultaneous submissions cannot
+   * drop a receipt. Reading the folder is enough to know who submitted: the
+   * filenames *are* the usernames, so listing costs one call and no reads.
    * -------------------------------------------------------------------- */
 
-  /** Usernames that have already submitted for a request. */
   async listReceipts(requestId) {
-    const path = INDEXES.receiptsFor(requestId);
-    const cached = cacheGet(path);
+    const folder = INDEXES.receiptsFolder(requestId);
+    const cached = cacheGet(folder);
     if (cached !== undefined) return cached;
-    const doc = await readDoc(path);
-    return cacheSet(path, doc?.receipts || []);
+
+    const entries = await listFolder(folder);
+    const receipts = entries
+      .filter((e) => !e.name.startsWith('_') && e.name.endsWith('.json'))
+      .map((e) => ({
+        username: e.name.slice(0, -'.json'.length).toLowerCase(),
+        submittedAt: e.modifiedAt || null,
+      }));
+
+    // A folder written before v3 keeps its receipts in one array. Read it too,
+    // so an un-migrated detachment still blocks double submissions.
+    const legacy = await readDoc(INDEXES.legacyReceiptsFor(requestId));
+    if (legacy?.receipts?.length) {
+      const seen = new Set(receipts.map((r) => r.username));
+      for (const row of legacy.receipts) {
+        if (!seen.has(row.username)) receipts.push(row);
+      }
+    }
+    return cacheSet(folder, receipts);
   },
 
   async hasSubmitted(requestId, username) {
     const target = String(username || '').trim().toLowerCase();
     if (!target) return false;
+    if (await readDoc(INDEXES.receiptFor(requestId, target))) return true;
+    // Fall back to the folder listing, which also covers the pre-v3 layout.
     return (await this.listReceipts(requestId)).some((r) => r.username === target);
   },
 
+  /** Idempotent: writing the same receipt twice is harmless by construction. */
   async addReceipt(requestId, username) {
     const target = String(username).trim().toLowerCase();
-    const receipts = await this.listReceipts(requestId);
-    if (receipts.some((r) => r.username === target)) return receipts;
-    const next = [...receipts, { username: target, submittedAt: nowIso() }];
-    await writeDoc(INDEXES.receiptsFor(requestId), {
-      schemaVersion: APP.schemaVersion, requestId, receipts: next, updatedAt: nowIso(),
+    await writeDoc(INDEXES.receiptFor(requestId, target), {
+      schemaVersion: APP.schemaVersion,
+      requestId,
+      username: target,
+      submittedAt: nowIso(),
     });
-    invalidate(INDEXES.receiptsFor(requestId));
-    return next;
+    invalidate(INDEXES.receiptsFolder(requestId));
+    return this.listReceipts(requestId);
   },
 
   async clearReceipt(requestId, username) {
     const target = String(username).trim().toLowerCase();
-    const next = (await this.listReceipts(requestId)).filter((r) => r.username !== target);
-    await writeDoc(INDEXES.receiptsFor(requestId), {
-      schemaVersion: APP.schemaVersion, requestId, receipts: next, updatedAt: nowIso(),
-    });
-    invalidate(INDEXES.receiptsFor(requestId));
-    return next;
+    await deleteDoc(INDEXES.receiptFor(requestId, target));
+    invalidate(INDEXES.receiptsFolder(requestId));
+    return this.listReceipts(requestId);
   },
 
   /* ---------------- accounts ---------------- */
@@ -440,9 +492,35 @@ export const db = {
     return cacheSet(DOCS.users, doc);
   },
 
+  /**
+   * Replaces the whole account list. Prefer `updateUsers` — this overwrites
+   * whatever another admin saved in the meantime.
+   */
   async saveUsers(users) {
     const doc = { schemaVersion: APP.schemaVersion, users, updatedAt: nowIso() };
     await writeDoc(DOCS.users, doc);
+    invalidate(DOCS.users);
+    return doc;
+  },
+
+  /**
+   * Applies a change to the account directory against the freshest copy, and
+   * replays it if another admin saved first.
+   *
+   * `mutate` receives the current account array and returns the next one, so it
+   * must express the *change* rather than a precomputed result — two admins
+   * adding different students then both succeed instead of one silently
+   * erasing the other.
+   *
+   * @param {(users: object[]) => object[]|undefined} mutate
+   */
+  async updateUsers(mutate) {
+    const doc = await mutateDoc(DOCS.users, (current) => {
+      const users = current?.users || [];
+      const next = mutate(users);
+      if (next === undefined) return undefined;
+      return { schemaVersion: APP.schemaVersion, ...current, users: next };
+    }, { fallback: { schemaVersion: APP.schemaVersion, users: [] } });
     invalidate(DOCS.users);
     return doc;
   },
@@ -498,9 +576,16 @@ export const db = {
     for (const request of bundle.requests || []) { await this.saveRequest(request); counts.requests++; }
     for (const response of bundle.responses || []) { await this.saveResponse(response); counts.responses++; }
     for (const [requestId, rows] of Object.entries(bundle.receipts || {})) {
-      await writeDoc(INDEXES.receiptsFor(requestId), {
-        schemaVersion: APP.schemaVersion, requestId, receipts: rows, updatedAt: nowIso(),
-      });
+      for (const row of rows) {
+        const username = String(row.username || '').trim().toLowerCase();
+        if (!username) continue;
+        await writeDoc(INDEXES.receiptFor(requestId, username), {
+          schemaVersion: APP.schemaVersion,
+          requestId,
+          username,
+          submittedAt: row.submittedAt || nowIso(),
+        });
+      }
     }
 
     invalidate('');
@@ -573,6 +658,114 @@ async function deleteDoc(path) {
   return runWrite('delete', path, null, () => requireAdapter().deleteDoc(path));
 }
 
+/** Lists a folder, tolerating one that does not exist yet. */
+async function listFolder(folderPath) {
+  try {
+    return await requireAdapter().list(folderPath);
+  } catch (err) {
+    if (isTransient(err)) throw err;
+    return [];
+  }
+}
+
+/* ---- optimistic concurrency ----
+ * Records that a person edits over minutes carry a `rev`. A save states the rev
+ * it started from; if storage has moved on, someone else saved in the meantime
+ * and the write is refused rather than silently overwriting them.
+ *
+ * This is not a lock — there is a small window between the check and the write,
+ * and no backend here offers a true compare-and-swap. It catches the case that
+ * actually happens (two people editing the same thing minutes apart) and is the
+ * same on Drive, a synced folder, or IndexedDB. */
+
+/**
+ * Serialises operations on one path within this browser tab.
+ *
+ * The revision check below is check-then-write, not compare-and-swap — no
+ * backend here offers one. Without this lock two operations in the same tab
+ * both read the old revision, both pass the check, and the second silently
+ * overwrites the first; that is not a rare window but the normal interleaving,
+ * because both reads resolve before either write starts.
+ *
+ * The lock makes same-tab concurrency correct. Across devices the revision
+ * check still narrows the window to a single network round trip, which is what
+ * catches two people editing the same form minutes apart — but it remains a
+ * check, not a guarantee.
+ */
+const pathLocks = new Map();
+
+function withLock(key, fn) {
+  const previous = pathLocks.get(key) || Promise.resolve();
+  const run = previous.then(fn, fn);
+  // Store a swallowed copy so one failure does not poison the chain.
+  pathLocks.set(key, run.then(() => {}, () => {}));
+  return run;
+}
+
+export class ConflictError extends Error {
+  constructor(message, { path, mine = null, theirs = null } = {}) {
+    super(message);
+    this.name = 'ConflictError';
+    this.conflict = true;
+    this.path = path;
+    this.mine = mine;
+    this.theirs = theirs;
+  }
+}
+
+/**
+ * Writes `next` only if storage is still at `expectRev`.
+ * Pass `expectRev: undefined` to write unconditionally.
+ */
+async function writeChecked(path, next, expectRev) {
+  return withLock(path, () => writeCheckedInner(path, next, expectRev));
+}
+
+async function writeCheckedInner(path, next, expectRev) {
+  if (expectRev !== undefined && expectRev !== null) {
+    // Read past the cache: a stale snapshot would defeat the whole check.
+    const remote = await requireAdapter().readDoc(path);
+    const remoteRev = Number(remote?.rev) || 0;
+    if (remote && remoteRev !== Number(expectRev)) {
+      throw new ConflictError(
+        'Someone else saved a change to this record while you were editing it.',
+        { path, mine: next, theirs: remote });
+    }
+  }
+  const stamped = { ...next, rev: (Number(expectRev) || 0) + 1, updatedAt: nowIso() };
+  await writeDoc(path, stamped);
+  return stamped;
+}
+
+/**
+ * Read-modify-write with a retry, for a shared document where concurrent edits
+ * usually touch different parts — the account directory being the case in
+ * point. Two admins adding different students both succeed; the second simply
+ * replays its change against the first one's result.
+ */
+async function mutateDoc(path, mutate, { attempts = 3, fallback = null } = {}) {
+  // Holds the lock across the whole read-modify-write, so the inner
+  // unlocked writer is used to avoid re-entering it.
+  return withLock(path, async () => {
+    let lastError = null;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      const current = (await requireAdapter().readDoc(path)) || fallback;
+      const rev = Number(current?.rev) || 0;
+      const next = await mutate(current, attempt);
+      if (next === undefined) return current; // mutator declined to change anything
+      try {
+        const saved = await writeCheckedInner(path, next, rev);
+        invalidate(path);
+        return saved;
+      } catch (err) {
+        if (!err.conflict) throw err;
+        lastError = err;
+      }
+    }
+    throw lastError;
+  });
+}
+
 /** Reads every .json document in a folder, merging anything queued offline. */
 async function readCollection(folderPath) {
   const cached = cacheGet(folderPath);
@@ -628,18 +821,30 @@ async function writeResponseIndex(requestId, responses) {
   cacheSet(path, responses);
 }
 
-async function bumpCounts(requestId, count) {
-  const current = (await readDoc(INDEXES.responseCounts)) || { byRequest: {}, total: 0 };
-  const byRequest = { ...current.byRequest, [requestId]: count };
-  const doc = {
-    schemaVersion: APP.schemaVersion,
-    byRequest,
-    total: Object.values(byRequest).reduce((sum, n) => sum + n, 0),
-    updatedAt: nowIso(),
-  };
-  await writeDoc(INDEXES.responseCounts, doc);
-  cacheSet(INDEXES.responseCounts, doc);
-  return doc;
+/**
+ * Records a form's true count in the shared counts cache. Called only from the
+ * read path, where an instructor has just rebuilt an index and therefore knows
+ * the real number — never from a submission, so cadets never contend for it.
+ * Best effort: a failure here costs a stale badge, nothing more.
+ */
+async function noteCount(requestId, count) {
+  try {
+    const current = (await readDoc(INDEXES.responseCounts)) || { byRequest: {}, total: 0 };
+    if (current.byRequest?.[requestId] === count) return current;
+    const byRequest = { ...current.byRequest, [requestId]: count };
+    const doc = {
+      schemaVersion: APP.schemaVersion,
+      byRequest,
+      total: Object.values(byRequest).reduce((sum, n) => sum + n, 0),
+      updatedAt: nowIso(),
+    };
+    await writeDoc(INDEXES.responseCounts, doc);
+    cacheSet(INDEXES.responseCounts, doc);
+    return doc;
+  } catch (err) {
+    console.warn('[counts] could not update the cache', err);
+    return null;
+  }
 }
 
 async function rebuildCounts(facade) {

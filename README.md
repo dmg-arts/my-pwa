@@ -85,6 +85,13 @@ from Database Administration if a restore ever leaves them stale.
 submission made offline is stored in IndexedDB, shown as pending in the header,
 and replayed automatically on reconnect — never silently lost.
 
+**Writes that cannot collide.** A submission writes exactly two files, both on
+paths nobody else touches: its own response, and its own receipt at
+`receipts/<requestId>/<username>.json`. Indexes are never written on the
+submission path — they are caches, rebuilt on read when a folder listing shows
+they have drifted. A whole flight submitting at once therefore cannot lose
+anyone's response or receipt.
+
 Because records are plain JSON in your own Drive, they are readable, greppable,
 backed up by Google, and recoverable from the Drive trash for 30 days.
 
@@ -198,6 +205,44 @@ attached, so withholding would cost visibility and buy nothing.
 
 ---
 
+## Concurrent edits
+
+Three different problems, handled three different ways.
+
+**Submissions cannot collide at all.** Each writes only its own response file
+and its own receipt file. This is why receipts are one file per student rather
+than one array per form: a shared array meant read-modify-write races that could
+silently drop a receipt, letting that cadet submit twice while showing as
+outstanding — and a lost receipt is the one loss nothing can rebuild, because an
+anonymous response carries no name to reconstruct it from.
+
+**Indexes repair themselves.** `listResponses()` costs a folder listing plus an
+index read; if the counts disagree the index is stale and gets rebuilt from the
+response files. Rebuilds are idempotent, so two readers repairing the same index
+produce identical content. `responses/_counts.json` is best-effort and can lag
+briefly after a burst of submissions — it drives a badge, and a stale badge is a
+far better trade than a lost response.
+
+**Records people edit carry a `rev`.** A save states the revision it started
+from; if storage has moved on, the write is refused and the form creator shows
+both versions with an explicit choice — discard yours, or overwrite theirs.
+Account edits use the same revision but retry automatically, expressing the
+change rather than a precomputed list, so two admins editing *different*
+students both succeed instead of one erasing the other.
+
+A per-path lock serialises all of this within one browser tab. That matters more
+than it sounds: without it, two operations in the same tab both read the old
+revision, both pass the check, and the second overwrites the first — not a rare
+window but the normal interleaving, since both reads resolve before either write
+starts. Across devices the revision check narrows the window to a single network
+round trip, which catches two people editing the same form minutes apart. It
+remains a check, not a guarantee: no backend here offers a true
+compare-and-swap, which is also why Drive's `If-Match` was not used — it would
+not work on the synced-folder or local backends, and cannot help the offline
+queue, where a replayed write is stale by construction.
+
+---
+
 ## Known limits
 
 - **Receipt timing can correlate.** For anonymous feedback, a receipt and a
@@ -208,8 +253,7 @@ attached, so withholding would cost visibility and buy nothing.
   is already inside your trust boundary, so restrict who can read the folder.
 - **The built-in admin password is public.** By design — it is a recovery path,
   not a front door. Create a named admin account.
-- **Concurrent edits overwrite.** Two instructors editing one form last-write-
-  wins; there is no revision check yet.
+- **Concurrent edits are checked, not locked.** See below.
 - **No password self-service.** There is no email out of this app, so a
   forgotten password is reset by an admin in person.
 

@@ -37,6 +37,9 @@ export function validateUsername(value) {
   if (!/^[a-z0-9._-]+$/.test(username)) {
     return 'Use letters, numbers, dots, dashes or underscores only.';
   }
+  // Receipts are stored as <username>.json alongside index files, which are the
+  // ones starting with an underscore. Reserving the prefix keeps them apart.
+  if (username.startsWith('_')) return 'Usernames cannot start with an underscore.';
   return null;
 }
 
@@ -133,38 +136,48 @@ export async function createAccount({ username, name, roles = [ROLES.student], a
     updatedAt: nowIso(),
   };
 
-  const accounts = await listAccounts();
-  await db.saveUsers([...accounts, account]);
+  // Expressed as a change, not a precomputed list: if another admin saves while
+  // this runs, the append is replayed against their result rather than wiping it.
+  await db.updateUsers((users) => {
+    if (users.some((u) => normalizeUsername(u.username) === account.username)) {
+      throw new Error(`The username "${account.username}" is already taken.`);
+    }
+    return [...users, account];
+  });
   return account;
 }
 
 export async function updateAccount(id, patch) {
-  const accounts = await listAccounts();
-  const existing = accounts.find((a) => a.id === id);
-  if (!existing) throw new Error('That account no longer exists.');
-
-  if (patch.username && normalizeUsername(patch.username) !== existing.username) {
+  if (patch.username) {
     const problem = validateUsername(patch.username);
     if (problem) throw new Error(problem);
-    if (await findByUsername(patch.username)) throw new Error('That username is already taken.');
   }
+  // Hashing is slow, so do it once outside the retry loop.
+  const hashed = patch.newPassword ? await hashPasscode(patch.newPassword) : null;
+  let result = null;
 
-  const next = {
-    ...existing,
-    ...patch,
-    username: patch.username ? normalizeUsername(patch.username) : existing.username,
-    updatedAt: nowIso(),
-  };
-  if (patch.newPassword) next.password = await hashPasscode(patch.newPassword);
-  delete next.newPassword;
+  await db.updateUsers((users) => {
+    const existing = users.find((a) => a.id === id);
+    if (!existing) throw new Error('That account no longer exists.');
 
-  await db.saveUsers(accounts.map((a) => (a.id === id ? next : a)));
-  return next;
+    const wanted = patch.username ? normalizeUsername(patch.username) : existing.username;
+    if (wanted !== existing.username
+        && users.some((a) => a.id !== id && normalizeUsername(a.username) === wanted)) {
+      throw new Error('That username is already taken.');
+    }
+
+    const next = { ...existing, ...patch, username: wanted, updatedAt: nowIso() };
+    if (hashed) next.password = hashed;
+    delete next.newPassword;
+    result = next;
+    return users.map((a) => (a.id === id ? next : a));
+  });
+
+  return result;
 }
 
 export async function deleteAccount(id) {
-  const accounts = await listAccounts();
-  await db.saveUsers(accounts.filter((a) => a.id !== id));
+  await db.updateUsers((users) => users.filter((a) => a.id !== id));
 }
 
 /** True once at least one admin exists — used to gate first-run bootstrap. */
