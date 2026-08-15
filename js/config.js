@@ -98,6 +98,7 @@ export const DB_LAYOUT = {
     requests: 'requests',
     responses: 'responses',
     receipts: 'receipts',
+    audit: 'audit',
     roster: 'roster',
     reports: 'reports',
     archive: 'archive',
@@ -146,6 +147,7 @@ export const FOLDER_TREE_PREVIEW = `TOP-Feedback/
 ├── requests/    feedback requests issued to students
 ├── responses/   submitted feedback, one folder per request
 ├── receipts/    who submitted (kept apart from what they said)
+├── audit/       who deleted or changed what, and when
 ├── reports/     exported reports (CSV / JSON)
 └── archive/     closed terms retained for the record`;
 
@@ -245,6 +247,18 @@ export const AS_CLASSES = [
   { code: 'FT', label: 'Field Training' },
   { code: 'CADRE', label: 'Cadre' },
 ];
+
+/**
+ * How a cadet's AS level advances at the end of an academic year.
+ * A level with no entry here is left alone — Field Training and cadre are not
+ * on the four-year ladder.
+ */
+export const AS_PROGRESSION = {
+  AS100: 'AS200',
+  AS200: 'AS300',
+  AS300: 'AS400',
+  AS400: null,      // null means "graduating" — deactivated, never deleted
+};
 
 export const REQUEST_STATUS = {
   draft: { label: 'Draft', tone: 'neutral' },

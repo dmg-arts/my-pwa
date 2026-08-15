@@ -25,6 +25,7 @@ import { navigate } from '../router.js';
 import { renderForm, formItems } from '../forms.js';
 import { renderAnalysis } from './analysis.js';
 import { renderLogin } from './admin.js';
+import { record, AUDIT } from '../audit.js';
 
 const TABS = [
   { id: 'requests', label: 'Feedback forms', iconName: 'send' },
@@ -117,7 +118,10 @@ export async function renderInstructor(root, { query }) {
  * ------------------------------------------------------------------ */
 
 async function tabRequests(host) {
-  const [requests, counts] = await Promise.all([db.listRequests(), db.responseCounts()]);
+  const [requests, counts, forms] = await Promise.all([
+    db.listRequests(), db.responseCounts(), db.listForms(),
+  ]);
+  const templates = forms.filter((f) => f.isTemplate);
   const state = { status: '', schoolYear: '', semester: '', asClass: '', search: '' };
   const list = el('div', {});
 
@@ -199,8 +203,56 @@ async function tabRequests(host) {
           class: 'input', type: 'search', placeholder: 'Feedback ID or name\u2026',
           oninput: (e) => { state.search = e.target.value; draw(); },
         })))),
-    list);
+    list,
+    templateLibrary(templates));
   draw();
+}
+
+/**
+ * Saved question sets, offered under "Start from" whenever anyone creates
+ * feedback. Keeping the wording identical between terms is the whole reason
+ * the results are comparable at all.
+ */
+function templateLibrary(templates) {
+  const section = el('section', { class: 'card stack', style: { marginTop: 'var(--sp-5)' } },
+    el('h3', { class: 'section-title' }, `Question templates (${templates.length})`),
+    el('p', { class: 'muted' },
+      'Reusable sets of questions. Save one from the form creator, then start from it next term '
+      + 'so the wording does not drift.'));
+
+  if (!templates.length) {
+    mount(section, el('p', { class: 'field__hint' },
+      'None yet. Build a form, then use "Save as template" in the creator.'));
+    return section;
+  }
+
+  const list = el('div', { class: 'list' });
+  for (const template of templates) {
+    const count = (template.sections || []).reduce((n, sec) => n + (sec.items || []).length, 0);
+    mount(list, el('div', { class: 'list__item' },
+      el('span', { class: 'list__main' },
+        el('span', { class: 'list__title', style: { display: 'block' } }, template.name),
+        el('span', { class: 'list__meta', style: { display: 'block' } },
+          `${pluralize(count, 'question')} \u00b7 saved ${fmtDate(template.updatedAt || template.createdAt)}`)),
+      el('span', { class: 'list__aside' },
+        el('button', {
+          type: 'button', class: 'btn btn--sm',
+          onclick: () => navigate('/instructor/create/new'),
+        }, icon('plus'), 'Use'),
+        el('button', {
+          type: 'button', class: 'btn btn--sm btn--ghost', title: 'Delete template',
+          onclick: async () => {
+            if (!(await confirmDialog('Delete this template?',
+              `"${template.name}" will no longer be offered. Feedback already issued from it is `
+              + 'unaffected.', { confirmLabel: 'Delete', danger: true }))) return;
+            await db.deleteForm(template.id);
+            toast('Template deleted.', 'ok');
+            navigate('/instructor?tab=requests');
+          },
+        }, icon('trash')))));
+  }
+  mount(section, list);
+  return section;
 }
 
 /* ------------------------------------------------------------------ *
@@ -311,6 +363,10 @@ async function tabDatabase(host) {
     if (!mode) return;
     try {
       const counts = await db.importBundle(JSON.parse(await readFileAsText(file)), { mode });
+      await record(AUDIT.dataImported, {
+        summary: `Imported a backup (${mode}): ${counts.requests} forms, ${counts.responses} responses`,
+        detail: counts,
+      });
       toast(`Imported ${counts.requests} requests, ${counts.responses} responses, ${counts.forms} forms.`, 'ok', 6000);
       navigate('/instructor?tab=database');
     } catch (err) {
@@ -326,6 +382,10 @@ async function tabDatabase(host) {
     const typed = await promptText('Type DELETE to confirm');
     if (typed !== 'DELETE') return toast('Cancelled — nothing was deleted.', 'warn');
     await db.wipeData();
+    await record(AUDIT.dataWiped, {
+      summary: `Deleted every record (${stats.requests} forms, ${stats.responses} responses)`,
+      reason: 'Confirmed by typing DELETE',
+    });
     toast('All records deleted.', 'ok');
     return navigate('/instructor?tab=database');
   }

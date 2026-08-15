@@ -12,9 +12,13 @@
 
 import {
   el, icon, field, select, notice, toast, spinner, badge, modal, confirmDialog,
-  emptyState, download, toCsv, pickFile, readFileAsText, pluralize, fmtDate,
+  emptyState, download, toCsv, pickFile, readFileAsText, pluralize, fmtDate, fmtDateTime,
   mount, remount } from '../util.js';
-import { AS_CLASSES, ROLES, ROLE_LABELS, BUILTIN_ADMIN, isDevMode } from '../config.js';
+import {
+  AS_CLASSES, ROLES, ROLE_LABELS, BUILTIN_ADMIN, AS_PROGRESSION,
+  currentSchoolYear, isDevMode,
+} from '../config.js';
+import { record, recent, AUDIT, AUDIT_LABELS } from '../audit.js';
 import {
   listAccounts, createAccount, updateAccount, deleteAccount, hasAdmin,
   signIn, signOut, currentUser, hasRole, validateUsername, validatePassword,
@@ -484,6 +488,8 @@ async function renderConsole(root) {
 
       table),
 
+    rolloverCard(reload),
+    await auditCard(),
     await schemaCard(),
 
     el('section', { class: 'card stack', style: { marginTop: 'var(--sp-5)' } },
@@ -498,6 +504,10 @@ async function renderConsole(root) {
             const busy = toast('Rebuilding indexes…', 'info', 30000);
             try {
               const result = await db.rebuildIndexes();
+              await record(AUDIT.indexesRebuilt, {
+                summary: `Rebuilt indexes for ${pluralize(result.requests, 'form')}`,
+                detail: { responses: result.responses },
+              });
               busy.remove();
               toast(`Rebuilt ${pluralize(result.requests, 'request')} · ${pluralize(result.responses, 'response')}.`, 'ok', 6000);
             } catch (err) {
@@ -511,6 +521,191 @@ async function renderConsole(root) {
   );
 
   paint();
+}
+
+/**
+ * Annual rollover.
+ *
+ * Every August a detachment's AS100s become AS200s and the AS400s commission
+ * out. Done by hand across 150 accounts it is a morning's work that somebody
+ * eventually skips, and once the levels are stale every class filter and every
+ * cohort comparison is quietly wrong for a year.
+ *
+ * Graduating cadets are *deactivated, never deleted* — their submitted feedback
+ * stays part of the record, and the account can be reactivated if someone
+ * returns.
+ */
+function rolloverCard(reload) {
+  const host = el('div', {});
+
+  const preview = async () => {
+    const accounts = await listAccounts();
+    const students = accounts.filter((a) => a.roles?.includes(ROLES.student) && a.active !== false);
+    const moves = new Map();
+    for (const student of students) {
+      const from = student.asClass || '—';
+      if (!(from in AS_PROGRESSION)) continue;   // Field Training, cadre: untouched
+      const to = AS_PROGRESSION[from];
+      const key = `${from}->${to ?? 'graduating'}`;
+      if (!moves.has(key)) moves.set(key, { from, to, people: [] });
+      moves.get(key).people.push(student);
+    }
+    const untouched = students.filter((s) => !((s.asClass || '') in AS_PROGRESSION));
+    return { moves: [...moves.values()].sort((a, b) => a.from.localeCompare(b.from)), untouched, students };
+  };
+
+  const draw = async () => {
+    const { moves, untouched, students } = await preview();
+    remount(host);
+
+    if (!students.length) {
+      mount(host, el('p', { class: 'muted' }, 'No active student accounts to advance.'));
+      return;
+    }
+    if (!moves.length) {
+      mount(host, el('p', { class: 'muted' },
+        'No accounts sit on the AS100–AS400 ladder, so there is nothing to advance.'));
+      return;
+    }
+
+    const deactivateBox = el('input', { type: 'checkbox', checked: true });
+    const body = el('tbody');
+    for (const move of moves) {
+      mount(body, el('tr', {},
+        el('td', {}, move.from),
+        el('td', {}, move.to || el('span', {}, 'Graduating')),
+        el('td', { class: 'num' }, String(move.people.length))));
+    }
+
+    mount(host,
+      el('div', { class: 'table-wrap' },
+        el('table', { class: 'table' },
+          el('thead', {}, el('tr', {},
+            el('th', {}, 'Currently'), el('th', {}, 'Becomes'), el('th', { class: 'num' }, 'Cadets'))),
+          body)),
+      untouched.length
+        ? el('p', { class: 'field__hint' },
+          `${pluralize(untouched.length, 'account')} left unchanged — not on the AS100–AS400 ladder.`)
+        : null,
+      el('label', { class: 'check' }, deactivateBox,
+        el('span', {},
+          el('span', { class: 'check__text' }, 'Deactivate graduating cadets'),
+          el('span', { class: 'check__desc', style: { display: 'block' } },
+            'Their feedback is kept and the account can be reactivated. Never deleted.'))),
+      el('div', { class: 'row row--wrap' },
+        el('button', {
+          type: 'button', class: 'btn btn--primary',
+          onclick: () => apply(moves, deactivateBox.checked),
+        }, icon('refresh'), 'Advance the academic year')));
+  };
+
+  const apply = async (moves, deactivate) => {
+    const total = moves.reduce((n, m) => n + m.people.length, 0);
+    const graduating = moves.filter((m) => m.to === null).reduce((n, m) => n + m.people.length, 0);
+
+    const confirmed = await confirmDialog('Advance the academic year?',
+      `${pluralize(total, 'cadet')} will move up a level`
+      + (graduating ? `, and ${pluralize(graduating, 'graduating cadet')} will be `
+        + `${deactivate ? 'deactivated' : 'left active at AS400'}.` : '.')
+      + ' This is recorded in the audit trail. There is no undo, though levels can be edited back by hand.',
+      { confirmLabel: 'Advance', danger: true });
+    if (!confirmed) return;
+
+    const busy = toast('Advancing…', 'info', 60000);
+    let moved = 0;
+    let retired = 0;
+    try {
+      for (const move of moves) {
+        for (const student of move.people) {
+          if (move.to === null) {
+            if (deactivate) { await updateAccount(student.id, { active: false }); retired++; }
+          } else {
+            await updateAccount(student.id, { asClass: move.to });
+            moved++;
+          }
+        }
+      }
+      await record(AUDIT.rolloverApplied, {
+        summary: `Advanced ${pluralize(moved, 'cadet')}`
+          + (retired ? `, deactivated ${pluralize(retired, 'graduating cadet')}` : ''),
+        detail: { schoolYear: currentSchoolYear(), moved, retired },
+      });
+      busy.remove();
+      toast(`Advanced ${pluralize(moved, 'cadet')}${retired ? `, ${retired} deactivated` : ''}.`,
+        'ok', 6000);
+      reload();
+      draw();
+    } catch (err) {
+      busy.remove();
+      toast(`Rollover stopped: ${err.message}`, 'danger', 9000);
+      draw();
+    }
+  };
+
+  const card = el('section', { class: 'card stack', style: { marginTop: 'var(--sp-5)' } },
+    el('h2', { class: 'section-title' }, 'Academic year rollover'),
+    el('p', { class: 'muted' },
+      `Moves every cadet up one AS level for ${currentSchoolYear()}. Run it once, at the start of `
+      + 'the year. Individual accounts can still be corrected by hand afterwards.'),
+    host);
+  draw();
+  return card;
+}
+
+/**
+ * Recent activity. Read-only by construction — there is no delete in the audit
+ * module, so nothing in this app removes an entry.
+ */
+async function auditCard() {
+  const host = el('div', {}, spinner('Loading activity…'));
+  const card = el('section', { class: 'card stack', style: { marginTop: 'var(--sp-5)' } },
+    el('div', { class: 'row row--between row--wrap' },
+      el('h2', { class: 'section-title', style: { margin: '0' } }, 'Activity log'),
+      el('button', {
+        type: 'button', class: 'btn btn--sm',
+        onclick: async () => {
+          const rows = await recent({ months: 24, limit: 5000 });
+          download(`activity-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(rows, [
+            { key: 'at', label: 'When' },
+            { key: 'who', label: 'Who', get: (r) => r.actor?.username || '' },
+            { key: 'action', label: 'Action', get: (r) => AUDIT_LABELS[r.action] || r.action },
+            { key: 'summary', label: 'Detail' },
+            { key: 'target', label: 'Target' },
+            { key: 'reason', label: 'Reason' },
+          ]), 'text/csv');
+        },
+      }, icon('download'), 'Export')),
+    el('p', { class: 'muted' },
+      'Every deletion, account change and password reset, with who did it. Nothing in this app '
+      + 'removes an entry.'),
+    host);
+
+  recent({ months: 6, limit: 60 }).then((rows) => {
+    if (!rows.length) {
+      remount(host, el('p', { class: 'muted' }, 'No recorded activity yet.'));
+      return;
+    }
+    const body = el('tbody');
+    for (const row of rows) {
+      mount(body, el('tr', {},
+        el('td', { class: 'faint nowrap' }, fmtDateTime(row.at)),
+        el('td', { class: 'mono' }, row.actor?.username || '—'),
+        el('td', {}, row.severe
+          ? badge(AUDIT_LABELS[row.action] || row.action, 'danger', 'alert')
+          : (AUDIT_LABELS[row.action] || row.action)),
+        el('td', {}, row.summary,
+          row.reason ? el('div', { class: 'field__hint' }, `Reason: ${row.reason}`) : null)));
+    }
+    remount(host, el('div', { class: 'table-wrap', style: { maxHeight: '26rem', overflowY: 'auto' } },
+      el('table', { class: 'table' },
+        el('thead', {}, el('tr', {},
+          el('th', {}, 'When'), el('th', {}, 'Who'), el('th', {}, 'Action'), el('th', {}, 'Detail'))),
+        body)));
+  }).catch((err) => {
+    remount(host, notice('danger', 'Could not read the activity log', el('p', {}, err.message)));
+  });
+
+  return card;
 }
 
 /**

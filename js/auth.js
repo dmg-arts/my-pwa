@@ -15,6 +15,7 @@
 import { ROLES, LS, BUILTIN_ADMIN, isDevMode } from './config.js';
 import { hashPasscode, verifyPasscode, makeId, nowIso } from './util.js';
 import { db } from './storage/index.js';
+import { record, AUDIT } from './audit.js';
 
 /* ------------------------------------------------------------------ *
  * usernames
@@ -144,6 +145,10 @@ export async function createAccount({ username, name, roles = [ROLES.student], a
     }
     return [...users, account];
   });
+  await record(AUDIT.accountCreated, {
+    summary: `Created ${account.username} (${account.roles.join(', ')})`,
+    target: account.username,
+  });
   return account;
 }
 
@@ -173,11 +178,29 @@ export async function updateAccount(id, patch) {
     return users.map((a) => (a.id === id ? next : a));
   });
 
+  await record(hashed ? AUDIT.passwordReset : AUDIT.accountUpdated, {
+    summary: hashed
+      ? `Reset the password for ${result.username}`
+      : `Updated ${result.username}`,
+    target: result.username,
+    detail: hashed ? null : { fields: Object.keys(patch) },
+  });
   return result;
 }
 
 export async function deleteAccount(id) {
-  await db.updateUsers((users) => users.filter((a) => a.id !== id));
+  let removed = null;
+  await db.updateUsers((users) => {
+    removed = users.find((a) => a.id === id) || null;
+    return users.filter((a) => a.id !== id);
+  });
+  if (removed) {
+    await record(AUDIT.accountDeleted, {
+      summary: `Deleted ${removed.username} (${removed.name})`,
+      target: removed.username,
+      detail: { roles: removed.roles, asClass: removed.asClass },
+    });
+  }
 }
 
 /** True once at least one admin exists — used to gate first-run bootstrap. */

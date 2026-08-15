@@ -404,6 +404,11 @@ export const db = {
     return readDoc(path);
   },
 
+  /** Directory entries under a path, for callers that manage their own files. */
+  async listRawFolder(folderPath) {
+    return listFolder(folderPath);
+  },
+
   async writeRaw(path, data) {
     const result = await writeDoc(path, data);
     invalidate(path);

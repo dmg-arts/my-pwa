@@ -24,12 +24,25 @@ import {
 import { db } from '../storage/index.js';
 import { listStudents } from '../auth.js';
 import { requireInstructor } from './instructor.js';
+import { record, AUDIT } from '../audit.js';
 import { navigate } from '../router.js';
 import { renderForm } from '../forms.js';
 import { modal } from '../util.js';
 
 /** Working copy, so a half-built form survives a preview without saving. */
 let draft = null;
+
+/** Templates and previously issued forms, offered under "Start from". */
+let reusable = [];
+
+async function loadReusable() {
+  const forms = await db.listForms();
+  return forms.sort((a, b) => {
+    // Templates first, then the most recently touched forms.
+    if (Boolean(a.isTemplate) !== Boolean(b.isTemplate)) return a.isTemplate ? -1 : 1;
+    return String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || ''));
+  });
+}
 
 export function resetFormDraft() {
   draft = null;
@@ -50,6 +63,7 @@ async function drawCreator(root, params) {
 
   try {
     students = await listStudents();
+    reusable = await loadReusable();
     if (editingId) {
       existingRequest = await db.getRequest(editingId);
       if (!existingRequest) throw new Error('That feedback request no longer exists.');
@@ -132,11 +146,57 @@ async function drawCreator(root, params) {
           draft.questions.length >= FORM_RULES.minQuestions ? 'ok' : 'warn',
           draft.questions.length >= FORM_RULES.minQuestions ? 'checkCircle' : 'alert')),
 
+      editingId ? null : startFromCard(),
       aboutCard(),
       audienceCard(),
       questionsCard(),
       actionsRow(),
     );
+  }
+
+  /**
+   * Reuse, which is what makes the standardized form actually standard.
+   *
+   * Retyping the questions each term guarantees they drift — one instructor
+   * writes "The brief was clear", the next writes "Briefings were clear", and
+   * the term-over-term comparison silently stops meaning anything. Starting
+   * from a saved template or a previous form keeps the wording identical.
+   */
+  function startFromCard() {
+    const templates = reusable.filter((f) => f.isTemplate);
+    const recentForms = reusable.filter((f) => !f.isTemplate).slice(0, 12);
+    if (!templates.length && !recentForms.length) return null;
+
+    const options = [{ value: '', label: 'Start from blank questions' }];
+    for (const t of templates) options.push({ value: t.id, label: `Template — ${t.name}` });
+    for (const f of recentForms) options.push({ value: f.id, label: `Previous — ${f.name}` });
+
+    const picker = select(options, {
+      onchange: async (e) => {
+        if (!e.target.value) return;
+        const source = reusable.find((f) => f.id === e.target.value);
+        if (!source) return;
+        if (draft.questions.some((q) => q.label.trim())
+            && !(await confirmDialog('Replace the questions you have written?',
+              `The questions below will be replaced with the ${source.isTemplate ? 'template' : 'form'} "${source.name}".`,
+              { confirmLabel: 'Replace' }))) {
+          e.target.value = '';
+          return;
+        }
+        // Fresh ids: copying a question, not linking to the original.
+        draft.questions = flattenQuestions(source).map((q) => ({ ...q, id: makeId('q') }));
+        if (!draft.eventName.trim() && !source.isTemplate) draft.eventName = source.name;
+        toast(`Loaded ${pluralize(draft.questions.length, 'question')} from "${source.name}".`, 'ok');
+        draw();
+      },
+    });
+
+    return el('section', { class: 'card stack' },
+      el('h2', { class: 'section-title' }, 'Start from'),
+      field('Reuse an existing set of questions', picker, {
+        hint: 'Asking the same questions every term is what makes the results comparable. '
+          + 'The copy is independent — editing it will not touch the original.',
+      }));
   }
 
   function aboutCard() {
@@ -427,16 +487,62 @@ async function drawCreator(root, params) {
             'Its responses are deleted with it. This cannot be undone.',
             { confirmLabel: 'Delete', danger: true }))) return;
           await db.deleteRequest(editingId);
+          await record(AUDIT.requestDeleted, {
+            summary: `Deleted "${draft.eventName || editingId}" and its responses`,
+            target: draft.feedbackId || editingId,
+          });
           resetFormDraft();
           toast('Deleted.', 'ok');
           navigate('/instructor?tab=requests');
         },
       }, icon('trash'), 'Delete'),
       el('span', { class: 'spacer' }),
+      el('button', { type: 'button', class: 'btn', onclick: saveAsTemplate },
+        icon('clipboard'), 'Save as template'),
       el('button', { type: 'button', class: 'btn', onclick: preview }, icon('eye'), 'Preview'),
       el('button', { type: 'button', class: 'btn', onclick: () => save('draft') }, 'Save draft'),
       el('button', { type: 'button', class: 'btn btn--primary', onclick: () => save('open') },
         icon('send'), 'Issue to students'));
+  }
+
+  /** Stores just the questions, for reuse next term. */
+  async function saveAsTemplate() {
+    if (draft.questions.length < FORM_RULES.minQuestions) {
+      return toast(`A template needs at least ${FORM_RULES.minQuestions} questions.`, 'warn', 5000);
+    }
+    const blank = draft.questions.findIndex((q) => !q.label.trim());
+    if (blank >= 0) return toast(`Question ${blank + 1} has no text.`, 'warn', 5000);
+
+    const nameInput = el('input', {
+      class: 'input', type: 'text', value: draft.eventName.trim(),
+      placeholder: 'e.g. Standard AS200 block feedback',
+    });
+    const go = await modal({
+      title: 'Save as a reusable template',
+      body: el('div', {},
+        field('Template name', nameInput, {
+          required: true,
+          hint: 'Name it for the kind of event, not this one — it will be offered every time '
+            + 'someone creates feedback.',
+        })),
+      actions: [{ label: 'Cancel', value: null }, { label: 'Save template', value: 'go', variant: 'primary' }],
+    });
+    if (go !== 'go' || !nameInput.value.trim()) return undefined;
+
+    try {
+      const record = toFormRecord();
+      await db.saveForm({
+        ...record,
+        id: makeId('form'),
+        name: nameInput.value.trim(),
+        isTemplate: true,
+      });
+      reusable = await loadReusable();
+      toast('Template saved. It will appear under "Start from".', 'ok', 5000);
+      return draw();
+    } catch (err) {
+      return toast(`Could not save the template: ${err.message}`, 'danger', 8000);
+    }
   }
 
   function preview() {

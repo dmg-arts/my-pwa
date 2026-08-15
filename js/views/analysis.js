@@ -14,11 +14,13 @@ import {
   download, toCsv, fmtDate, fmtDateTime, pluralize, mean, median, stdev, round,
   modal, confirmDialog, fromDateInput, groupBy,
   mount, remount } from '../util.js';
-import { AS_CLASSES, SEMESTERS, PRIVACY, schoolYears, nearestAnchor } from '../config.js';
+import { AS_CLASSES, SEMESTERS, PRIVACY, ROLES, schoolYears, nearestAnchor } from '../config.js';
 import { db } from '../storage/index.js';
 import { listStudents } from '../auth.js';
 import { renderForm, formItems } from '../forms.js';
 import { navigate } from '../router.js';
+import { hasRole } from '../auth.js';
+import { record, AUDIT } from '../audit.js';
 import {
   describe, histogram, consensus, describeConsensus, findClusters,
   findOutliers, findRespondentOutliers, compareSegments, MIN_FOR_OUTLIERS,
@@ -887,9 +889,88 @@ export async function renderAnalysis(host) {
       ],
     });
     if (choice !== 'delete') return;
+    await deleteResponse(response, request);
+  }
+
+  /**
+   * Deleting a response is the one action that can destroy a safety
+   * disclosure, so a flagged response is treated differently: an instructor
+   * cannot remove it at all, and an admin must give a reason that is recorded.
+   *
+   * This is a client-side app, so someone determined could bypass the screen
+   * through the console. What this guarantees is that deleting a disclosure
+   * takes a deliberate act rather than an idle click, and that the ordinary
+   * path always leaves a record.
+   */
+  async function deleteResponse(response, request) {
+    const flagged = screenAll(
+      textEntries([response]).map((e) => ({ ...e })),
+    );
+
+    if (flagged.flaggedEntries) {
+      const categories = flagged.categories.map((c) => c.label).join(', ');
+
+      if (!hasRole(ROLES.admin)) {
+        await modal({
+          title: 'This response cannot be deleted',
+          body: el('div', { class: 'stack' },
+            notice('danger', 'It contains language flagged by the safety screen',
+              el('p', {}, `Flagged for: ${categories}.`),
+              el('p', {}, 'Feedback that may report hazing, harassment, discrimination or a '
+                + 'cadet in crisis cannot be removed from the Instructor Portal. If it needs to '
+                + 'go, a database administrator can remove it and the deletion will be recorded '
+                + 'against their name.')),
+            el('p', { class: 'field__hint' },
+              'If you are the subject of this feedback, refer it rather than handling it yourself.')),
+          actions: [{ label: 'Close', value: true, autofocus: true }],
+        });
+        return;
+      }
+
+      const reason = el('textarea', {
+        class: 'textarea', rows: '3',
+        placeholder: 'e.g. Duplicate submission, referred to the commander on 14 Aug.',
+      });
+      const proceed = await modal({
+        title: 'Delete flagged feedback',
+        body: el('div', { class: 'stack' },
+          notice('danger', 'This response was flagged by the safety screen',
+            el('p', {}, `Flagged for: ${categories}. Deleting it destroys a possible report.`)),
+          field('Why is it being deleted?', reason, {
+            required: true,
+            hint: 'Recorded in the audit trail against your account, permanently.',
+          })),
+        actions: [
+          { label: 'Cancel', value: null },
+          { label: 'Delete and record', value: 'go', variant: 'danger' },
+        ],
+      });
+      if (proceed !== 'go') return;
+      if (!reason.value.trim()) {
+        toast('A reason is required to delete flagged feedback.', 'warn', 6000);
+        return;
+      }
+
+      await db.deleteResponse(response.requestId, response.id);
+      await record(AUDIT.responseDeleted, {
+        summary: `Deleted FLAGGED feedback from "${request?.title || response.requestId}"`,
+        target: request?.feedbackId || response.requestId,
+        reason: reason.value.trim(),
+        detail: { categories: flagged.categories.map((c) => c.categoryId), responseId: response.id },
+      });
+      toast('Deleted, and recorded in the audit trail.', 'ok', 6000);
+      navigate('/instructor?tab=analysis');
+      return;
+    }
+
     if (!(await confirmDialog('Delete this response?', 'This cannot be undone.',
       { confirmLabel: 'Delete', danger: true }))) return;
     await db.deleteResponse(response.requestId, response.id);
+    await record(AUDIT.responseDeleted, {
+      summary: `Deleted a response to "${request?.title || response.requestId}"`,
+      target: request?.feedbackId || response.requestId,
+      detail: { responseId: response.id },
+    });
     toast('Response deleted.', 'ok');
     navigate('/instructor?tab=analysis');
   }

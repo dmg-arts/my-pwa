@@ -33,6 +33,25 @@ documents cannot quietly drift from what the app does.
 
 ---
 
+## Tests
+
+```bash
+node tests/unit/analysis.test.mjs   # ~1s, no browser
+npm install && npm test             # unit + full browser suite
+```
+
+`package.json` exists **only** to pin test tooling and name the commands — the
+app itself still has no dependencies and no build step, and nothing in `js/`
+imports from `node_modules`. See `tests/README.md` for what is covered and why
+those particular things.
+
+The suite is weighted toward guarantees that fail *silently*: anonymity,
+one-submission-per-cadet, the disclosure threshold, concurrent writes, schema
+migrations and access control. A broken button announces itself; a lost receipt
+does not.
+
+---
+
 ## Running it
 
 There is no build step and no dependencies. Any static HTTPS host will serve it.
@@ -258,6 +277,37 @@ queue, where a replayed write is stale by construction.
 
 ---
 
+## Reuse, rollover and the audit trail
+
+**Question templates.** Save a set of questions from the form creator, then
+start any new form from it. Asking the *same* questions each term is the only
+thing that makes results comparable across events and years — retyping them
+guarantees drift, and drift is invisible until a comparison quietly stops
+meaning anything. Copies are independent; editing one never touches the
+original.
+
+**Academic year rollover.** Database Administration → *Academic year rollover*
+advances every cadet one AS level and deactivates the graduating year in one
+step, after showing you exactly who moves where. Graduating cadets are
+**deactivated, never deleted** — their feedback stays part of the record and the
+account can be reactivated. Done by hand across 150 accounts this is a morning's
+work that eventually gets skipped, and once the levels are stale every class
+filter is wrong for a year.
+
+**Audit trail.** `audit/` records who deleted, changed or reset what, one file
+per entry. Nothing in the app removes an entry — the module exposes no delete,
+and a test asserts it never gains one.
+
+**Flagged feedback cannot be casually deleted.** If a response matches the
+safety screen, an instructor cannot remove it at all; a database administrator
+can, and must give a reason that is recorded against their name. This is a
+client-side app, so someone determined could bypass the UI through the browser
+console — what it guarantees is that destroying a disclosure takes a deliberate
+act rather than an idle click, and that the ordinary path always leaves a
+record.
+
+---
+
 ## Analysis
 
 Two halves, both running entirely on the device.
@@ -411,6 +461,19 @@ Not yet built:
   not yet assemble.
 - **Per-instructor baselines.** Comparing a score against that instructor's own
   history, rather than against the flight, needs the trend work first.
+
+### Deliberately deferred: closing the loop
+
+Nothing currently tells a cadet that their feedback led to a change. Response
+rates in a second term depend almost entirely on whether cadets believe the
+first term mattered, so this is the highest-value thing the app does not do.
+
+It is **deferred by decision, not oversight**: this capability belongs to a
+separate learning system being developed in parallel, which TOP-Feedback is
+intended to complement rather than duplicate. The integration is scheduled after
+the technical and functional work here is complete. Anyone picking this up
+should not build a "you said, we did" feature into this app without checking
+that decision first.
 
 ### The rating scale
 
