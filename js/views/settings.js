@@ -1,6 +1,6 @@
 /**
  * Settings — database location, appearance, accessibility, and app info.
- * Reachable without the cadre passcode, since display preferences belong to
+ * Reachable without signing in, since display preferences belong to
  * whoever is holding the device.
  */
 
@@ -77,8 +77,9 @@ async function accessSection() {
           'Device-local. It does not change anyone else\'s access, and it never changes your data.'))),
 
     el('p', { class: 'field__hint' },
-      'Accounts are managed in Database Administration. Passwords are stored as PBKDF2 hashes in '
-      + 'your own Drive folder — they gate the screens, they do not encrypt the records.'));
+      'The roster is managed in Database Administration. Everyone signs in with their Google '
+      + 'account, so this app stores no passwords — access is decided by which emails are on the '
+      + 'roster, and by who your detachment has shared the Drive folder with.'));
 }
 
 /* ------------------------------------------------------------------ *

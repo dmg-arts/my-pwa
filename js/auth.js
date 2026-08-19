@@ -1,19 +1,26 @@
 /**
  * Accounts and sessions.
  *
- * Every account for an organization lives in `users/users.json` inside that
- * organization's own Drive folder — so each detachment owns its user base
- * exactly as it owns its feedback data.
+ * Identity is the person's Google account. This app issues no passwords and
+ * stores no credentials — `users/users.json` is a **roster**: verified email,
+ * roles, AS level, section. Nothing in it is secret.
  *
- * WHAT THIS IS NOT: with no server, the password hashes sit in a file that
- * anyone with folder access can read. PBKDF2 makes a stolen hash expensive to
- * crack, but the real access boundary is still Google Drive's own sharing.
- * Treat these credentials as "who is at the keyboard", not as secrets that
- * protect the data from someone who already has the folder.
+ * That is a deliberate reversal of the earlier design, and a better one for a
+ * regional detachment. Cadets travel in from several schools, so there is no
+ * single institutional domain to key on, but every one of them already has a
+ * Google account — it is how the det mails them. The roster of allowed emails
+ * therefore does the job a domain restriction would do at a single-school unit.
+ *
+ * It also deletes the two worst jobs in the old scheme: distributing a
+ * generated password to every cadet, and resetting the ones they forget.
+ *
+ * See js/google-identity.js for what the client-side token check is and is not
+ * worth. Short version: Drive sharing is the boundary that holds.
  */
 
-import { ROLES, LS, BUILTIN_ADMIN, isDevMode } from './config.js';
-import { hashPasscode, verifyPasscode, makeId, nowIso } from './util.js';
+import { ROLES, LS, isDevMode } from './config.js';
+import { makeId, nowIso } from './util.js';
+import { forgetGoogleSession } from './google-identity.js';
 import { db } from './storage/index.js';
 import { record, AUDIT } from './audit.js';
 
@@ -44,18 +51,22 @@ export function validateUsername(value) {
   return null;
 }
 
+/** Emails are matched case-insensitively and stored lowercased. */
+export function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
 /**
- * Password rules. Students get a lower floor deliberately: a cadet types this
- * on a phone before every submission, and an 8-character requirement pushes
- * them straight to writing it on the inside of a notebook.
+ * Checks the shape of an email. Deliberately permissive — a regional
+ * detachment's cadets arrive with school addresses, Gmail addresses and
+ * everything in between, and rejecting an unusual but real address is worse
+ * than accepting a typo an admin can see and fix.
  */
-export function validatePassword(password, roles = [ROLES.student]) {
-  const value = String(password || '');
-  const privileged = roles.includes(ROLES.instructor) || roles.includes(ROLES.admin);
-  const min = privileged ? 8 : 6;
-  if (value.length < min) {
-    return `Use at least ${min} characters${privileged ? ' for an instructor or admin account' : ''}.`;
-  }
+export function validateEmail(value) {
+  const email = normalizeEmail(value);
+  if (!email) return 'Enter the Google account email.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'That does not look like an email address.';
+  if (email.length > 254) return 'That email address is too long.';
   return null;
 }
 
@@ -81,14 +92,14 @@ export function suggestUsername(name, taken = []) {
 /**
  * @typedef {object} Account
  * @property {string} id
- * @property {string} username     unique, lowercased
+ * @property {string} email        the Google account they sign in with; the key
+ * @property {string} username     stable internal handle; receipts are filed under it
  * @property {string} name         display name
  * @property {string[]} roles      any of student | instructor | admin
  * @property {string} asClass      AS100…AS400, FT, CADRE
  * @property {string} section
- * @property {string} email
  * @property {boolean} active
- * @property {object|null} password  PBKDF2 record; null for students
+ * @property {boolean} [needsEmail] set by the v4 migration on records with no email
  */
 
 export async function listAccounts() {
@@ -102,37 +113,55 @@ export async function findByUsername(username) {
   return (await listAccounts()).find((a) => normalizeUsername(a.username) === target) || null;
 }
 
+/** The identity lookup: a verified Google address against the roster. */
+export async function findByEmail(email) {
+  const target = normalizeEmail(email);
+  if (!target) return null;
+  return (await listAccounts()).find((a) => normalizeEmail(a.email) === target) || null;
+}
+
 export async function listStudents() {
   return (await listAccounts())
     .filter((a) => a.roles?.includes(ROLES.student) && a.active !== false)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Creates an account. Rejects duplicate usernames case-insensitively. */
-export async function createAccount({ username, name, roles = [ROLES.student], asClass = '', section = '', email = '', password = null }) {
-  const problem = validateUsername(username);
-  if (problem) throw new Error(problem);
-  if (await findByUsername(username)) {
-    throw new Error(`The username "${normalizeUsername(username)}" is already taken.`);
-  }
+/**
+ * Adds someone to the roster.
+ *
+ * The email is the identity — it is what a Google sign-in is matched against.
+ * The username is kept as a stable internal handle: receipts are stored as
+ * `receipts/<requestId>/<username>.json`, and keying those on an address that
+ * can change would orphan a cadet's submission history the first time they move
+ * schools.
+ */
+export async function createAccount({ email, name, username = '', roles = [ROLES.student], asClass = '', section = '' }) {
+  const emailProblem = validateEmail(email);
+  if (emailProblem) throw new Error(emailProblem);
   if (!String(name || '').trim()) throw new Error('Enter a name.');
 
-  // Every account signs in now, students included — that is what makes a
-  // submission receipt trustworthy rather than merely a typed claim.
-  if (!password) throw new Error('Every account needs a password.');
-  const problemPw = validatePassword(password, roles);
-  if (problemPw) throw new Error(problemPw);
+  const address = normalizeEmail(email);
+  if (await findByEmail(address)) {
+    throw new Error(`${address} is already on the roster.`);
+  }
+
+  const existing = await listAccounts();
+  const handle = normalizeUsername(username) || suggestUsername(name, existing.map((a) => a.username));
+  const handleProblem = validateUsername(handle);
+  if (handleProblem) throw new Error(handleProblem);
+  if (existing.some((a) => normalizeUsername(a.username) === handle)) {
+    throw new Error(`The handle "${handle}" is already in use.`);
+  }
 
   const account = {
     id: makeId('usr'),
-    username: normalizeUsername(username),
+    email: address,
+    username: handle,
     name: String(name).trim(),
     roles: [...new Set(roles)],
     asClass,
     section,
-    email,
     active: true,
-    password: password ? await hashPasscode(password) : null,
     createdAt: nowIso(),
     updatedAt: nowIso(),
   };
@@ -140,50 +169,64 @@ export async function createAccount({ username, name, roles = [ROLES.student], a
   // Expressed as a change, not a precomputed list: if another admin saves while
   // this runs, the append is replayed against their result rather than wiping it.
   await db.updateUsers((users) => {
-    if (users.some((u) => normalizeUsername(u.username) === account.username)) {
-      throw new Error(`The username "${account.username}" is already taken.`);
+    if (users.some((u) => normalizeEmail(u.email) === account.email)) {
+      throw new Error(`${account.email} is already on the roster.`);
     }
     return [...users, account];
   });
   await record(AUDIT.accountCreated, {
-    summary: `Created ${account.username} (${account.roles.join(', ')})`,
-    target: account.username,
+    summary: `Added ${account.email} (${account.roles.join(', ')})`,
+    target: account.email,
   });
   return account;
 }
 
 export async function updateAccount(id, patch) {
+  if (patch.email) {
+    const problem = validateEmail(patch.email);
+    if (problem) throw new Error(problem);
+  }
   if (patch.username) {
     const problem = validateUsername(patch.username);
     if (problem) throw new Error(problem);
   }
-  // Hashing is slow, so do it once outside the retry loop.
-  const hashed = patch.newPassword ? await hashPasscode(patch.newPassword) : null;
   let result = null;
+  let emailChanged = false;
 
   await db.updateUsers((users) => {
     const existing = users.find((a) => a.id === id);
     if (!existing) throw new Error('That account no longer exists.');
 
-    const wanted = patch.username ? normalizeUsername(patch.username) : existing.username;
-    if (wanted !== existing.username
-        && users.some((a) => a.id !== id && normalizeUsername(a.username) === wanted)) {
-      throw new Error('That username is already taken.');
+    const wantedEmail = patch.email ? normalizeEmail(patch.email) : normalizeEmail(existing.email);
+    if (wantedEmail !== normalizeEmail(existing.email)
+        && users.some((a) => a.id !== id && normalizeEmail(a.email) === wantedEmail)) {
+      throw new Error('That email is already on the roster.');
+    }
+    const wantedHandle = patch.username ? normalizeUsername(patch.username) : existing.username;
+    if (wantedHandle !== existing.username
+        && users.some((a) => a.id !== id && normalizeUsername(a.username) === wantedHandle)) {
+      throw new Error('That handle is already in use.');
     }
 
-    const next = { ...existing, ...patch, username: wanted, updatedAt: nowIso() };
-    if (hashed) next.password = hashed;
-    delete next.newPassword;
+    emailChanged = wantedEmail !== normalizeEmail(existing.email);
+    const next = {
+      ...existing, ...patch,
+      email: wantedEmail, username: wantedHandle,
+      updatedAt: nowIso(),
+    };
+    // Nothing here stores credentials any more; drop any left by an old record.
+    delete next.password;
+    delete next.needsPassword;
     result = next;
     return users.map((a) => (a.id === id ? next : a));
   });
 
-  await record(hashed ? AUDIT.passwordReset : AUDIT.accountUpdated, {
-    summary: hashed
-      ? `Reset the password for ${result.username}`
-      : `Updated ${result.username}`,
-    target: result.username,
-    detail: hashed ? null : { fields: Object.keys(patch) },
+  await record(AUDIT.accountUpdated, {
+    summary: emailChanged
+      ? `Changed the sign-in email for ${result.name} to ${result.email}`
+      : `Updated ${result.email}`,
+    target: result.email,
+    detail: { fields: Object.keys(patch) },
   });
   return result;
 }
@@ -196,8 +239,8 @@ export async function deleteAccount(id) {
   });
   if (removed) {
     await record(AUDIT.accountDeleted, {
-      summary: `Deleted ${removed.username} (${removed.name})`,
-      target: removed.username,
+      summary: `Removed ${removed.email || removed.username} (${removed.name})`,
+      target: removed.email || removed.username,
       detail: { roles: removed.roles, asClass: removed.asClass },
     });
   }
@@ -215,34 +258,50 @@ export async function hasAdmin() {
 const SESSION_MS = 8 * 60 * 60 * 1000;
 
 /**
- * Verifies credentials and starts a session.
+ * Completes a Google sign-in.
+ *
+ * The token has already been decoded and checked by google-identity.js; this
+ * decides whether that verified person is *allowed in*, which is a roster
+ * question, not a cryptographic one.
+ *
+ * @param {{email, name, picture}} profile  from decodeIdToken()
+ * @param {string|null} requiredRole
  * @returns {Promise<Account>}
  */
-export async function signIn(username, password, requiredRole = null) {
-  // Same message either way, so the form cannot be used to enumerate usernames.
-  const rejection = new Error('That username and password do not match.');
+export async function signInWithGoogle(profile, requiredRole = null) {
+  const email = normalizeEmail(profile?.email);
+  if (!email) throw new Error('That Google account did not provide an email address.');
 
-  // The built-in administrator is checked first and needs no stored record, so
-  // it still works against an empty or damaged account database.
-  if (normalizeUsername(username) === BUILTIN_ADMIN.username
-      && password === BUILTIN_ADMIN.password) {
-    const builtIn = {
-      id: 'usr_builtin_admin',
-      username: BUILTIN_ADMIN.username,
-      name: BUILTIN_ADMIN.name,
-      roles: [ROLES.admin, ROLES.instructor],
-      builtIn: true,
-    };
-    if (requiredRole && !builtIn.roles.includes(requiredRole)) throw rejection;
-    startSession(builtIn);
-    return builtIn;
+  const account = await findByEmail(email);
+
+  if (!account) {
+    // Bootstrap: a folder with nobody on the roster yet would otherwise be
+    // unreachable. Anyone who can sign in *and* reach the folder can claim it —
+    // and reaching the folder is a Drive permission the det controls.
+    if (!(await hasAnyAccount())) {
+      const founder = await createAccount({
+        email,
+        name: profile.name || email,
+        roles: [ROLES.admin, ROLES.instructor],
+      });
+      startSession(founder);
+      return founder;
+    }
+    throw new Error(
+      `${email} is not on this detachment's roster. Ask an administrator to add it.`);
   }
 
-  const account = await findByUsername(username);
-  if (!account || account.active === false || !account.password) throw rejection;
-  if (!(await verifyPasscode(password, account.password))) throw rejection;
+  if (account.active === false) {
+    throw new Error('That account has been deactivated. Ask an administrator.');
+  }
   if (requiredRole && !account.roles?.includes(requiredRole)) {
-    throw new Error(`That account does not have ${requiredRole} access.`);
+    throw new Error(`${email} does not have ${ROLE_ACCESS[requiredRole] || requiredRole} access.`);
+  }
+
+  // Keep the roster's display name in step with Google's, so a married name or
+  // a corrected spelling does not need an admin edit.
+  if (profile.name && profile.name !== account.name) {
+    updateAccount(account.id, { name: profile.name }).catch(() => {});
   }
 
   startSession(account);
@@ -250,37 +309,47 @@ export async function signIn(username, password, requiredRole = null) {
 }
 
 /**
- * True while the standard credential is the only way into the admin console.
- * Drives the standing warning: a shared, published password is fine as a
- * recovery path, and poor as the permanent front door.
+ * Sign-in without Google, for development and offline demos only.
+ *
+ * Google will not issue a token to a page served from a random port, and the
+ * local and folder backends have no Drive account behind them at all — so
+ * without this, the app could not be run or tested off a Drive. It takes an
+ * email and trusts it, which is exactly as weak as it sounds.
+ *
+ * Two things keep that from becoming a hole in a real installation: it throws
+ * unless developer mode is switched on in Settings (a device-local flag, not a
+ * stored setting), and the sign-in screen only offers it when no Google Client
+ * ID is configured. A Drive-backed detachment has a Client ID by definition —
+ * they cannot reach their own folder without one.
  */
-export async function usingBuiltInAdminOnly() {
-  try {
-    return !(await hasAdmin());
-  } catch {
-    return true;
-  }
+export async function signInAsDeveloper(email, requiredRole = null) {
+  if (!isDevMode()) throw new Error('Developer sign-in is off. Turn on developer mode in Settings.');
+  const problem = validateEmail(email);
+  if (problem) throw new Error(problem);
+  return signInWithGoogle({ email: normalizeEmail(email), name: null, developer: true }, requiredRole);
 }
 
-/** Sets a new password for an account. Used by the admin reset action. */
-export async function resetPassword(id, newPassword) {
-  const account = (await listAccounts()).find((a) => a.id === id);
-  if (!account) throw new Error('That account no longer exists.');
-  const problem = validatePassword(newPassword, account.roles || []);
-  if (problem) throw new Error(problem);
-  return updateAccount(id, { newPassword });
+const ROLE_ACCESS = {
+  [ROLES.admin]: 'database administrator',
+  [ROLES.instructor]: 'instructor',
+  [ROLES.student]: 'student',
+};
+
+/** True once anyone at all is on the roster. Gates the bootstrap above. */
+export async function hasAnyAccount() {
+  return (await listAccounts()).length > 0;
 }
 
 export function startSession(account) {
   sessionStorage.setItem(LS.session, JSON.stringify({
     id: account.id,
+    email: account.email,
     username: account.username,
     name: account.name,
     roles: account.roles,
     // Carried so the student view can match forms to their AS level without
     // another read of the account database on every render.
     asClass: account.asClass || '',
-    builtIn: Boolean(account.builtIn),
     until: Date.now() + SESSION_MS,
   }));
 }
@@ -302,14 +371,15 @@ export function currentUser() {
 
 export function signOut() {
   sessionStorage.removeItem(LS.session);
+  forgetGoogleSession();
 }
 
 /**
  * Role check used by the route guards.
  *
  * In development mode this returns true so the portals can be built out before
- * any accounts exist. `isDevMode()` is device-local and surfaced as a banner,
- * and Settings refuses to leave it on once an admin account has been created.
+ * a Google Client ID exists. `isDevMode()` is device-local and surfaced as a
+ * banner, and Settings refuses to leave it on quietly.
  */
 export function hasRole(role) {
   if (isDevMode()) return true;

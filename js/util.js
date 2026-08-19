@@ -278,43 +278,6 @@ export function pickFile(accept = '.json') {
 }
 
 /* ------------------------------------------------------------------ *
- * Crypto — used for the cadre passcode only
- * ------------------------------------------------------------------ */
-
-/**
- * PBKDF2-SHA256. This gates the cadre UI on a shared device; it is *not* a
- * security boundary, because the hash lives in the org's own Drive folder and
- * anyone with the folder can read the raw data regardless.
- */
-export async function hashPasscode(passcode, saltB64 = null) {
-  const enc = new TextEncoder();
-  const salt = saltB64
-    ? Uint8Array.from(atob(saltB64), (c) => c.charCodeAt(0))
-    : crypto.getRandomValues(new Uint8Array(16));
-  const key = await crypto.subtle.importKey('raw', enc.encode(passcode), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations: 150000, hash: 'SHA-256' }, key, 256);
-  return {
-    algo: 'PBKDF2-SHA256',
-    iterations: 150000,
-    salt: btoa(String.fromCharCode(...salt)),
-    hash: btoa(String.fromCharCode(...new Uint8Array(bits))),
-  };
-}
-
-export async function verifyPasscode(passcode, record) {
-  if (!record?.salt || !record?.hash) return false;
-  const check = await hashPasscode(passcode, record.salt);
-  // Constant-time-ish compare.
-  if (check.hash.length !== record.hash.length) return false;
-  let diff = 0;
-  for (let i = 0; i < check.hash.length; i++) {
-    diff |= check.hash.charCodeAt(i) ^ record.hash.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
-/* ------------------------------------------------------------------ *
  * Feedback / overlays
  * ------------------------------------------------------------------ */
 

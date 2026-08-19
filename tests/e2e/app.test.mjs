@@ -35,6 +35,34 @@ const step = async (label, fn) => {
   catch (e) { console.log(`  FAIL ${label}: ${e.message.split('\n')[0]}`); errors.push(label); }
 };
 
+/**
+ * Signs in as `email`, the way a Google callback would.
+ *
+ * The real screen hands `signInWithGoogle` a profile decoded from an ID token.
+ * Google will not issue one to a headless browser — a deliberate anti-automation
+ * measure on their side — so the suite calls the same function with the same
+ * shape of profile. Everything after that point is the code under test: roster
+ * lookup, role check, bootstrap, session. The only thing not covered here is the
+ * token decode itself, which the unit tests cover instead.
+ */
+const signInAs = (email, name = null, role = null) => page.evaluate(async ([e, n, r]) => {
+  const a = await import('/js/auth.js');
+  a.signOut();
+  const account = await a.signInWithGoogle({ email: e, name: n, emailVerified: true }, r);
+  return { username: account.username, roles: account.roles, name: account.name };
+}, [email, name, role]);
+
+/** Same, but returns the error message instead of throwing. */
+const signInFails = (email, role = null) => page.evaluate(async ([e, r]) => {
+  const a = await import('/js/auth.js');
+  a.signOut();
+  try { await a.signInWithGoogle({ email: e, emailVerified: true }, r); return 'NO ERROR'; }
+  catch (err) { return err.message; }
+}, [email, role]);
+
+const ADMIN_EMAIL = 'capt.reyes@det025.edu';
+const STUDENT_EMAIL = 'mia.alvarez@gmail.com';
+
 await page.goto(BASE, { waitUntil: 'networkidle' });
 
 await step('setup completes', async () => {
@@ -51,101 +79,138 @@ await step('setup completes', async () => {
   await page.waitForSelector('.role-grid', { timeout: 10000 });
 });
 
-/* ---------- built-in admin ---------- */
-await step('built-in admin signs in on an empty folder', async () => {
+/* ---------- Google identity, first sign-in, and the roster gate ---------- */
+await step('the sign-in screen offers Google, not a password box', async () => {
   await page.goto(`${BASE}#/admin`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('input[type=password]', { timeout: 8000 });
-  await page.fill('input[type=text]', 'Admin');           // capitalised on purpose
-  await page.fill('input[type=password]', '#admin-Password');
-  await page.click('.btn--lg');
-  await page.waitForSelector('.page-title:has-text("Database Administration")', { timeout: 10000 });
-});
-
-await step('console warns that only the built-in credential exists', async () => {
-  const text = await page.textContent('#view');
-  if (!/No named administrator account exists/.test(text)) throw new Error('no prompt shown');
-  if (!/built-in administrator/i.test(text)) throw new Error('no built-in banner');
-});
-
-await step('wrong built-in password is rejected', async () => {
-  await page.evaluate(() => sessionStorage.clear());
   await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForSelector('input[type=password]', { timeout: 8000 });
-  await page.fill('input[type=text]', 'Admin');
-  await page.fill('input[type=password]', 'wrong');
-  await page.click('.btn--lg');
-  await page.waitForSelector('.field__error:not([hidden])', { timeout: 8000 });
-  if (await page.$('table.table')) throw new Error('signed in with a wrong password');
-  await page.fill('input[type=password]', '#admin-Password');
-  await page.click('.btn--lg');
-  await page.waitForSelector('.page-title:has-text("Database Administration")', { timeout: 10000 });
+  await page.waitForSelector('.page-title:has-text("Database Administration")', { timeout: 8000 });
+  if (await page.$('input[type=password]')) throw new Error('a password box is still on the screen');
+  const text = await page.textContent('#view');
+  if (!/no password of its own/i.test(text)) throw new Error('no explanation of how access works');
 });
 
-/* ---------- students now need passwords ---------- */
-await step('student account is created with a password', async () => {
-  await page.click('.btn--primary:has-text("Create account")');
+await step('an empty roster tells the first arrival they will claim it', async () => {
+  await page.waitForSelector('.notice--info:has-text("no roster yet")', { timeout: 8000 });
+});
+
+await step('the first Google account to sign in becomes the administrator', async () => {
+  const account = await signInAs(ADMIN_EMAIL, 'Capt Reyes');
+  for (const role of ['admin', 'instructor']) {
+    if (!account.roles.includes(role)) throw new Error(`founder lacks ${role}: ${account.roles}`);
+  }
+  await page.goto(`${BASE}#/admin`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('table.table', { timeout: 10000 });
+  if (!/capt\.reyes@det025\.edu/.test(await page.textContent('#view'))) {
+    throw new Error('the founder is not shown on the roster');
+  }
+});
+
+await step('the bootstrap closes behind them', async () => {
+  const msg = await signInFails('stranger@example.com');
+  if (!/not on this detachment's roster/i.test(msg)) throw new Error(`message was: ${msg}`);
+});
+
+await step('a token with no email is refused', async () => {
+  const msg = await page.evaluate(async () => {
+    const a = await import('/js/auth.js');
+    try { await a.signInWithGoogle({ name: 'No Address' }); return 'NO ERROR'; }
+    catch (e) { return e.message; }
+  });
+  if (!/did not provide an email/i.test(msg)) throw new Error(`message was: ${msg}`);
+});
+
+/* ---------- roster maintenance ---------- */
+await step('a cadet is added to the roster by email', async () => {
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes');
+  await page.goto(`${BASE}#/admin`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('table.table', { timeout: 10000 });
+
+  await page.click('.btn--primary:has-text("Add person")');
   await page.waitForSelector('dialog.modal');
-  const texts = await page.$$('dialog input[type=text]');
-  await texts[0].fill('Alvarez, Mia');
-  await texts[1].fill('alvarez.mia');
-  await page.fill('dialog input[type=password]', 'cadet123');
+  await page.fill('dialog input[type=text]', 'Alvarez, Mia');
+  await page.fill('dialog input[type=email]', STUDENT_EMAIL);
   await page.selectOption('dialog select', 'AS200');
   await page.click('dialog .btn--primary');
   await page.waitForTimeout(1200);
-  const rows = await page.$$eval('table.table tbody tr', (r) => r.length);
-  if (rows < 1) throw new Error('account not created');
+  if (!(await page.textContent('#view')).includes(STUDENT_EMAIL)) {
+    throw new Error('the cadet is not on the roster');
+  }
 });
 
-await step('a student without a password is refused', async () => {
+await step('a handle is derived so receipts have something stable to key on', async () => {
+  const handle = await page.evaluate(async ([email]) => {
+    const a = await import('/js/auth.js');
+    return (await a.findByEmail(email))?.username;
+  }, [STUDENT_EMAIL]);
+  if (handle !== 'alvarez.mia') throw new Error(`handle was "${handle}"`);
+});
+
+await step('the same email cannot be added twice', async () => {
+  const msg = await page.evaluate(async ([email]) => {
+    const a = await import('/js/auth.js');
+    try { await a.createAccount({ email, name: 'Impostor', roles: ['student'] }); return 'NO ERROR'; }
+    catch (e) { return e.message; }
+  }, [STUDENT_EMAIL.toUpperCase()]);   // upper-cased: matching must be case-insensitive
+  if (!/already on the roster/i.test(msg)) throw new Error(`message was: ${msg}`);
+});
+
+await step('an account with no email is refused', async () => {
   const msg = await page.evaluate(async () => {
     const a = await import('/js/auth.js');
-    try { await a.createAccount({ username: 'nopass.user', name: 'No Pass', roles: ['student'] }); return 'NO ERROR'; }
+    try { await a.createAccount({ name: 'No Address', roles: ['student'] }); return 'NO ERROR'; }
     catch (e) { return e.message; }
   });
-  if (!/needs a password/i.test(msg)) throw new Error(`message was: ${msg}`);
+  if (!/enter the google account email/i.test(msg)) throw new Error(`message was: ${msg}`);
 });
 
-await step('short student passwords are refused', async () => {
-  const msg = await page.evaluate(async () => {
-    const a = await import('/js/auth.js');
-    try { await a.createAccount({ username: 'short.pw', name: 'Short', roles: ['student'], password: '123' }); return 'NO ERROR'; }
-    catch (e) { return e.message; }
-  });
-  if (!/at least 6/i.test(msg)) throw new Error(`message was: ${msg}`);
+await step('roles are enforced, not just recorded', async () => {
+  const msg = await signInFails(STUDENT_EMAIL, 'instructor');
+  if (!/does not have instructor access/i.test(msg)) throw new Error(`message was: ${msg}`);
 });
 
-/* ---------- password reset ---------- */
-await step('admin can reset a student password', async () => {
-  await page.click('.btn--ghost[title="Reset password"]');
-  await page.waitForSelector('dialog.modal');
-  const pws = await page.$$('dialog input[type=password]');
-  await pws[0].fill('newpass99');
-  await pws[1].fill('newpass99');
-  await page.click('dialog .btn--primary');
-  await page.waitForTimeout(1200);
-  const ok = await page.evaluate(async () => {
+await step('a deactivated account cannot sign in', async () => {
+  await page.evaluate(async ([email]) => {
     const a = await import('/js/auth.js');
-    try { await a.signIn('alvarez.mia', 'newpass99', 'student'); return true; } catch { return false; }
-  });
-  if (!ok) throw new Error('new password does not work');
-  const oldGone = await page.evaluate(async () => {
+    const account = await a.findByEmail(email);
+    await a.updateAccount(account.id, { active: false });
+  }, [STUDENT_EMAIL]);
+  const msg = await signInFails(STUDENT_EMAIL, 'student');
+  if (!/deactivated/i.test(msg)) throw new Error(`message was: ${msg}`);
+  await page.evaluate(async ([email]) => {
     const a = await import('/js/auth.js');
-    try { await a.signIn('alvarez.mia', 'cadet123', 'student'); return false; } catch { return true; }
-  });
-  if (!oldGone) throw new Error('old password still works');
+    const all = await a.listAccounts();
+    const account = all.find((x) => x.email === email);
+    await a.updateAccount(account.id, { active: true });
+  }, [STUDENT_EMAIL]);
+});
+
+await step('changing an email keeps the handle their receipts are filed under', async () => {
+  const after = await page.evaluate(async ([email]) => {
+    const a = await import('/js/auth.js');
+    const account = await a.findByEmail(email);
+    const moved = await a.updateAccount(account.id, { email: 'mia.alvarez@wilkes.edu' });
+    const back = await a.updateAccount(account.id, { email });
+    return { moved: moved.username, back: back.username };
+  }, [STUDENT_EMAIL]);
+  if (after.moved !== 'alvarez.mia' || after.back !== 'alvarez.mia') {
+    throw new Error(`handle changed with the email: ${JSON.stringify(after)}`);
+  }
 });
 if (shots) await page.screenshot({ path: `${shots}/m1-admin.png`, fullPage: true });
 
 /* ---------- create feedback with anchors ---------- */
 await step('a feedback form is issued', async () => {
+  // The form creator is deep-linkable, so it must gate on its own.
   await page.evaluate(() => sessionStorage.clear());
   await page.goto(`${BASE}#/instructor/create/new`, { waitUntil: 'networkidle' });
   await page.reload({ waitUntil: 'networkidle' });
-  // The form creator is deep-linkable, so it must gate on its own.
-  await page.waitForSelector('input[type=password]', { timeout: 8000 });
-  await page.fill('input[type=text]', 'Admin');
-  await page.fill('input[type=password]', '#admin-Password');
-  await page.click('.btn--lg');
+  await page.waitForSelector('.page-title:has-text("Instructor Portal")', { timeout: 8000 });
+  if (await page.$('.qrow')) throw new Error('the form creator opened without a sign-in');
+
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes', 'instructor');
+  await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('.qrow', { timeout: 10000 });
   const rows = await page.$$('.qrow');
   const texts = ['Instruction was clear', 'Event was organised', 'What should change?'];
@@ -159,24 +224,22 @@ await step('a feedback form is issued', async () => {
 });
 
 /* ---------- student sign-in ---------- */
-await step('student page now requires a password', async () => {
+await step('the student page requires a sign-in', async () => {
   await page.evaluate(() => sessionStorage.clear());
   await page.goto(`${BASE}#/student`, { waitUntil: 'networkidle' });
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('.page-title:has-text("Student sign-in")', { timeout: 8000 });
+  if (await page.$('.list__item')) throw new Error('feedback was listed without a sign-in');
 });
 
-await step('wrong student password is rejected', async () => {
-  await page.fill('input[type=text]', 'alvarez.mia');
-  await page.fill('input[type=password]', 'nope');
-  await page.click('.btn--lg');
-  await page.waitForSelector('.field__error:not([hidden])', { timeout: 8000 });
-  if (await page.$('.list__item')) throw new Error('got in with a wrong password');
+await step('an instructor cannot sign in through the student door', async () => {
+  const msg = await signInFails(ADMIN_EMAIL, 'student');
+  if (!/does not have student access/i.test(msg)) throw new Error(`message was: ${msg}`);
 });
 
-await step('student signs in and sees their feedback', async () => {
-  await page.fill('input[type=password]', 'newpass99');
-  await page.click('.btn--lg');
+await step('the cadet signs in and sees their feedback', async () => {
+  await signInAs(STUDENT_EMAIL, 'Mia Alvarez', 'student');
+  await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('.list__item', { timeout: 10000 });
 });
 
@@ -288,13 +351,9 @@ await step('analysis reports the mean back in words', async () => {
       await m.db.addReceipt(target.id, user);
     }
   });
-  await page.evaluate(() => sessionStorage.clear());
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes');
   await page.goto(`${BASE}#/instructor?tab=analysis`, { waitUntil: 'networkidle' });
   await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForSelector('input[type=password]', { timeout: 8000 });
-  await page.fill('input[type=text]', 'Admin');
-  await page.fill('input[type=password]', '#admin-Password');
-  await page.click('.btn--lg');
   await page.waitForSelector('.bar-row', { timeout: 12000 });
   const text = await page.textContent('.stack-lg');
   if (!/Favorable/.test(text)) throw new Error('mean not described in words');
@@ -328,14 +387,17 @@ await step('a v1 folder is migrated forward on load', async () => {
       migratedUser: users.find((u) => u.name === 'Legacy, Cadet') || null,
     };
   });
-  if (result.pendingBefore !== 2) throw new Error(`expected 2 pending, saw ${result.pendingBefore}`);
-  if (result.from !== 1 || result.to !== 3) throw new Error(`migrated ${result.from}->${result.to}`);
+  if (result.pendingBefore !== 3) throw new Error(`expected 3 pending, saw ${result.pendingBefore}`);
+  if (result.from !== 1 || result.to !== 4) throw new Error(`migrated ${result.from}->${result.to}`);
   if (result.pendingAfter !== 0) throw new Error('still pending after migrate');
   if (!/^FB-\d{4}-\d{4}$/.test(result.legacyFeedbackId || '')) {
     throw new Error(`legacy request not stamped: ${result.legacyFeedbackId}`);
   }
   if (!result.migratedUser) throw new Error('roster student not converted to an account');
-  if (!result.migratedUser.needsPassword) throw new Error('migrated student not flagged for a password');
+  // v4 leaves an account with no email flagged rather than deleted: it still
+  // carries the handle its receipts are filed under, which an admin needs.
+  if (!result.migratedUser.needsEmail) throw new Error('emailless account not flagged by v4');
+  if ('password' in result.migratedUser) throw new Error('a password field survived v4');
   console.log(`       ${result.ran[0]}`);
   for (const n of result.notes) console.log(`       · ${n}`);
 });
@@ -355,20 +417,16 @@ await step('a newer folder refuses to be downgraded', async () => {
     await m.db.saveOrg({ schemaVersion: 99 });
     try { await m.db.migrate(); return 'NO ERROR'; }
     catch (e) { return e.message; }
-    finally { await m.db.saveOrg({ schemaVersion: 2 }); }
+    finally { await m.db.saveOrg({ schemaVersion: 4 }); }
   });
   if (!/newer version/i.test(msg)) throw new Error(`message was: ${msg}`);
 });
 
 await step('schema panel reports the version', async () => {
   // Signed in as a student at this point; the admin console needs admin.
-  await page.evaluate(() => sessionStorage.clear());
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes');
   await page.goto(`${BASE}#/admin`, { waitUntil: 'networkidle' });
   await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForSelector('input[type=password]', { timeout: 8000 });
-  await page.fill('input[type=text]', 'Admin');
-  await page.fill('input[type=password]', '#admin-Password');
-  await page.click('.btn--lg');
   await page.waitForSelector('.section-title:has-text("Schema version")', { timeout: 10000 });
   const text = await page.textContent('#view');
   if (!/Up to date/.test(text)) throw new Error('schema panel does not show up-to-date');
@@ -387,15 +445,16 @@ await step('home shows all three entries', async () => {
   }
 });
 
-await step('duplicate usernames are rejected, case-insensitively', async () => {
+await step('duplicate handles are rejected, case-insensitively', async () => {
   const msg = await page.evaluate(async () => {
     const a = await import('/js/auth.js');
     try {
-      await a.createAccount({ username: 'ALVAREZ.MIA', name: 'Dup', roles: ['student'], password: 'dupe123' });
+      await a.createAccount({ email: 'other.mia@gmail.com', username: 'ALVAREZ.MIA',
+                              name: 'Dup', roles: ['student'] });
       return 'NO ERROR';
     } catch (e) { return e.message; }
   });
-  if (!/already taken/i.test(msg)) throw new Error(`message was: ${msg}`);
+  if (!/already in use/i.test(msg)) throw new Error(`message was: ${msg}`);
 });
 
 await step('home stats read the index, not every response', async () => {
@@ -466,13 +525,9 @@ await step('old /cadre bookmark redirects to the portal', async () => {
 
 await step('a lone anonymous response is withheld from analysis', async () => {
   // Fresh admin session, then a form with exactly one response.
-  await page.evaluate(() => sessionStorage.clear());
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes');
   await page.goto(`${BASE}#/instructor?tab=analysis`, { waitUntil: 'networkidle' });
   await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForSelector('input[type=password]', { timeout: 8000 });
-  await page.fill('input[type=text]', 'Admin');
-  await page.fill('input[type=password]', '#admin-Password');
-  await page.click('.btn--lg');
   await page.waitForSelector('.stack-lg', { timeout: 12000 });
 
   await page.evaluate(async () => {
@@ -674,13 +729,13 @@ await step('a stale index self-heals on read', async () => {
 await step('two admins editing different students both succeed', async () => {
   const result = await page.evaluate(async () => {
     const a = await import('/js/auth.js');
-    await a.createAccount({ username: 'race.one', name: 'Race One', roles: ['student'], password: 'cadet123' });
-    await a.createAccount({ username: 'race.two', name: 'Race Two', roles: ['student'], password: 'cadet123' });
+    await a.createAccount({ email: 'race.one@det025.edu', name: 'Race One', roles: ['student'] });
+    await a.createAccount({ email: 'race.two@det025.edu', name: 'Race Two', roles: ['student'] });
     const before = (await a.listAccounts()).length;
 
     // Both admins read, then both write — the classic lost-update setup.
-    const one = (await a.listAccounts()).find((u) => u.username === 'race.one');
-    const two = (await a.listAccounts()).find((u) => u.username === 'race.two');
+    const one = await a.findByEmail('race.one@det025.edu');
+    const two = await a.findByEmail('race.two@det025.edu');
     await Promise.all([
       a.updateAccount(one.id, { section: 'Alpha' }),
       a.updateAccount(two.id, { section: 'Bravo' }),
@@ -948,13 +1003,9 @@ await step('a flag on a withheld form alerts without exposing', async () => {
 /* ---------- form reuse ---------- */
 
 await step('a form can be saved as a template and reused', async () => {
-  await page.evaluate(() => sessionStorage.clear());
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes');
   await page.goto(`${BASE}#/instructor/create/new`, { waitUntil: 'networkidle' });
   await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForSelector('input[type=password]', { timeout: 8000 });
-  await page.fill('input[type=text]', 'Admin');
-  await page.fill('input[type=password]', '#admin-Password');
-  await page.click('.btn--lg');
   await page.waitForSelector('.qrow', { timeout: 12000 });
 
   const labels = ['Reusable question one', 'Reusable question two', 'Reusable question three'];
@@ -1011,9 +1062,9 @@ await step('starting from a template copies the questions, not links them', asyn
 await step('the rollover previews who moves where', async () => {
   await page.evaluate(async () => {
     const a = await import('/js/auth.js');
-    for (const [u, cls] of [['roll.a', 'AS100'], ['roll.b', 'AS100'], ['roll.c', 'AS400']]) {
-      await a.createAccount({ username: u, name: `Roll ${u}`, roles: ['student'],
-                              asClass: cls, password: 'cadet123' });
+    for (const [who, cls] of [['a', 'AS100'], ['b', 'AS100'], ['c', 'AS400']]) {
+      await a.createAccount({ email: `roll.${who}@det025.edu`, name: `Rollover, Cadet ${who.toUpperCase()}`,
+                              roles: ['student'], asClass: cls });
     }
   });
   await page.goto(`${BASE}#/admin`, { waitUntil: 'networkidle' });
@@ -1034,10 +1085,10 @@ await step('advancing the year moves levels and retires AS400', async () => {
   const after = await page.evaluate(async () => {
     const a = await import('/js/auth.js');
     const all = await a.listAccounts();
-    const get = (u) => all.find((x) => x.username === u);
+    const get = (who) => all.find((x) => x.email === `roll.${who}@det025.edu`);
     return {
-      a: get('roll.a')?.asClass, b: get('roll.b')?.asClass,
-      c: get('roll.c')?.asClass, cActive: get('roll.c')?.active,
+      a: get('a')?.asClass, b: get('b')?.asClass,
+      c: get('c')?.asClass, cActive: get('c')?.active,
     };
   });
   if (after.a !== 'AS200' || after.b !== 'AS200') {
@@ -1112,10 +1163,10 @@ await step('an instructor cannot delete flagged feedback', async () => {
     }
     // Sign in as an instructor who is NOT an admin.
     const a = await import('/js/auth.js');
-    await a.createAccount({ username: 'plain.instructor', name: 'Plain Instructor',
-                            roles: ['instructor'], password: 'instructor123' });
+    await a.createAccount({ email: 'plain.instructor@det025.edu', name: 'Plain Instructor',
+                            roles: ['instructor'] });
     a.signOut();
-    await a.signIn('plain.instructor', 'instructor123', 'instructor');
+    await a.signInWithGoogle({ email: 'plain.instructor@det025.edu', emailVerified: true }, 'instructor');
   });
 
   await page.goto(`${BASE}#/instructor?tab=analysis`, { waitUntil: 'networkidle' });
@@ -1152,11 +1203,7 @@ await step('an instructor cannot delete flagged feedback', async () => {
 });
 
 await step('an admin can delete it, but only with a recorded reason', async () => {
-  await page.evaluate(async () => {
-    const a = await import('/js/auth.js');
-    a.signOut();
-    await a.signIn('Admin', '#admin-Password', 'admin');
-  });
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes', 'admin');
   await page.goto(`${BASE}#/instructor?tab=analysis`, { waitUntil: 'networkidle' });
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('.list__item', { timeout: 15000 });

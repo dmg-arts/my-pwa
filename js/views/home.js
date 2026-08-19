@@ -41,7 +41,7 @@ export async function renderHome(root) {
 
     el('div', { class: 'role-grid' },
       roleCard('/student', 'student', 'Student',
-        'See the feedback assigned to you and fill it out. Enter your username — no password needed.'),
+        'See the feedback assigned to you and fill it out. Sign in with your Google account.'),
       roleCard('/instructor', 'cadre', 'Instructor Portal',
         'Create feedback forms, read responses, run analysis, and manage the database.',
         gateBadge()),

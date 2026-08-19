@@ -7,7 +7,7 @@
   "scripts": {
     "start": "python3 serve.py",
     "test": "npm run test:unit && npm run test:e2e",
-    "test:unit": "node tests/unit/analysis.test.mjs",
+    "test:unit": "node tests/unit/analysis.test.mjs && node tests/unit/identity.test.mjs",
     "test:e2e": "node tests/e2e/run.mjs",
     "icons": "python3 tools/make_icons.py"
   },

@@ -4,7 +4,7 @@
  * Records who did the things that cannot be undone. It exists mainly for one
  * scenario: an instructor who is the subject of a complaint should not be able
  * to delete that complaint and leave no trace. Response and account deletions,
- * password resets, imports, wipes and the annual rollover all land here.
+ * roster changes, imports, wipes and the annual rollover all land here.
  *
  * Design notes:
  *
@@ -34,7 +34,6 @@ export const AUDIT = {
   accountCreated: 'account.created',
   accountUpdated: 'account.updated',
   accountDeleted: 'account.deleted',
-  passwordReset: 'account.password_reset',
   rolloverApplied: 'roster.rollover',
   dataImported: 'database.imported',
   dataWiped: 'database.wiped',
@@ -49,6 +48,8 @@ export const AUDIT_LABELS = {
   'account.created': 'Account created',
   'account.updated': 'Account updated',
   'account.deleted': 'Account deleted',
+  // Retired in v4, when Google accounts replaced app passwords. The label stays
+  // so entries written before that still read properly in the viewer.
   'account.password_reset': 'Password reset',
   'roster.rollover': 'Academic year advanced',
   'database.imported': 'Backup imported',

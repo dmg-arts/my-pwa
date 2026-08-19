@@ -1,0 +1,169 @@
+/**
+ * The sign-in screen. One screen for cadets, instructors and administrators.
+ *
+ * There is nothing to type. A detachment already runs on Google accounts — the
+ * det's drives are shared to them, and cadets read det mail through Gmail
+ * whatever their school address says — so this app reuses that identity instead
+ * of issuing a second one. What differs by role is only which roster entry the
+ * signed-in email matches.
+ *
+ * The roster is the gate. Being able to sign in with Google proves who you are;
+ * it does not grant access. Access is your email appearing in `users/users.json`
+ * with the role the screen asked for, which is an administrator's decision.
+ */
+
+import { el, icon, field, notice, toast, remount } from '../util.js';
+import { ROLES, isDevMode } from '../config.js';
+import { signInWithGoogle, signInAsDeveloper, hasAnyAccount } from '../auth.js';
+import { renderSignInButton } from '../google-identity.js';
+import { connection } from '../state.js';
+import { navigate } from '../router.js';
+
+const SUBTITLES = {
+  [ROLES.student]: 'Use the Google account your detachment mails you at.',
+  [ROLES.instructor]: 'Sign in with the Google account on your detachment\'s roster.',
+  [ROLES.admin]: 'Sign in with the Google account on your detachment\'s roster.',
+};
+
+const DENIED_HELP = {
+  [ROLES.student]: 'Ask your cadre — cadets are added to the roster by an administrator.',
+  [ROLES.instructor]: 'Ask your database administrator to give this account the instructor role.',
+  [ROLES.admin]: 'Ask an existing administrator to add this account.',
+};
+
+/**
+ * Renders the gate and calls `onSuccess(account)` once the signed-in email
+ * matches a roster entry holding `role`.
+ *
+ * @param {HTMLElement} root
+ * @param {string} role      one of ROLES
+ * @param {string} title     page heading
+ * @param {(account: object) => any} onSuccess
+ */
+export async function renderLogin(root, role, title, onSuccess) {
+  const clientId = connection.get().clientId;
+  const buttonHost = el('div', { class: 'row', style: { justifyContent: 'center' } });
+  const error = el('div', { class: 'stack-sm', hidden: true });
+  const hint = el('div', {});
+
+  const fail = (message) => {
+    remount(error, notice('danger', 'Not signed in',
+      el('p', {}, message),
+      el('p', { class: 'field__hint' }, DENIED_HELP[role])));
+    error.hidden = false;
+  };
+
+  const finish = (account) => {
+    toast(`Signed in as ${account.name}.`, 'ok', 2500);
+    onSuccess(account);
+  };
+
+  async function accept(profile) {
+    error.hidden = true;
+    try {
+      finish(await signInWithGoogle(profile, role));
+    } catch (err) {
+      fail(err.message);
+    }
+  }
+
+  remount(root, el('div', { class: 'wizard stack' },
+    el('div', { class: 'page-head' },
+      el('h1', { class: 'page-title' }, title),
+      el('p', { class: 'page-sub' }, SUBTITLES[role] || SUBTITLES[ROLES.admin])),
+
+    el('div', { class: 'card stack' },
+      el('div', { class: 'row', style: { justifyContent: 'center' } },
+        el('span', { class: 'role-card__icon' }, icon(role === ROLES.student ? 'student' : 'lock'))),
+      buttonHost,
+      error,
+      el('p', { class: 'field__hint' },
+        'This app issues no password of its own. Whether you can get in is decided by your '
+        + 'detachment\'s roster, which an administrator keeps.'),
+      hint),
+
+    el('div', { class: 'row', style: { justifyContent: 'center' } },
+      el('button', { type: 'button', class: 'btn btn--ghost', onclick: () => navigate('/home') },
+        icon('arrowLeft'), 'Back to home'))));
+
+  // An empty roster means the first person through the door claims it. Only
+  // worth saying on the admin screen — that is where a new detachment starts.
+  if (role === ROLES.admin) {
+    hasAnyAccount().then((exists) => {
+      if (exists) return;
+      remount(hint, notice('info', 'This detachment has no roster yet',
+        el('p', {}, 'The first Google account to sign in becomes the administrator and can add '
+          + 'everyone else. Make sure that is you.')));
+    }).catch(() => {});
+  }
+
+  if (!clientId) {
+    remount(buttonHost, el('div', { class: 'stack' },
+      notice('warn', 'Google sign-in is not configured',
+        el('p', {}, 'This installation has no Google Client ID, so nobody can sign in yet. '
+          + 'Add one in Settings, or re-run setup.'),
+        el('div', { style: { marginTop: 'var(--sp-3)' } },
+          el('button', { type: 'button', class: 'btn btn--sm', onclick: () => navigate('/settings') },
+            icon('settings'), 'Open Settings'))),
+      isDevMode() ? developerSignIn(role, finish, fail) : null));
+    return;
+  }
+
+  try {
+    await renderSignInButton(buttonHost, {
+      clientId,
+      onCredential: (profile) => accept(profile),
+      onError: (err) => fail(err.message),
+    });
+  } catch (err) {
+    remount(buttonHost, notice('danger', 'Could not start Google sign-in', el('p', {}, err.message)));
+  }
+
+  // An empty roster means the first person through the door claims it. Only
+  // worth saying on the admin screen — that is where a new detachment starts.
+  if (role === ROLES.admin) {
+    hasAnyAccount().then((exists) => {
+      if (exists) return;
+      remount(hint, notice('info', 'This detachment has no roster yet',
+        el('p', {}, 'The first Google account to sign in becomes the administrator and can add '
+          + 'everyone else. Make sure that is you.')));
+    }).catch(() => {});
+  }
+}
+
+/**
+ * The developer-mode fallback: type an email, get signed in as it.
+ *
+ * Shown only when there is no Google Client ID *and* developer mode is on, so
+ * it cannot appear in a fielded, Drive-backed installation. It is labelled
+ * bluntly on purpose — anyone who sees this box should understand that the
+ * screen is not checking anything.
+ */
+function developerSignIn(role, finish, fail) {
+  const input = el('input', {
+    class: 'input mono', type: 'email', placeholder: 'you@example.edu',
+    autocapitalize: 'off', spellcheck: 'false',
+    onkeydown: (e) => { if (e.key === 'Enter') go(); },
+  });
+  const button = el('button', { type: 'button', class: 'btn btn--block', onclick: () => go() },
+    icon('unlock'), 'Sign in without Google');
+
+  async function go() {
+    button.disabled = true;
+    try {
+      finish(await signInAsDeveloper(input.value, role));
+    } catch (err) {
+      fail(err.message);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  return el('div', { class: 'card stack', style: { borderStyle: 'dashed' } },
+    el('div', { class: 'eyebrow' }, 'Developer mode'),
+    el('p', { class: 'field__hint' },
+      'This box verifies nothing. It exists so the app can be run and tested away from '
+      + 'Google Drive, and it disappears once a Client ID is set.'),
+    field('Email', input),
+    button);
+}

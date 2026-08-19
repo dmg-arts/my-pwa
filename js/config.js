@@ -15,22 +15,7 @@ export const APP = {
    * MIGRATIONS in js/migrations.js. The runner upgrades a detachment's existing
    * records to this version on startup.
    */
-  schemaVersion: 3,
-};
-
-/**
- * Built-in administrator, always available.
- *
- * This exists so a detachment can never lock itself out of its own database.
- * It is a *standard* credential, which means it is only as private as the Drive
- * folder itself — anyone who can reach the folder and knows this pair can open
- * the admin console. The app therefore shows a standing warning until a
- * detachment-specific admin exists, and Settings recommends disabling it then.
- */
-export const BUILTIN_ADMIN = {
-  username: 'admin',
-  password: '#admin-Password',
-  name: 'Built-in Administrator',
+  schemaVersion: 4,
 };
 
 /** localStorage keys. Device-local only — never org data. */

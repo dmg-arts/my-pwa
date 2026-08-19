@@ -20,6 +20,17 @@ const shot = async (name, opts = {}) => {
   console.log('  captured', name);
 };
 
+/**
+ * Signs in the way Google's callback does, with an already-decoded profile.
+ * Google will not issue a token to an automated browser, and these captures run
+ * against the local backend where there is no Client ID at all.
+ */
+const signInAs = (email, role = null) => page.evaluate(async ([e, r]) => {
+  const a = await import('/js/auth.js');
+  a.signOut();
+  await a.signInWithGoogle({ email: e, emailVerified: true }, r);
+}, [email, role]);
+
 /* ---------- setup wizard ---------- */
 await page.goto(BASE, { waitUntil: 'networkidle' });
 await page.waitForSelector('.wizard');
@@ -46,19 +57,20 @@ await page.evaluate(async () => {
   const m = await import('/js/storage/index.js');
   const c = await import('/js/config.js');
 
-  await a.createAccount({
-    username: 'reyes.maria', name: 'Reyes, Maria', roles: ['admin', 'instructor'],
-    password: 'changeme123',
-  });
+  // The founder signs in first and claims the empty roster, exactly as a real
+  // detachment starts. Doing it in this order also means the activity log shows
+  // who added each cadet, rather than a page of "unknown".
+  await a.signInWithGoogle({ email: 'maria.reyes@det025.edu', name: 'Reyes, Maria', emailVerified: true });
+
   const cadets = [
-    ['alvarez.mia', 'Alvarez, Mia'], ['brooks.dan', 'Brooks, Dan'], ['chen.li', 'Chen, Li'],
-    ['diaz.sam', 'Diaz, Sam'], ['ellis.jo', 'Ellis, Jo'], ['ford.kim', 'Ford, Kim'],
-    ['grant.ade', 'Grant, Ade'], ['hall.rae', 'Hall, Rae'],
+    ['mia.alvarez@gmail.com', 'Alvarez, Mia'], ['dan.brooks@gmail.com', 'Brooks, Dan'],
+    ['li.chen@gmail.com', 'Chen, Li'], ['sam.diaz@gmail.com', 'Diaz, Sam'],
+    ['jo.ellis@gmail.com', 'Ellis, Jo'], ['kim.ford@gmail.com', 'Ford, Kim'],
+    ['ade.grant@gmail.com', 'Grant, Ade'], ['rae.hall@gmail.com', 'Hall, Rae'],
   ];
-  for (const [u, n] of cadets) {
-    await a.createAccount({ username: u, name: n, roles: ['student'], asClass: 'AS200', password: 'cadet123' });
+  for (const [email, n] of cadets) {
+    await a.createAccount({ email, name: n, roles: ['student'], asClass: 'AS200' });
   }
-  await a.signIn('reyes.maria', 'changeme123', 'instructor');
 
   const anchors = { ...c.SCALE_ANCHORS };
   const form = await m.db.saveForm({
@@ -94,7 +106,9 @@ await page.evaluate(async () => {
       answers: { q1: v1, q2: v2, q3: v3, q4: text },
     });
   }
-  for (const [u] of cadets.slice(0, 7)) await m.db.addReceipt('req_demo', u);
+  for (const [email] of cadets.slice(0, 7)) {
+    await m.db.addReceipt('req_demo', (await a.findByEmail(email)).username);
+  }
 });
 
 /* ---------- home ---------- */
@@ -106,12 +120,21 @@ await shot('home');
 await page.evaluate(() => sessionStorage.clear());
 await page.goto(`${BASE}#/student`, { waitUntil: 'networkidle' });
 await page.reload({ waitUntil: 'networkidle' });
-await page.waitForSelector('input[type=password]');
+// A real installation has a Client ID, so Google's own button is what a cadet
+// sees. These captures run on the local backend, which has none — so one is set
+// just for this screenshot and removed straight after. It is not a working
+// client; only the rendered button is wanted.
+await page.evaluate(() => import('/js/state.js').then(({ connection }) =>
+  connection.set({ clientId: '000000000000-topfeedbackdemo.apps.googleusercontent.com' })));
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForSelector('.page-title:has-text("Student sign-in")');
+await page.waitForTimeout(2500);
 await shot('student-signin');
+await page.evaluate(() => import('/js/state.js').then(({ connection }) =>
+  connection.set({ clientId: '' })));
 
-await page.fill('input[type=text]', 'hall.rae');
-await page.fill('input[type=password]', 'cadet123');
-await page.click('.btn--lg');
+await signInAs('rae.hall@gmail.com', 'student');
+await page.reload({ waitUntil: 'networkidle' });
 await page.waitForSelector('.list__item', { timeout: 12000 });
 await shot('student-list');
 
@@ -126,13 +149,9 @@ await shot('student-mobile', { fullPage: true });
 await page.setViewportSize({ width: 1240, height: 900 });
 
 /* ---------- instructor ---------- */
-await page.evaluate(() => sessionStorage.clear());
+await signInAs('maria.reyes@det025.edu', 'instructor');
 await page.goto(`${BASE}#/instructor`, { waitUntil: 'networkidle' });
 await page.reload({ waitUntil: 'networkidle' });
-await page.waitForSelector('input[type=password]');
-await page.fill('input[type=text]', 'reyes.maria');
-await page.fill('input[type=password]', 'changeme123');
-await page.click('.btn--lg');
 await page.waitForSelector('[role=tablist]', { timeout: 12000 });
 await shot('instructor-portal');
 

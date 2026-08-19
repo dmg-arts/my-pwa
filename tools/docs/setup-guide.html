@@ -171,8 +171,8 @@
     <li><span class="n">2</span><span><strong>Prepare the Google account</strong><span class="d"> — folder, Cloud project, Drive API, OAuth client</span></span></li>
     <li><span class="n">3</span><span><strong>Publish the app</strong><span class="d"> — free hosting, or run it from one computer</span></span></li>
     <li><span class="n">4</span><span><strong>Run the setup wizard</strong><span class="d"> — connect the app to your folder</span></span></li>
-    <li><span class="n">5</span><span><strong>Create the administrator account</strong><span class="d"> — and turn off development mode</span></span></li>
-    <li><span class="n">6</span><span><strong>Create accounts</strong><span class="d"> — instructors and cadets, one at a time or by CSV</span></span></li>
+    <li><span class="n">5</span><span><strong>Claim the folder</strong><span class="d"> — the first Google sign-in, and turning off development mode</span></span></li>
+    <li><span class="n">6</span><span><strong>Build the roster</strong><span class="d"> — instructors and cadets, one at a time or by CSV</span></span></li>
     <li><span class="n">7</span><span><strong>Install on phones and laptops</strong><span class="d"> — add to home screen</span></span></li>
     <li><span class="n">8</span><span><strong>Verify and hand over</strong><span class="d"> — a checklist before first use</span></span></li>
     <li><span class="n">—</span><span><strong>Troubleshooting and reference</strong><span class="d"> — common problems, folder layout, backups</span></span></li>
@@ -388,33 +388,38 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 
 <!-- ============================= PART 5 ============================= -->
 <section>
-  <h2><span class="num">5</span>Create the administrator account</h2>
+  <h2><span class="num">5</span>Claim the folder</h2>
 
-  <p class="lead">A built-in administrator always works, so a detachment can never lock itself out
-  of its own database. Your first job is to replace it for day-to-day use.</p>
+  <p class="lead">TOP-Feedback issues no passwords. Everyone signs in with the Google account your
+  detachment already mails them at, and a roster inside your Drive folder decides who is allowed in
+  and what they can do. Your first job is to put yourself on that roster.</p>
+
+  <p>A folder with an empty roster is claimed by <strong>the first Google account to sign in</strong>,
+  which becomes both a database administrator and an instructor. After that the roster is closed:
+  an account that is not on it is turned away, whoever it belongs to.</p>
 
   <ol class="steps">
-    <li><strong>From the home screen, open <em>Database Administration</em>.</strong></li>
-    <li><strong>Sign in with the built-in administrator.</strong>
-      <ul>
-        <li>Username: <code>Admin</code> &nbsp;(not case sensitive)</li>
-        <li>Password: <code>#admin-Password</code></li>
-      </ul>
-    </li>
-    <li><strong>Create a named administrator account</strong> for yourself, using the prompt at the
-    top of the console. Give it both the <em>Database admin</em> and <em>Instructor</em> roles.
-    Minimum eight characters for the password.</li>
-    <li><strong>Sign out and sign back in as your named account</strong> to confirm it works.</li>
-    <li><strong>Check that development mode is off.</strong> Go to <em>Settings → Access</em>. It
-    should read "Sign-in is enforced". If it does not, turn development mode off.</li>
+    <li><strong>Confirm the folder is shared with the right people before you start.</strong> Drive
+    sharing is the control that actually matters — see the note below.</li>
+    <li><strong>From the home screen, open <em>Database Administration</em>.</strong> It should say
+    this detachment has no roster yet.</li>
+    <li><strong>Click Sign in with Google</strong> and choose the account you want to administer
+    the detachment with.</li>
+    <li><strong>Confirm you landed in the console</strong> and that your email appears on the roster
+    with the <em>Database admin</em> and <em>Instructor</em> roles.</li>
+    <li><strong>Add a second administrator.</strong> The console will remind you while you are the
+    only one. It is not a formality: a single admin who loses access leaves the roster repairable
+    only by editing <code>users/users.json</code> in Drive by hand.</li>
+    <li><strong>Check that development mode is off.</strong> Go to <em>Settings &rarr; Access</em>.
+    It should read "Sign-in is enforced".</li>
   </ol>
 
   <div class="note note--danger">
-    <strong class="title">The built-in password is the same for every installation</strong>
-    <p>It is published in this guide and readable in the app's source. It exists as a recovery path,
-    not as a front door — it is only as private as your Drive folder. Create named accounts and use
-    those. Anyone who can reach your app and knows this pair can open the admin console, which is
-    why the folder's Drive sharing is the control that actually matters.</p>
+    <strong class="title">Share the folder before the first sign-in, not after</strong>
+    <p>Whoever can reach the app and open the folder can claim an unclaimed one. That is deliberate —
+    it is how a new detachment gets in without a shared password that would be published in a guide
+    like this one. It also means the window between creating the folder and claiming it should be
+    short, and the folder should be shared only with the people who need it.</p>
   </div>
 
   <div class="note note--warn">
@@ -427,46 +432,62 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 
 <!-- ============================= PART 6 ============================= -->
 <section>
-  <h2><span class="num">6</span>Create accounts</h2>
-  <p class="lead">Everyone signs in — cadets included. That is what makes "one submission per
+  <h2><span class="num">6</span>Build the roster</h2>
+  <p class="lead">Everyone signs in &mdash; cadets included. That is what makes "one submission per
   student" mean something rather than relying on an honour system.</p>
 
   <table>
-    <tr><th style="width:22%">Role</th><th style="width:16%">Password</th><th>Can do</th></tr>
-    <tr><td><strong>Student</strong></td><td>6+ characters</td><td>See feedback assigned to them and submit it once.</td></tr>
-    <tr><td><strong>Instructor</strong></td><td>8+ characters</td><td>Create feedback, read responses, run analysis.</td></tr>
-    <tr><td><strong>Database admin</strong></td><td>8+ characters</td><td>Create and edit accounts, reset any password, maintain the database.</td></tr>
+    <tr><th style="width:26%">Role</th><th>Can do</th></tr>
+    <tr><td><strong>Student</strong></td><td>See feedback assigned to them and submit it once.</td></tr>
+    <tr><td><strong>Instructor</strong></td><td>Create feedback, read responses, run analysis.</td></tr>
+    <tr><td><strong>Database admin</strong></td><td>Add and remove people, maintain the database, delete feedback the safety screen has flagged.</td></tr>
   </table>
+
+  <div class="note">
+    <strong class="title">Which email address?</strong>
+    <p>The one your detachment actually mails the cadet at. At a regional detachment that is usually
+    a Gmail address, even for cadets whose school address ends in <code>.edu</code> &mdash; many
+    colleges run their mail through Google, and the cadet reads it in Gmail. If in doubt, use the
+    address already in your distribution list. It is the address the cadet will click "Sign in with
+    Google" as.</p>
+  </div>
 
   <h3>One at a time</h3>
   <ol class="steps">
-    <li>In <em>Database Administration</em>, click <strong>Create account</strong>.</li>
-    <li>Enter the person's name. A username is suggested automatically as
-    <code>last.first</code> — edit it if you prefer.</li>
-    <li>Tick the roles they need, set a password, and choose their AS level.</li>
-    <li>Click <strong>Save</strong>.</li>
+    <li><strong>Open Database Administration</strong> and click <em>Add person</em>.</li>
+    <li><strong>Enter their name and their Google account email.</strong></li>
+    <li><strong>Tick the roles they need</strong> and choose their AS level.</li>
+    <li><strong>Save.</strong> There is nothing to hand them &mdash; they can sign in
+    immediately.</li>
   </ol>
 
   <h3>A whole class at once</h3>
   <ol class="steps">
-    <li>Prepare a CSV with a <code>name</code> column. Optional columns:
-    <code>username</code>, <code>class</code>, <code>password</code>.</li>
-    <li>Click <strong>Import students CSV</strong> and choose the file.</li>
-    <li>A password is generated for anyone without one, in a format cadets can read off a printed
-    list, such as <code>tango-delta47</code>.</li>
-    <li><strong>Download the credentials list when prompted.</strong></li>
+    <li><strong>Prepare a CSV</strong> with a <code>name</code> column and an <code>email</code>
+    column. An optional <code>class</code> column sets their AS level.</li>
+    <li><strong>Click Import roster CSV</strong> and choose the file.</li>
+    <li><strong>Fix anything it could not add.</strong> A duplicate address or a typo is listed with
+    the reason. Correct the file and import again &mdash; rows already added are skipped rather than
+    duplicated.</li>
   </ol>
 
-  <div class="note note--danger">
-    <strong class="title">The credentials list can only be read once</strong>
-    <p>Passwords are stored only as hashes, so the app cannot show them again. If you close that
-    dialog without downloading, you must reset each password individually. Download it, distribute
-    it, then delete the file.</p>
-  </div>
+  <h3>When someone changes email</h3>
+  <p>Edit their account and change the address. Their submission history follows them: receipts are
+  filed under an internal handle such as <code>alvarez.mia</code>, which does not change when the
+  email does.</p>
 
-  <h3>Resetting a forgotten password</h3>
-  <p>Click the padlock icon on any account row. There is no email out of this app, so hand the new
-  password over in person. The dialog suggests one you can read aloud.</p>
+  <h3>When someone leaves</h3>
+  <p>Untick <strong>Active</strong> rather than deleting them. A deactivated account cannot sign in,
+  but the record stays, so past feedback still makes sense. Deleting is available too, and is
+  recorded in the activity log either way.</p>
+
+  <div class="note note--warn">
+    <strong class="title">There is nothing to reset</strong>
+    <p>If a cadet cannot get in, it is one of three things: the address on the roster is not the one
+    they are signing in with, their account is marked inactive, or they do not have the role for the
+    screen they opened. All three are visible in <em>Database Administration</em>. This app has no
+    password to forget.</p>
+  </div>
 </section>
 
 <!-- ============================= PART 7 ============================= -->
@@ -498,13 +519,13 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
   <ul class="checklist">
     <li><strong>The app opens over HTTPS</strong> at the address you published.</li>
     <li><strong>Settings → Access reads "Sign-in is enforced"</strong> — development mode is off.</li>
-    <li><strong>A named administrator account exists</strong> and you have signed in with it.</li>
+    <li><strong>At least two people hold the Database admin role</strong>, so losing one account does not lock the detachment out.</li>
     <li><strong>The connection indicator in the header reads "ready"</strong> on a device other than the one you set up on.</li>
     <li><strong>The Drive folder contains the app's folders</strong> — open it in Drive and confirm you can see <code>config</code>, <code>users</code>, <code>forms</code> and the rest.</li>
-    <li><strong>A test cadet account can sign in</strong> and see feedback assigned to them.</li>
+    <li><strong>A test cadet can sign in with their own Google account</strong> and see feedback assigned to them &mdash; on their own phone, not yours.</li>
     <li><strong>A test submission appears</strong> in the Instructor Portal under Responses &amp; Analysis.</li>
     <li><strong>You have exported a backup</strong> from Instructor Portal → Database → Export backup.</li>
-    <li><strong>The credentials list has been distributed</strong> and the downloaded file deleted.</li>
+    <li><strong>The Drive folder is shared with exactly the people who should read everything in it</strong> &mdash; this, not the sign-in screen, is what controls access.</li>
   </ul>
 
   <h3>Moving trial data into Drive</h3>
@@ -512,7 +533,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
   <ol class="steps">
     <li>On the trial device, go to <em>Instructor Portal → Database → Export backup</em> and save the JSON file.</li>
     <li>Go to <em>Settings → Re-run setup</em> and connect to Google Drive as in Part 4.</li>
-    <li>Return to <em>Database → Import backup</em>, choose the file, and select <strong>Merge</strong>.</li>
+    <li>Return to <em>Database → Import backup</em>, choose the file, and select <em>Merge</em>.</li>
   </ol>
 
   <h3>Routine maintenance</h3>
@@ -558,8 +579,12 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
       <td>Working as designed. Anonymous results stay hidden until three people have responded, because a single response can be traced to its author by elimination.</td>
     </tr>
     <tr>
+      <td>"Not on this detachment's roster"</td>
+      <td>The address they signed in with is not the one on the roster. Ask what Google account they used and compare it with Database Administration &mdash; a school address and the Gmail account behind it are two different strings.</td>
+    </tr>
+    <tr>
       <td>Nobody can sign in as an administrator</td>
-      <td>Use the built-in account in Part 5, then reset the affected password.</td>
+      <td>Open <code>users/users.json</code> in Drive, add <code>"admin"</code> to the <code>roles</code> array of an account you control, and save. This is the recovery path; it is why at least two people should hold the admin role.</td>
     </tr>
     <tr>
       <td>Response counts look wrong</td>
@@ -575,7 +600,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
   <h3>What gets created in your folder</h3>
   <pre>TOP-Feedback/
 ├── config/      detachment profile and shared settings
-├── users/       accounts — cadets, instructors, admins
+├── users/       the roster — who may sign in, and as what
 ├── forms/       feedback form definitions
 ├── requests/    feedback issued to students, each with an ID
 ├── responses/   submitted feedback, one folder per form
@@ -586,16 +611,20 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
   <h3>Things worth understanding before you field this</h3>
 
   <h4>Anonymity is real, and it has a limit</h4>
-  <p>On an anonymous form the cadet's username is used to verify them and to write a
+  <p>On an anonymous form the cadet's sign-in is used to verify them and to write a
   <em>receipt</em>, then discarded. The response record carries no name, and receipts live in a
   different folder. This is what lets the app say "two cadets still owe feedback" about responses
   nobody can attribute. The limit: with very few responses, a single answer can be identified by
   elimination, so anonymous results stay hidden until three people have responded.</p>
 
   <h4>Sign-in is not encryption</h4>
-  <p>Passwords are stored as PBKDF2 hashes, but anyone with access to the Drive folder can read
-  every record directly regardless of what the app shows them. Folder sharing is the real access
-  control. Share it only with people entitled to read all of it.</p>
+  <p>Anyone with access to the Drive folder can read every record directly, regardless of what the
+  app shows them. Folder sharing is the real access control. Share it only with people entitled to
+  read all of it.</p>
+  <p>The app stores no credentials at all &mdash; <code>users/users.json</code> holds emails and
+  roles, nothing secret. The identity check is Google's. The app validates the sign-in token in the
+  browser, which catches an expired or misdirected one but is not a defence against someone who
+  controls the browser; Drive's own permission check is.</p>
 
   <h4>The safety screen is a prompt, not a finding</h4>
   <p>Written answers are automatically checked for language about hazing, harassment,

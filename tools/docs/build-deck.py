@@ -311,7 +311,7 @@ def s04_data():
     rect(s, M, Inches(2.75), Inches(6.0), Inches(3.5), TINT, radius=0.03)
     tree = ("TOP-Feedback/\n"
             "   config/      detachment profile and settings\n"
-            "   users/       accounts: cadets, instructors, admins\n"
+            "   users/       the roster: who may sign in, and as what\n"
             "   forms/       feedback form definitions\n"
             "   requests/    feedback issued, each with an ID\n"
             "   responses/   submitted feedback\n"
@@ -354,11 +354,12 @@ def s05_roles():
         "Instructor Portal",
         "-Creates feedback, reads responses, runs the analysis.",
         "Database Administration",
-        "-Creates accounts and resets passwords.",
+        "-Keeps the roster of who may use the app, and as what.",
     ], size=16, gap=13)
     page_no(s, 5)
-    notes(s, "Everyone signs in, cadets included. That is what makes one-submission-per-student "
-             "a fact rather than an honour system.")
+    notes(s, "Everyone signs in with their own Google account, cadets included. That is what makes "
+             "one-submission-per-student a fact rather than an honour system. Nobody issues or "
+             "resets a password, because the app has none.")
 
 
 def s06_student_list():
@@ -553,12 +554,14 @@ def s15_anonymity():
 def s16_admin():
     s = slide()
     eyebrow(s, "Running it")
-    title(s, "Accounts your detachment controls",
-          "Add cadets one at a time or import a whole class by CSV. Passwords are generated and handed to you once.")
+    title(s, "A roster, not a password list",
+          "Everyone signs in with the Google account you already mail them at. Add people by email, one at a time or a whole class by CSV.")
     picture(s, "admin.png", M, Inches(2.8), Inches(11.5), Inches(3.75))
     page_no(s, 16)
-    notes(s, "Mention that the credentials list can only be read once, because only hashes are "
-             "stored. Download it, hand it out, delete the file.")
+    notes(s, "Worth dwelling on for a cadre audience: there is nothing to distribute and nothing "
+             "to reset. Cadets travel in from several schools, so there is no one campus login to "
+             "key on, but they all already have a Google account because that is where we mail "
+             "them. Being on this list is what grants access, and that is your decision.")
 
 
 def s17_start():
@@ -574,7 +577,7 @@ def s17_start():
         ("2", "Register the app",
          "One free Google Cloud project, so the app can reach that Drive. About ten minutes."),
         ("3", "Run the wizard",
-         "Paste the folder link, create your administrator account, add cadets."),
+         "Paste the folder link, sign in with Google to claim it, add cadets by email."),
     ]:
         circ = shape(s, MSO_SHAPE.OVAL, M, y, Inches(0.6), Inches(0.6), WHITE)
         block(s, M, y + Inches(0.09), Inches(0.6), Inches(0.42),

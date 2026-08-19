@@ -4,15 +4,14 @@ A progressive web app for the student ↔ instructor feedback cycle, built for
 AFROTC detachments. Every organization owns its own data: the app has no server
 and no shared database, and writes only to storage the detachment controls.
 
-- **Student** — signs in with a username and password issued by the detachment,
-  then sees the feedback assigned to them, filtered by school year, semester,
-  class and due date.
+- **Student** — signs in with their Google account, then sees the feedback
+  assigned to them, filtered by school year, semester, class and due date.
 - **Instructor Portal** — behind an instructor sign-in. **Create Feedback**
   builds a standardized form; **Feedback Response and Analysis** filters
   responses, runs statistics on the ratings, reads the written answers, and
   screens everything for safety concerns.
-- **Database Administration** — behind an admin sign-in. Creates and manages
-  every account for the detachment, and resets any password.
+- **Database Administration** — behind an admin sign-in. Keeps the roster of
+  Google accounts that may use the app, and what each one is allowed to do.
 - **Settings** — where the database lives, plus light/dark, color-vision
   palettes, contrast and text size.
 
@@ -154,24 +153,51 @@ sharing settings.
 
 ## Accounts and sign-in
 
-Everyone signs in. Students get a 6-character minimum (they type it on a phone
-before every submission); instructors and admins get 8.
+**Everyone signs in with their Google account. This app issues no passwords and
+stores no credentials.**
 
-**The built-in administrator is always available**, so a detachment can never
-lock itself out of its own database:
+That suits a regional detachment better than anything this app could invent.
+Cadets travel in from several affiliated schools, so there is no single
+institutional domain to key on — but every cadet already has a Google account,
+because that is where the det mails them, whatever their school address says.
+The det's drives are already shared to those accounts.
 
-```
-Username: Admin          (not case sensitive)
-Password: #admin-Password
-```
+`users/users.json` is therefore a **roster**, not a credential store: email,
+name, roles, AS level, section. Nothing in it is secret. Signing in with Google
+proves who you are; being on the roster with the right role is what grants
+access, and that is an administrator's decision.
 
-It is the same for every installation, which means it is only as private as your
-Drive folder. The app shows a standing warning while it is the only way in, and
-prompts you to create a named admin account so access can be traced to a person.
+Two jobs disappear with the passwords: handing a generated one to every cadet,
+and resetting the ones they forget.
 
-Bulk-importing students by CSV generates a password for each one and offers the
-list as a download. **That is the only time those passwords can be read** —
-they are stored as hashes — so save the file or reset them individually later.
+### Claiming a new folder
+
+A folder with an empty roster is claimed by **the first Google account to sign
+in**, which becomes an administrator and an instructor. After that the roster is
+closed and an unknown account is turned away. This is the recovery path that the
+old shared built-in credential used to be — a detachment cannot lock itself out,
+because `users/users.json` can also be edited directly in Drive by anyone the
+folder is shared with.
+
+### Adding people
+
+Database Administration → **Add person** takes a name and the Google account
+email. **Import roster CSV** takes the same list the det already uses to mail
+cadets: a `name` column and an `email` column, optionally `class`.
+
+Each account also carries a lowercase **handle** (`alvarez.mia`), derived from
+the name. It is internal: submission receipts are filed under it, so it stays
+fixed when someone's email changes and their submission history survives a move
+between schools.
+
+### Running without Google
+
+The local and folder storage backends have no Google account behind them, and
+Google will not issue a token to a page served from a random port. With
+**developer mode** on (Settings → Access) *and* no Client ID configured, the
+sign-in screen offers a box that takes an email and trusts it. It says so on the
+screen. It disappears the moment a Client ID is set, so it cannot be present in a
+Drive-backed installation.
 
 ---
 
@@ -197,11 +223,15 @@ build refuses to load rather than being silently downgraded. Add one in
 - **Sign-in gates the UI on a shared device. It is not encryption.** Anyone who
   can open the Drive folder can read every record directly, whatever the app
   shows them. Control access through the folder's Drive sharing.
-- Passwords are stored as PBKDF2-SHA256 hashes (150k iterations) in
-  `users/users.json`. There is no server, so a stolen file is a stolen file —
-  the hash only makes it expensive, it does not make it private.
-- **Anonymous feedback is anonymous in the data.** The username is used to
-  verify the cadet and to write a *receipt*, then discarded. The response record
+- **No credentials are stored at all.** `users/users.json` holds emails and
+  roles, nothing secret. The identity check itself is Google's.
+- **The ID token is validated in the browser, which stops mistakes, not
+  attackers.** A browser is under the control of whoever is sitting at it. The
+  boundary that actually holds is Google Drive sharing: reading or writing the
+  det's folder needs an OAuth token issued to an account that has been granted
+  access, and Google enforces that.
+- **Anonymous feedback is anonymous in the data.** The sign-in identifies the
+  cadet well enough to write a *receipt*, then is discarded. The response record
   carries no name, so nothing links an answer to a person. Receipts live in
   `receipts/`, a different folder from `responses/`.
 - **Student identity is authenticated.** Cadets sign in, so a submission receipt
@@ -381,11 +411,12 @@ choice. The trade is accuracy, and every output is labelled accordingly.
   Drive files** could line them up. The disclosure threshold above does not
   address this; it defends the app's own screens. Anyone with raw folder access
   is already inside your trust boundary, so restrict who can read the folder.
-- **The built-in admin password is public.** By design — it is a recovery path,
-  not a front door. Create a named admin account.
+- **The first sign-in claims an unclaimed folder.** By design — it is how a new
+  detachment gets in without a shared credential. It is only as controlled as
+  the folder's Drive sharing, so set that before anyone signs in.
 - **Concurrent edits are checked, not locked.** See below.
-- **No password self-service.** There is no email out of this app, so a
-  forgotten password is reset by an admin in person.
+- **No self-service enrolment.** There is no email out of this app, so someone
+  not on the roster is added by an admin rather than requesting access.
 - **Sentiment reads words, not meaning.** Sarcasm, quotation and context all
   defeat it. It is a triage aid for deciding what to read first.
 - **The safety lexicon is English-only and literal.** It will miss disclosures
@@ -418,7 +449,8 @@ js/
     folder.js           File System Access API
     local.js            IndexedDB
     idb.js              IndexedDB wrapper
-  auth.js               accounts, sign-in, roles, username and password rules
+  auth.js               the roster, sessions, roles, sign-in
+  google-identity.js    Google Identity Services: the button and the token check
   migrations.js         forward-only schema upgrades, one entry per version
   analysis/
     stats.js            descriptive stats, agreement, clustering, outliers

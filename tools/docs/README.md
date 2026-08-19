@@ -17,22 +17,31 @@ npm install playwright                     # once
 node tools/docs/capture-screenshots.mjs ./shots
 ```
 
-The script completes the setup wizard, seeds a detachment with eight cadets and
-a form with a deliberately polarised set of responses, and captures each screen.
+The script completes the setup wizard, signs in a founding instructor the way
+Google's callback does, seeds a detachment with eight cadets and a form with a
+deliberately polarised set of responses, and captures each screen.
+
+For the sign-in screenshot it temporarily sets a Client ID so Google's own button
+renders — these captures run on the local backend, which has none — and clears it
+straight afterwards. Everything else is real behaviour with seeded data.
 
 ## 2. The setup guide (PDF)
 
 `setup-guide.html` is written print-first — page breaks, running footer,
-Letter margins. Chrome's print engine renders it:
+Letter margins — and Chrome is the renderer those rules were tuned against:
 
 ```bash
-node -e "…"   # see the pdf() call in the project history, or:
+node tools/docs/build-guide.mjs ./shots docs/TOP-Feedback-Setup-Guide.pdf
 ```
 
-Open `setup-guide.html` in Chrome and use **Print → Save as PDF**, with
-background graphics enabled and margins set to Default. Two screenshot
-placeholders (`SHOT_SETUP_STORAGE`, `SHOT_SETUP_FOLDERS`) must be replaced with
-image paths or data URIs first.
+It inlines the two screenshot placeholders (`SHOT_SETUP_STORAGE`,
+`SHOT_SETUP_FOLDERS`) as data URIs and prints through Chrome's own engine.
+
+Two layout rules to know before editing the HTML. `ol.steps > li > strong` is a
+**block-level step heading**, so a bold phrase in the middle of a sentence breaks
+onto its own line — lead with it, or use `<em>`. And check the result: run
+`pdftoppm -png` over the pages you changed and look at them. The last two
+regressions in this document were both invisible in the source.
 
 ## 3. The introduction deck (PPTX)
 
@@ -46,7 +55,7 @@ app's own palette so the deck and the product read as one thing.
 
 ## Keeping them honest
 
-Both documents state the built-in administrator credential, the three-response
-disclosure threshold, and the limits of the safety screen. If any of those
-change in `js/config.js`, update the documents in the same commit — a setup
-guide that contradicts the app is worse than none.
+Both documents state how sign-in works, the three-response disclosure threshold,
+and the limits of the safety screen. If any of those change in `js/config.js`,
+update the documents in the same commit — a setup guide that contradicts the app
+is worse than none.

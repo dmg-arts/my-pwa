@@ -1,13 +1,14 @@
 /**
  * Database Administration — account maintenance for one organization.
  *
- * Every account lives in the organization's own Drive folder, so a detachment
- * owns its user base the same way it owns its feedback. Students, instructors
- * and administrators all sign in with a username and password; an admin can
- * create accounts and reset any password.
+ * The roster lives in the organization's own Drive folder, so a detachment owns
+ * its user base the same way it owns its feedback. Everyone signs in with their
+ * Google account; this app issues no passwords and stores no credentials, so
+ * administration is adding and removing email addresses.
  *
- * There is no first-run bootstrap: the built-in administrator always works, so
- * a detachment can reach a brand-new folder and can never lock itself out.
+ * A folder with an empty roster is claimed by the first Google account to sign
+ * in, so a detachment can never lock itself out. If every admin is ever lost,
+ * `users/users.json` can be edited directly in Drive by anyone with access.
  */
 
 import {
@@ -15,96 +16,26 @@ import {
   emptyState, download, toCsv, pickFile, readFileAsText, pluralize, fmtDate, fmtDateTime,
   mount, remount } from '../util.js';
 import {
-  AS_CLASSES, ROLES, ROLE_LABELS, BUILTIN_ADMIN, AS_PROGRESSION,
+  AS_CLASSES, ROLES, ROLE_LABELS, AS_PROGRESSION,
   currentSchoolYear, isDevMode,
 } from '../config.js';
 import { record, recent, AUDIT, AUDIT_LABELS } from '../audit.js';
 import {
-  listAccounts, createAccount, updateAccount, deleteAccount, hasAdmin,
-  signIn, signOut, currentUser, hasRole, validateUsername, validatePassword,
-  suggestUsername, normalizeUsername, resetPassword,
+  listAccounts, createAccount, updateAccount, deleteAccount,
+  signOut, currentUser, hasRole, normalizeEmail,
 } from '../auth.js';
+import { renderLogin } from './sign-in.js';
 import { db } from '../storage/index.js';
 import { navigate } from '../router.js';
 
 export async function renderAdmin(root, { query }) {
-  // The built-in administrator always works, so there is no bootstrap gate:
-  // a brand-new folder is reached with the standard credential, and the console
-  // then prompts for a named admin account.
+  // No bootstrap gate is needed: an empty roster is claimed by the first Google
+  // account that signs in, and after that the roster itself is the gate.
   if (!hasRole(ROLES.admin)) {
     return renderLogin(root, ROLES.admin, 'Database Administration',
       () => renderAdmin(root, { query }));
   }
   return renderConsole(root);
-}
-
-/* ------------------------------------------------------------------ *
- * sign in — shared by admin and instructor portals
- * ------------------------------------------------------------------ */
-
-export async function renderLogin(root, role, title, onSuccess) {
-  // On a folder with no named administrator yet, point at the built-in account
-  // rather than leaving someone stuck on a login screen they cannot pass.
-  const hint = el('div', {});
-  if (role === ROLES.admin) {
-    hasAdmin().then((exists) => {
-      if (exists) return;
-      remount(hint, notice('info', 'No administrator account exists yet',
-        el('p', {}, 'Sign in with the built-in administrator username ',
-          el('code', { class: 'mono' }, BUILTIN_ADMIN.username),
-          ' and the standard password from your setup documentation, then create a named account.')));
-    }).catch(() => {});
-  }
-
-  const username = el('input', {
-    class: 'input', type: 'text', autocomplete: 'username',
-    onkeydown: (e) => { if (e.key === 'Enter') password.focus(); },
-  });
-  const password = el('input', {
-    class: 'input', type: 'password', autocomplete: 'current-password',
-    onkeydown: (e) => { if (e.key === 'Enter') attempt(); },
-  });
-  const error = el('div', { class: 'field__error', hidden: true });
-  const submit = el('button', { type: 'button', class: 'btn btn--primary btn--block btn--lg', onclick: attempt },
-    icon('unlock'), 'Sign in');
-
-  async function attempt() {
-    error.hidden = true;
-    submit.disabled = true;
-    try {
-      await signIn(username.value, password.value, role);
-      toast(`Signed in as ${normalizeUsername(username.value)}.`, 'ok');
-      onSuccess();
-    } catch (err) {
-      error.textContent = err.message;
-      error.hidden = false;
-      submit.disabled = false;
-      password.select();
-    }
-  }
-
-  remount(root, el('div', { class: 'wizard stack' },
-    el('div', { class: 'page-head' },
-      el('h1', { class: 'page-title' }, title),
-      el('p', { class: 'page-sub' }, `Sign in with your ${ROLE_LABELS[role].toLowerCase()} account.`)),
-
-    el('div', { class: 'card stack' },
-      el('div', { class: 'row', style: { justifyContent: 'center' } },
-        el('span', { class: 'role-card__icon' }, icon('lock'))),
-      field('Username', username, { required: true }),
-      field('Password', password, { required: true }),
-      error,
-      submit,
-      el('p', { class: 'field__hint' },
-        'Forgot it? A database administrator can reset any password from '
-        + 'Database Administration → Accounts.'),
-      hint),
-
-    el('div', { class: 'row', style: { justifyContent: 'center' } },
-      el('button', { type: 'button', class: 'btn btn--ghost', onclick: () => navigate('/home') },
-        icon('arrowLeft'), 'Back to home'))));
-
-  setTimeout(() => username.focus(), 50);
 }
 
 /* ------------------------------------------------------------------ *
@@ -123,28 +54,14 @@ async function renderConsole(root) {
   async function editAccount(existing = null, defaults = {}) {
     const isNew = !existing;
     const name = el('input', { class: 'input', type: 'text', value: existing?.name || '' });
-    const username = el('input', {
-      class: 'input mono', type: 'text', value: existing?.username || '',
-      placeholder: 'auto-generated from the name',
+    const emailInput = el('input', {
+      class: 'input mono', type: 'email', value: existing?.email || '',
+      placeholder: 'name@school.edu or name@gmail.com',
+      autocapitalize: 'off', spellcheck: 'false',
     });
-    // Suggest a username while the name is typed, and stop the moment the
-    // admin edits the username themselves. Deliberately not on `blur`: that
-    // fires as focus moves *into* the username field, so the suggestion would
-    // land in the middle of whatever they were about to type.
-    let usernameEdited = !isNew;
-    username.addEventListener('input', () => { usernameEdited = true; });
-    if (isNew) {
-      name.addEventListener('input', () => {
-        if (usernameEdited) return;
-        username.value = name.value.trim()
-          ? suggestUsername(name.value, accounts.map((a) => a.username))
-          : '';
-      });
-    }
     const asClass = select([{ value: '', label: '—' }, ...AS_CLASSES.map((c) => ({ value: c.code, label: c.label }))],
       { value: existing?.asClass || '' });
     const section = el('input', { class: 'input', type: 'text', value: existing?.section || '' });
-    const email = el('input', { class: 'input', type: 'email', value: existing?.email || '' });
 
     const roleBoxes = Object.values(ROLES).map((role) => {
       const input = el('input', {
@@ -152,7 +69,7 @@ async function renderConsole(root) {
         checked: existing
           ? existing.roles?.includes(role)
           : (defaults.roles ? defaults.roles.includes(role) : role === ROLES.student),
-        onchange: () => syncPassword(),
+
       });
       return { role, input, node: el('label', { class: 'check' }, input,
         el('span', {},
@@ -160,35 +77,25 @@ async function renderConsole(root) {
           el('span', { class: 'check__desc', style: { display: 'block' } }, ROLE_HINTS[role]))) };
     });
 
-    const password = el('input', { class: 'input', type: 'password', autocomplete: 'new-password' });
-    const passwordHint = el('span', {});
-    const passwordField = field(isNew ? 'Password' : 'New password (leave blank to keep)', password, {
-      hint: passwordHint,
-    });
     const activeBox = el('input', { type: 'checkbox', checked: existing ? existing.active !== false : true });
 
-    // Every account signs in now, students included, so the password field is
-    // always shown; only the minimum length changes with the role.
-    function syncPassword() {
-      const privileged = roleBoxes.some((r) => r.input.checked && r.role !== ROLES.student);
-      passwordHint.textContent = privileged
-        ? 'Minimum 8 characters for instructor and admin accounts.'
-        : 'Minimum 6 characters. Cadets type this on a phone before every submission.';
-    }
-    syncPassword();
-
     const result = await modal({
-      title: isNew ? 'Create account' : `Edit ${existing.username}`,
+      title: isNew ? 'Add someone to the roster' : `Edit ${existing.name}`,
       body: el('div', { class: 'stack' },
         field('Name', name, { required: true }),
-        field('Username', username, { required: true, hint: 'Unique, not case sensitive. Students type this on the feedback form.' }),
+        field('Google account email', emailInput, {
+          required: true,
+          hint: 'This is how they sign in. Use the account your detachment already mails them at — '
+            + 'for most cadets that is their Gmail address, whatever their school address says.',
+        }),
         el('div', {}, el('div', { class: 'field__label' }, 'Roles'),
           el('div', { class: 'stack-sm' }, ...roleBoxes.map((r) => r.node))),
-        passwordField,
         el('div', { class: 'filters' }, field('AS level', asClass), field('Section / flight', section)),
-        field('Email', email),
         el('label', { class: 'check' }, activeBox,
-          el('span', { class: 'check__text' }, 'Active'))),
+          el('span', { class: 'check__text' }, 'Active')),
+        !isNew ? el('p', { class: 'field__hint' },
+          `Internal handle: ${existing.username} — used to file their submission receipts, and left alone `
+          + 'when the email changes.') : null),
       actions: [{ label: 'Cancel', value: null }, { label: 'Save', value: 'save', variant: 'primary' }],
     });
     if (result !== 'save') return;
@@ -199,15 +106,13 @@ async function renderConsole(root) {
     try {
       if (isNew) {
         await createAccount({
-          username: username.value || suggestUsername(name.value, accounts.map((a) => a.username)),
+          email: emailInput.value,
           name: name.value,
           roles,
           asClass: asClass.value,
           section: section.value.trim(),
-          email: email.value.trim(),
-          password: password.value || null,
         });
-        toast('Account created.', 'ok');
+        toast('Added to the roster.', 'ok');
       } else {
         const wouldOrphan = existing.roles?.includes(ROLES.admin) && !roles.includes(ROLES.admin)
           && accounts.filter((a) => a.roles?.includes(ROLES.admin) && a.active !== false).length <= 1;
@@ -215,13 +120,11 @@ async function renderConsole(root) {
 
         await updateAccount(existing.id, {
           name: name.value,
-          username: username.value,
+          email: emailInput.value,
           roles,
           asClass: asClass.value,
           section: section.value.trim(),
-          email: email.value.trim(),
           active: activeBox.checked,
-          ...(password.value ? { newPassword: password.value } : {}),
         });
         toast('Account updated.', 'ok');
       }
@@ -232,132 +135,64 @@ async function renderConsole(root) {
   }
 
   /**
-   * Password reset. Admins do this constantly — a cadet forgets a password
-   * before a deadline — so it is one click from the account row rather than
-   * buried in the edit dialog.
+   * Bulk roster import.
+   *
+   * Needs a `name` and an `email` column — the same list the det already uses to
+   * mail cadets. No passwords are generated or handed out, because there are
+   * none: being on this list is what grants access.
    */
-  async function resetPasswordFor(account) {
-    const next = el('input', { class: 'input', type: 'password', autocomplete: 'new-password' });
-    const confirmField = el('input', { class: 'input', type: 'password', autocomplete: 'new-password' });
-    const error = el('div', { class: 'field__error', hidden: true });
-    const privileged = (account.roles || []).some((r) => r !== ROLES.student);
-
-    const suggestion = suggestPassword();
-    const useSuggested = el('button', {
-      type: 'button', class: 'btn btn--sm',
-      onclick: () => { next.value = suggestion; confirmField.value = suggestion; },
-    }, icon('refresh'), 'Use suggested');
-
-    const result = await modal({
-      title: `Reset password — ${account.username}`,
-      body: el('div', { class: 'stack' },
-        field('New password', next, {
-          required: true,
-          hint: `Minimum ${privileged ? 8 : 6} characters.`,
-        }),
-        field('Confirm', confirmField, { required: true }),
-        el('div', { class: 'row row--wrap' },
-          useSuggested,
-          el('span', { class: 'mono muted' }, suggestion)),
-        error,
-        notice('info', 'Hand it over in person',
-          el('p', {}, 'This app cannot send email. Write the new password down, give it to them '
-            + 'directly, and pick something they can actually remember.'))),
-      actions: [{ label: 'Cancel', value: null }, { label: 'Reset password', value: 'save', variant: 'primary' }],
-    });
-    if (result !== 'save') return undefined;
-
-    if (next.value !== confirmField.value) return toast('The two passwords do not match.', 'warn');
-    try {
-      await resetPassword(account.id, next.value);
-      toast(`Password reset for ${account.username}.`, 'ok', 5000);
-      return reload();
-    } catch (err) {
-      return toast(err.message, 'danger', 7000);
-    }
-  }
-
   async function importCsv() {
     const file = await pickFile('.csv,text/csv');
-    if (!file) return;
+    if (!file) return undefined;
     try {
       const rows = parseCsv(await readFileAsText(file));
       const header = rows[0].map((h) => h.trim().toLowerCase());
       const col = (...names) => header.findIndex((h) => names.includes(h));
       const nameCol = col('name', 'student', 'full name');
+      const emailCol = col('email', 'google account', 'address');
       if (nameCol < 0) throw new Error('No "name" column found.');
-      const userCol = col('username', 'user');
+      if (emailCol < 0) throw new Error('No "email" column found.');
       const classCol = col('class', 'as class', 'asclass', 'as level');
 
-      const pwCol = col('password', 'pass');
-      const taken = accounts.map((a) => a.username);
-      const created = [];
-      let skipped = 0;
-
+      let added = 0;
+      const skipped = [];
       for (const row of rows.slice(1)) {
         const studentName = (row[nameCol] || '').trim();
-        if (!studentName) continue;
-        const wanted = userCol >= 0 && row[userCol]?.trim()
-          ? normalizeUsername(row[userCol])
-          : suggestUsername(studentName, taken);
-        if (taken.includes(wanted)) { skipped++; continue; }
-        // Students sign in now, so every imported account needs a password.
-        // One is generated unless the CSV supplies it.
-        const pw = pwCol >= 0 && row[pwCol]?.trim() ? row[pwCol].trim() : suggestPassword();
+        const address = normalizeEmail(row[emailCol] || '');
+        if (!studentName && !address) continue;
         try {
           await createAccount({
-            username: wanted,
+            email: address,
             name: studentName,
             roles: [ROLES.student],
             asClass: classCol >= 0 ? (row[classCol] || '').trim() : '',
-            password: pw,
           });
-          taken.push(wanted);
-          created.push({ name: studentName, username: wanted, password: pw });
-        } catch { skipped++; }
-      }
-
-      if (!created.length) {
-        return toast(`Nothing imported${skipped ? ` — ${skipped} skipped` : ''}.`, 'warn', 6000);
-      }
-
-      // The generated passwords exist nowhere else once this dialog closes:
-      // they are stored only as hashes. Hand them over now or reset later.
-      await modal({
-        title: `Imported ${pluralize(created.length, 'account')}`,
-        body: el('div', { class: 'stack' },
-          notice('warn', 'Save this list now',
-            el('p', {}, 'Passwords are stored only as hashes, so this is the one time they can be '
-              + 'read. Download the list and distribute it, or you will have to reset them individually.')),
-          el('div', { class: 'table-wrap', style: { maxHeight: '18rem', overflowY: 'auto' } },
-            el('table', { class: 'table' },
-              el('thead', {}, el('tr', {},
-                el('th', {}, 'Name'), el('th', {}, 'Username'), el('th', {}, 'Password'))),
-              el('tbody', {}, ...created.map((c) => el('tr', {},
-                el('td', {}, c.name),
-                el('td', { class: 'mono' }, c.username),
-                el('td', { class: 'mono' }, c.password)))))),
-          skipped ? el('p', { class: 'muted' }, `${skipped} row(s) skipped — duplicate or invalid.`) : null),
-        actions: [
-          {
-            label: 'Download credentials CSV',
-            value: 'download',
-            variant: 'primary',
-            autofocus: true,
-          },
-          { label: 'Close', value: null },
-        ],
-      }).then((choice) => {
-        if (choice === 'download') {
-          download(`student-credentials-${new Date().toISOString().slice(0, 10)}.csv`,
-            toCsv(created, [
-              { key: 'name', label: 'name' },
-              { key: 'username', label: 'username' },
-              { key: 'password', label: 'password' },
-            ]), 'text/csv');
+          added++;
+        } catch (err) {
+          skipped.push(`${address || studentName}: ${err.message}`);
         }
-      });
+      }
 
+      if (!added && !skipped.length) return toast('That file had no rows.', 'warn');
+      if (skipped.length) {
+        await modal({
+          title: `Added ${pluralize(added, 'cadet')}, skipped ${skipped.length}`,
+          body: el('div', { class: 'stack' },
+            notice('warn', 'Some rows could not be added',
+              el('p', {}, 'Usually a duplicate email or a typo. Fix the file and import again — '
+                + 'rows already added are skipped rather than duplicated.')),
+            el('div', { class: 'table-wrap', style: { maxHeight: '16rem', overflowY: 'auto' } },
+              el('table', { class: 'table' },
+                el('thead', {}, el('tr', {}, el('th', {}, 'Row'), el('th', {}, 'Reason'))),
+                el('tbody', {}, ...skipped.map((line) => {
+                  const [who, ...rest] = line.split(': ');
+                  return el('tr', {}, el('td', { class: 'mono' }, who), el('td', {}, rest.join(': ')));
+                }))))),
+          actions: [{ label: 'Close', value: true, autofocus: true }],
+        });
+      } else {
+        toast(`Added ${pluralize(added, 'cadet')} to the roster.`, 'ok', 6000);
+      }
       return reload();
     } catch (err) {
       return toast(`Import failed: ${err.message}`, 'danger', 8000);
@@ -368,16 +203,16 @@ async function renderConsole(root) {
     const visible = accounts
       .filter((a) => !state.role || a.roles?.includes(state.role))
       .filter((a) => !state.search
-        || `${a.name} ${a.username}`.toLowerCase().includes(state.search.toLowerCase()))
+        || `${a.name} ${a.email || ''} ${a.username}`.toLowerCase().includes(state.search.toLowerCase()))
       .sort((a, b) => a.name.localeCompare(b.name));
 
     if (!visible.length) {
       remount(table, emptyState({
         iconName: 'users',
         title: accounts.length ? 'No accounts match' : 'No accounts yet',
-        message: accounts.length ? 'Try a different filter.' : 'Create one, or import a student CSV.',
+        message: accounts.length ? 'Try a different filter.' : 'Add one, or import a roster CSV.',
         action: el('button', { type: 'button', class: 'btn btn--primary', onclick: () => editAccount() },
-          icon('plus'), 'Create account'),
+          icon('plus'), 'Add person'),
       }));
       return;
     }
@@ -386,18 +221,19 @@ async function renderConsole(root) {
     for (const account of visible) {
       mount(body, el('tr', {},
         el('td', {}, el('div', { style: { fontWeight: '550' } }, account.name),
-          el('div', { class: 'mono faint' }, account.username)),
+          el('div', { class: 'mono faint' }, account.email || '— no email —')),
         el('td', {}, el('div', { class: 'row row--wrap' },
           ...(account.roles || []).map((r) => badge(ROLE_LABELS[r] || r,
             r === ROLES.admin ? 'danger' : r === ROLES.instructor ? 'info' : 'neutral')))),
         el('td', {}, account.asClass || '—'),
-        el('td', {}, account.active === false ? badge('Inactive', 'neutral') : badge('Active', 'ok', 'check')),
+        el('td', {}, account.active === false
+          ? badge('Inactive', 'neutral')
+          : !account.email
+            ? badge('No email', 'warn', 'alert')
+            : badge('Active', 'ok', 'check')),
         el('td', { class: 'faint nowrap' }, fmtDate(account.createdAt)),
         el('td', { class: 'num' }, el('div', { class: 'row row--end' },
-          el('button', {
-            type: 'button', class: 'btn btn--sm btn--ghost', title: 'Reset password',
-            onclick: () => resetPasswordFor(account),
-          }, icon('lock')),
+
           el('button', { type: 'button', class: 'btn btn--sm btn--ghost', title: 'Edit', onclick: () => editAccount(account) },
             icon('edit')),
           el('button', {
@@ -408,7 +244,8 @@ async function renderConsole(root) {
                 return toast('You cannot delete the only admin account.', 'warn', 6000);
               }
               if (!(await confirmDialog('Delete this account?',
-                `${account.name} (${account.username}) will be removed. Their submitted feedback is kept.`,
+                `${account.name} (${account.email || account.username}) will be removed from the roster `
+                + 'and can no longer sign in. Their submitted feedback is kept.',
                 { confirmLabel: 'Delete', danger: true }))) return undefined;
               await deleteAccount(account.id);
               toast('Account deleted.', 'ok');
@@ -432,7 +269,7 @@ async function renderConsole(root) {
       el('div', {},
         el('h1', { class: 'page-title' }, 'Database Administration'),
         el('p', { class: 'page-sub' }, session
-          ? `Signed in as ${session.name} (${session.username})`
+          ? `Signed in as ${session.name} (${session.email || session.username})`
           : 'Development mode — no sign-in required')),
       el('div', { class: 'row row--wrap' },
         session && el('button', {
@@ -444,37 +281,43 @@ async function renderConsole(root) {
       el('p', {}, 'The Instructor Portal and these admin screens are unlocked on this device. '
         + 'Turn it off in Settings before fielding the app.')),
 
-    !accounts.some((a) => a.roles?.includes(ROLES.admin) && a.active !== false)
-      && notice('warn', 'No named administrator account exists',
-        el('p', {}, 'Only the shared built-in credential can reach these screens. '
-          + 'Create an admin account for your detachment so access can be traced to a person.'),
-        el('div', { class: 'row', style: { marginTop: 'var(--sp-3)' } },
-          el('button', {
-            type: 'button', class: 'btn btn--sm btn--primary',
-            onclick: () => editAccount(null, { roles: [ROLES.admin, ROLES.instructor] }),
-          }, icon('plus'), 'Create administrator'))),
+    accounts.filter((a) => a.roles?.includes(ROLES.admin) && a.active !== false).length === 1
+      && notice('warn', 'You are the only administrator',
+        el('p', {}, 'If this account loses access to the Drive folder, nobody can manage the roster '
+          + 'from inside the app — it would have to be repaired by editing ',
+          el('code', { class: 'mono' }, 'users/users.json'),
+          ' in Drive directly. Give a second person admin.')),
 
-    session?.builtIn && notice('warn', 'You are signed in as the built-in administrator',
-      el('p', {}, 'The ', el('code', { class: 'mono' }, BUILTIN_ADMIN.username), ' credential is the '
-        + 'same for every installation, so it is only as private as your Drive folder. It exists so a '
-        + 'detachment can never lock itself out. Create a named admin account for day-to-day use.')),
+    (() => {
+      // Left by the v4 migration: accounts that predate Google sign-in and have
+      // no address to match a token against. They are harmless — nobody can sign
+      // in as them — but they are also invisible until someone says so.
+      const stranded = accounts.filter((a) => !a.email && a.active !== false);
+      return stranded.length ? notice('warn',
+        `${pluralize(stranded.length, 'account')} cannot sign in yet`,
+        el('p', {}, 'These were carried over from before Google sign-in and have no email address, '
+          + 'so there is nothing for a sign-in to match. Edit each one and add the Google account '
+          + 'your detachment mails them at:'),
+        el('p', { class: 'mono' }, stranded.slice(0, 12).map((a) => a.name).join(', ')
+          + (stranded.length > 12 ? `, and ${stranded.length - 12} more` : ''))) : null;
+    })(),
 
     el('section', { class: 'card stack' },
       el('div', { class: 'row row--between row--wrap' },
         el('h2', { class: 'section-title', style: { margin: '0' } }, 'Account maintenance'),
         el('div', { class: 'row row--wrap' },
-          el('button', { type: 'button', class: 'btn btn--sm', onclick: importCsv }, icon('upload'), 'Import students CSV'),
+          el('button', { type: 'button', class: 'btn btn--sm', onclick: importCsv }, icon('upload'), 'Import roster CSV'),
           el('button', {
             type: 'button', class: 'btn btn--sm',
-            onclick: () => download('accounts.csv', toCsv(accounts, [
-              { key: 'username', label: 'username' }, { key: 'name', label: 'name' },
+            onclick: () => download('roster.csv', toCsv(accounts, [
+              { key: 'name', label: 'name' }, { key: 'email', label: 'email' },
               { key: 'roles', label: 'roles', get: (a) => (a.roles || []).join(' ') },
               { key: 'asClass', label: 'class' }, { key: 'section', label: 'section' },
-              { key: 'email', label: 'email' },
+              { key: 'username', label: 'handle' },
             ]), 'text/csv'),
           }, icon('download'), 'Export CSV'),
           el('button', { type: 'button', class: 'btn btn--primary btn--sm', onclick: () => editAccount() },
-            icon('plus'), 'Create account'))),
+            icon('plus'), 'Add person'))),
 
       el('div', { class: 'filters' },
         field('Role', select([
@@ -482,7 +325,7 @@ async function renderConsole(root) {
           ...Object.values(ROLES).map((r) => ({ value: r, label: ROLE_LABELS[r] })),
         ], { onchange: (e) => { state.role = e.target.value; paint(); } })),
         field('Search', el('input', {
-          class: 'input', type: 'search', placeholder: 'Name or username…',
+          class: 'input', type: 'search', placeholder: 'Name or email…',
           oninput: (e) => { state.search = e.target.value; paint(); },
         }))),
 
@@ -676,7 +519,7 @@ async function auditCard() {
         },
       }, icon('download'), 'Export')),
     el('p', { class: 'muted' },
-      'Every deletion, account change and password reset, with who did it. Nothing in this app '
+      'Every deletion, roster change and rollover, with who did it. Nothing in this app '
       + 'removes an entry.'),
     host);
 
@@ -772,25 +615,10 @@ async function schemaCard() {
     log);
 }
 
-/**
- * Generates a password a cadet can read off a printed list and type on a phone:
- * two short words and two digits. No look-alike characters, no symbols.
- */
-function suggestPassword() {
-  const words = [
-    'alpha', 'bravo', 'delta', 'eagle', 'falcon', 'golf', 'hotel', 'india',
-    'juliet', 'kilo', 'lima', 'mike', 'nova', 'oscar', 'papa', 'quebec',
-    'romeo', 'sierra', 'tango', 'victor', 'whiskey', 'xray', 'yankee', 'zulu',
-  ];
-  const pick = () => words[Math.floor(Math.random() * words.length)];
-  const digits = String(Math.floor(Math.random() * 90) + 10);
-  return `${pick()}-${pick()}${digits}`;
-}
-
 const ROLE_HINTS = {
-  student: 'Can be targeted by feedback forms. Types this username when submitting. No password.',
-  instructor: 'Signs in to the Instructor Portal to create feedback and read responses.',
-  admin: 'Signs in here to create and manage accounts.',
+  student: 'Can be targeted by feedback forms, and submits them once.',
+  instructor: 'Opens the Instructor Portal to create feedback and read responses.',
+  admin: 'Manages the roster, and can delete feedback flagged by the safety screen.',
 };
 
 /** Shared with the roster importer — quoted fields, embedded commas/newlines. */

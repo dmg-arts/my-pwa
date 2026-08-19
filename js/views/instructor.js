@@ -24,7 +24,7 @@ import { db } from '../storage/index.js';
 import { navigate } from '../router.js';
 import { renderForm, formItems } from '../forms.js';
 import { renderAnalysis } from './analysis.js';
-import { renderLogin } from './admin.js';
+import { renderLogin } from './sign-in.js';
 import { record, AUDIT } from '../audit.js';
 
 const TABS = [

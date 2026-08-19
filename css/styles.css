@@ -565,6 +565,9 @@ table.table { width: 100%; border-collapse: collapse; font-size: var(--step--1);
 .choice:has(input:checked) .choice__mark::after {
   content: ""; width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--accent);
 }
+/* An <svg> with only a viewBox falls back to the replaced-element default of
+   300x150, so every context that holds one has to state a size. */
+.choice .row > svg { width: 1.15rem; height: 1.15rem; flex: none; }
 .choice__title { font-weight: 600; }
 .choice__desc { font-size: var(--step--1); color: var(--text-muted); margin-top: 2px; }
 .choice:has(input:disabled) { opacity: 0.55; cursor: not-allowed; }

@@ -54,10 +54,8 @@ export const MIGRATIONS = [
           roles: ['student'],
           asClass: student.asClass || '',
           section: student.section || '',
-          email: student.email || '',
+          email: normalizeEmail(student.email),
           active: student.active !== false,
-          password: null,          // set by an admin; see the note below
-          needsPassword: true,
           createdAt: nowIso(),
           updatedAt: nowIso(),
           migratedFromRoster: true,
@@ -75,13 +73,6 @@ export const MIGRATIONS = [
           changed = true;
         }
         if (account.active === undefined) { account.active = true; changed = true; }
-        if (account.password === undefined) { account.password = null; changed = true; }
-        // Students now sign in, so any account without a password needs one set
-        // by an admin. Flagged rather than guessed.
-        if (!account.password && !account.needsPassword) {
-          account.needsPassword = true;
-          changed = true;
-        }
         if (changed) repaired++;
       }
       if (repaired) report(`Repaired ${repaired} account records`);
@@ -173,7 +164,62 @@ export const MIGRATIONS = [
       else report('No legacy receipt arrays to split');
     },
   },
+
+  {
+    to: 4,
+    describe: 'Google accounts replace app passwords',
+    async run({ db, report }) {
+      // The app no longer issues or checks credentials — a roster entry's email
+      // is matched against a verified Google ID token instead. Two things follow.
+      //
+      // First, every stored password hash is deleted. They are worthless now,
+      // and a hash sitting in a shared Drive folder is a liability with no
+      // upside: people reuse passwords, so a leaked hash from this app is a
+      // guess at someone's other accounts.
+      //
+      // Second, an account with no email can no longer sign in — there is
+      // nothing for a token to match. Those are flagged rather than deleted or
+      // deactivated: the record still carries a name, an AS level and the handle
+      // its receipts are filed under, all of which an admin needs in order to
+      // fix it by adding the address. `needsEmail` is what the admin console
+      // lists under "cannot sign in yet".
+      const users = (await db.getUsers().catch(() => null))?.users || [];
+      if (!users.length) return report('No accounts to convert');
+
+      let stripped = 0;
+      let flagged = 0;
+      const next = users.map((account) => {
+        const copy = { ...account };
+        if (copy.password !== undefined || copy.needsPassword !== undefined
+            || copy.passwordUpdatedAt !== undefined) {
+          delete copy.password;
+          delete copy.needsPassword;
+          delete copy.passwordUpdatedAt;
+          stripped++;
+        }
+        copy.email = normalizeEmail(copy.email);
+        if (!copy.email) {
+          if (!copy.needsEmail) flagged++;
+          copy.needsEmail = true;
+        } else {
+          delete copy.needsEmail;
+        }
+        return copy;
+      });
+
+      await db.saveUsers(next);
+      report(`Deleted stored passwords from ${stripped} accounts`);
+      if (flagged) {
+        report(`${flagged} accounts have no email address and cannot sign in until an admin adds one`);
+      }
+    },
+  },
 ];
+
+/** Local copy of auth.js's normaliser — migrations must not import app logic. */
+function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
 
 /**
  * Brings a folder up to `APP.schemaVersion`.

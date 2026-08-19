@@ -7,7 +7,7 @@
  *
  * Record layout inside the org's folder:
  *   config/org.json                        org profile
- *   config/settings.json                   shared settings + cadre passcode hash
+ *   config/settings.json                   shared settings
  *   roster/students.json                   the roster, one document
  *   forms/<formId>.json                    form templates
  *   requests/<requestId>.json              issued feedback requests
@@ -885,9 +885,8 @@ async function migrateRosterToUsers(facade) {
       roles: ['student'],
       asClass: student.asClass || '',
       section: student.section || '',
-      email: student.email || '',
+      email: String(student.email || '').trim().toLowerCase(),
       active: student.active !== false,
-      password: null,
       createdAt: nowIso(),
       updatedAt: nowIso(),
       migratedFromRoster: true,

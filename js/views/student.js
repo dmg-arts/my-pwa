@@ -1,15 +1,16 @@
 /**
  * Student side.
  *
- * Cadets sign in with a username and password issued by their detachment. That
- * sign-in is what makes a submission receipt mean something: without it, "one
- * submission per student" is only as good as the honesty of whoever typed the
- * name, and anyone could burn a classmate's single submission.
+ * Cadets sign in with the Google account their detachment already mails them
+ * at. That sign-in is what makes a submission receipt mean something: without
+ * it, "one submission per student" is only as good as the honesty of whoever
+ * typed the name, and anyone could burn a classmate's single submission.
  *
  * On anonymity: signing in identifies the cadet well enough to write a
- * submission *receipt* and to stop a second attempt. The username is then
- * dropped — an anonymous response record carries no name, so nothing links an
- * answer to a person. Receipts live in a different folder from responses.
+ * submission *receipt* and to stop a second attempt. The identity is then
+ * dropped — an anonymous response record carries no name and no email, so
+ * nothing links an answer to a person. Receipts live in a different folder from
+ * responses, and are filed under the roster handle rather than the email.
  */
 
 import {
@@ -22,7 +23,8 @@ import {
 } from '../config.js';
 import { studentPrefs, settings } from '../state.js';
 import { db } from '../storage/index.js';
-import { signIn, signOut, currentUser, findByUsername } from '../auth.js';
+import { signOut, currentUser, findByUsername } from '../auth.js';
+import { renderLogin } from './sign-in.js';
 import { navigate } from '../router.js';
 import { renderForm, collectAnswers, showMissing } from '../forms.js';
 
@@ -34,62 +36,7 @@ import { renderForm, collectAnswers, showMissing } from '../forms.js';
 function requireStudent(root, render) {
   const session = currentUser();
   if (session?.roles?.includes(ROLES.student)) return render(session);
-  return renderStudentLogin(root, render);
-}
-
-function renderStudentLogin(root, onSuccess) {
-  const username = el('input', {
-    class: 'input mono', type: 'text', autocomplete: 'username',
-    autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false',
-    value: studentPrefs.get().username || '',
-    placeholder: 'e.g. alvarez.mia',
-    onkeydown: (e) => { if (e.key === 'Enter') password.focus(); },
-  });
-  const password = el('input', {
-    class: 'input', type: 'password', autocomplete: 'current-password',
-    onkeydown: (e) => { if (e.key === 'Enter') attempt(); },
-  });
-  const error = el('div', { class: 'field__error', hidden: true });
-  const submit = el('button', {
-    type: 'button', class: 'btn btn--primary btn--block btn--lg', onclick: attempt,
-  }, icon('unlock'), 'Sign in');
-
-  async function attempt() {
-    error.hidden = true;
-    submit.disabled = true;
-    try {
-      const account = await signIn(username.value, password.value, ROLES.student);
-      studentPrefs.set({ username: account.username });
-      toast(`Signed in as ${account.name}.`, 'ok', 2500);
-      onSuccess(account);
-    } catch (err) {
-      error.textContent = err.message;
-      error.hidden = false;
-      submit.disabled = false;
-      password.select();
-    }
-  }
-
-  remount(root, el('div', { class: 'wizard stack' },
-    el('div', { class: 'page-head' },
-      el('h1', { class: 'page-title' }, 'Student sign-in'),
-      el('p', { class: 'page-sub' }, 'Use the username and password your detachment issued you.')),
-
-    el('div', { class: 'card stack' },
-      el('div', { class: 'row', style: { justifyContent: 'center' } },
-        el('span', { class: 'role-card__icon' }, icon('student'))),
-      field('Username', username, { required: true }),
-      field('Password', password, { required: true }),
-      error,
-      submit,
-      el('p', { class: 'field__hint' },
-        'Forgotten it? Any instructor or database administrator can reset your password.')),
-
-    el('div', { class: 'row', style: { justifyContent: 'center' } },
-      el('button', { type: 'button', class: 'btn btn--ghost', onclick: () => navigate('/home') },
-        icon('arrowLeft'), 'Back to home'))));
-
-  setTimeout(() => (username.value ? password : username).focus(), 50);
+  return renderLogin(root, ROLES.student, 'Student sign-in', render);
 }
 
 /* ------------------------------------------------------------------ *
@@ -120,7 +67,7 @@ async function drawList(root, session) {
       el('div', {},
         el('h1', { class: 'page-title' }, 'Your feedback'),
         el('p', { class: 'page-sub' },
-          `${session.name} · `, el('span', { class: 'mono' }, session.username))),
+          `${session.name} · `, el('span', { class: 'mono' }, session.email || session.username))),
       el('button', {
         type: 'button', class: 'btn btn--sm',
         onclick: () => { signOut(); toast('Signed out.', 'ok'); navigate('/home'); },
@@ -326,11 +273,11 @@ async function drawFill(root, params, session) {
 
     request.anonymous
       ? notice('info', 'Your answers are anonymous',
-        el('p', {}, `You are signed in as ${session.username} so the app can check you off and stop a `
+        el('p', {}, `You are signed in as ${session.email || session.username} so the app can check you off and stop a `
           + 'second submission. That record is kept in a separate list from your answers — nothing '
           + 'links what you write to who you are.'))
       : notice('warn', 'Your name is attached to this feedback',
-        el('p', {}, `You are signed in as ${session.username}, and your name is stored with your `
+        el('p', {}, `You are signed in as ${session.email || session.username}, and your name is stored with your `
           + 'answers so instructors can follow up.')),
 
     el('section', { class: 'card' }, formHost),
