@@ -1,7 +1,7 @@
 {
   "name": "TOP-Feedback",
   "short_name": "TOP-FB",
-  "id": "/top-feedback",
+  "id": "./",
   "description": "Student and cadre feedback for AFROTC detachments. Each organization keeps its data in its own Google Drive.",
   "start_url": "./index.html",
   "scope": "./",
@@ -29,10 +29,10 @@
       "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Cadre",
-      "short_name": "Cadre",
-      "description": "Manage requests and reports",
-      "url": "./index.html#/cadre",
+      "name": "Instructor Portal",
+      "short_name": "Instructor",
+      "description": "Create feedback and read responses",
+      "url": "./index.html#/instructor",
       "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
