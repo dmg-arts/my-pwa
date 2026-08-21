@@ -148,12 +148,16 @@
   </div>
   <h1>TOP-Feedback</h1>
   <p class="sub">Installation and Setup Guide</p>
-  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators</p>
+  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Alpha 0.4</p>
   <div class="meta">
     <strong>Before you start</strong>
     Allow about 45 minutes for a first-time setup using Google Drive. You will need
     the detachment's Google account credentials and permission to create a Google Cloud
     project on that account. No servers, databases or software licences are required.
+    <br><br>
+    Every procedure in this guide has been performed end to end against real Google Drive,
+    on a Mac and an iPhone. Where something is awkward or unfinished, it is written down
+    rather than smoothed over &mdash; see <em>What this version cannot do yet</em>.
   </div>
 </div>
 
@@ -274,13 +278,24 @@
     </li>
     <li><strong>Configure the OAuth consent screen.</strong>
       <ul>
-        <li>Go to <em>APIs &amp; Services → OAuth consent screen</em>.</li>
+        <li>Go to <em>APIs &amp; Services → OAuth consent screen</em>. Newer consoles file this
+        under <em>Google Auth Platform → Branding</em>.</li>
         <li>If your account is on Google Workspace, choose <strong>Internal</strong> — this is
         simplest and needs no review.</li>
-        <li>If it is a standard Gmail account, choose <strong>External</strong>, then add each
-        cadre member's Google address under <em>Test users</em>. Without this they will see a
-        "not verified" block when signing in.</li>
+        <li>If it is a standard Gmail account, choose <strong>External</strong>.</li>
         <li>Fill in the app name and support email. Nothing else is required.</li>
+        <li><strong>Leave the publishing status on <em>Testing</em>.</strong> Do not click
+        <em>Publish app</em> — see the warning below.</li>
+      </ul>
+    </li>
+
+    <li><strong>Add every Google account that will use the app under <em>Test users</em>.</strong>
+      <ul>
+        <li>Cadre, administrators and <em>every cadet</em>. An account that is not on this list
+        cannot sign in at all.</li>
+        <li><strong>The account that owns the project is not automatically a test user.</strong>
+        Add it explicitly, like any other.</li>
+        <li>The limit is 100 accounts, which covers a detachment.</li>
       </ul>
     </li>
     <li><strong>Create an OAuth client ID.</strong>
@@ -296,6 +311,51 @@
       </ul>
     </li>
   </ol>
+
+  <div class="note note--danger">
+    <strong class="title">Do not click "Publish app"</strong>
+    <p>
+      It sounds like the step that makes things work. It is the opposite. TOP-Feedback asks for
+      full Google Drive access, which Google classes as a <em>restricted</em> scope: in production
+      that requires completed verification plus a paid third-party security assessment. Publishing
+      without it blocks <em>everyone</em>, including you, with
+      <em>"Access blocked &hellip; has not completed the Google verification process"</em> and no way
+      through. If you have already clicked it, open the consent screen and choose
+      <strong>Back to testing</strong>.
+    </p>
+  </div>
+
+  <div class="note note--warn">
+    <strong class="title">Two different "unverified" screens &mdash; they mean different things</strong>
+    <p>
+      <strong>"Google hasn't verified this app"</strong> with an <em>Advanced</em> link is normal and
+      expected. Click <em>Advanced</em>, then <em>Go to &hellip; (unsafe)</em>. Every user sees this,
+      every time, and it cannot be turned off while the app is in Testing.
+    </p>
+    <p>
+      <strong>"Access blocked &hellip; has not completed the Google verification process"</strong> with
+      <em>no</em> Advanced link is a hard refusal. It means either the app was published to
+      production, or that account is not on the test-user list.
+    </p>
+  </div>
+
+  <div class="note note--warn">
+    <strong class="title">Known issue: some accounts cannot be added as test users</strong>
+    <p>
+      Occasionally Google refuses to accept an address on the test-user list, with no useful
+      explanation. This is a Google-side behaviour, not a fault in the app, and there is no
+      published fix. Things that have been worth trying: check whether the account already holds a
+      role under <em>IAM &amp; Admin</em> (project members can be rejected as redundant test users);
+      check whether it is enrolled in Google's <em>Advanced Protection Program</em>, which bars
+      unverified third-party apps outright; and try adding it from the classic
+      <em>Credentials</em> view rather than the newer Google Auth Platform screens, which sometimes
+      fail to save silently.
+    </p>
+    <p>
+      If an account cannot be added, that person cannot use the app while it is in Testing. Use a
+      different Google account for them.
+    </p>
+  </div>
 
   <div class="note">
     <strong class="title">The Client ID is not a password</strong>
@@ -354,6 +414,18 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 <!-- ============================= PART 4 ============================= -->
 <section>
   <h2><span class="num">4</span>Run the setup wizard</h2>
+
+  <div class="note note--warn">
+    <strong class="title">If you are signed into more than one Google account, use a clean browser profile</strong>
+    <p>
+      Setup authenticates <em>twice</em> &mdash; once so the app can reach Drive, once to say who you
+      are &mdash; and each time Google shows an account chooser that defaults to whichever account
+      you signed in with first. Picking the wrong one at either prompt produces a half-configured
+      install that fails confusingly later. A clean browser profile, or a private window signed
+      into only the detachment account, removes the choice entirely. If your Drive address bar
+      shows <code>/u/1/</code> or higher, you are not on your default account.
+    </p>
+  </div>
   <p class="lead">Open the app's address in a browser. On a folder that has never been set up, the
   wizard starts automatically.</p>
 
@@ -496,9 +568,28 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
   <p class="lead">TOP-Feedback can be added to a home screen so it opens like an ordinary app, works
   offline, and does not need anyone to remember a web address.</p>
 
+  <div class="note note--warn">
+    <strong class="title">Add the icon first, then run setup inside it</strong>
+    <p>
+      A home-screen app gets its own private storage, separate from the browser it was added from.
+      Configure the app in the browser first and the icon may open to an empty setup wizard, and
+      you will paste the Client ID and folder link a second time. Adding the icon <em>before</em>
+      setting anything up means doing it once.
+    </p>
+  </div>
+
+  <div class="note">
+    <strong class="title">Every device is set up individually</strong>
+    <p>
+      Where the database lives is stored per device, so each phone and laptop runs the wizard once
+      and needs the Client ID and the folder link to do it. Have both ready to send before you
+      start rolling this out to cadets.
+    </p>
+  </div>
+
   <table>
     <tr><th style="width:22%">Device</th><th>How</th></tr>
-    <tr><td>iPhone / iPad</td><td>Open the address in <strong>Safari</strong>, tap the Share button, then <em>Add to Home Screen</em>. Safari is required — other browsers on iOS cannot install web apps.</td></tr>
+    <tr><td>iPhone / iPad</td><td>Open the address, tap the <strong>Share</strong> button, then <em>Add to Home Screen</em>. Safari and Chrome both work; both produce a real full-screen app.</td></tr>
     <tr><td>Android</td><td>Open in Chrome. Tap the menu, then <em>Install app</em> or <em>Add to Home screen</em>.</td></tr>
     <tr><td>Windows / macOS</td><td>In Chrome or Edge, click the install icon in the address bar, or use <em>Settings → Access → Install this app</em> inside TOP-Feedback.</td></tr>
   </table>
@@ -563,6 +654,30 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
       <td>Popups are blocked for the site. Allow them and try again.</td>
     </tr>
     <tr>
+      <td>"Access blocked &hellip; has not completed the Google verification process", with no <em>Advanced</em> link</td>
+      <td>Either the app was published to production, or this account is not a test user. Open the OAuth consent screen: if it says <em>In production</em>, click <strong>Back to testing</strong>. If it says <em>Testing</em>, add the account under <em>Test users</em> &mdash; including the account that owns the project, which is not added automatically.</td>
+    </tr>
+    <tr>
+      <td>"Google hasn't verified this app", <em>with</em> an <em>Advanced</em> link</td>
+      <td>Expected, not an error. Click <em>Advanced</em>, then <em>Go to &hellip; (unsafe)</em>. Unavoidable while the app is in Testing.</td>
+    </tr>
+    <tr>
+      <td>Google refuses to add an address as a test user</td>
+      <td>A Google-side behaviour with no published fix. Check whether the account holds a role under <em>IAM &amp; Admin</em>, whether it is enrolled in Advanced Protection, and try the classic <em>Credentials</em> view. If it still will not take, that person needs a different Google account.</td>
+    </tr>
+    <tr>
+      <td>Sign-in popup closes immediately, or <code>origin_mismatch</code></td>
+      <td>The address the app is served from is not listed under <em>Authorised JavaScript origins</em>. It must match exactly: scheme included, no path, no trailing slash. Changes can take a few minutes to take effect.</td>
+    </tr>
+    <tr>
+      <td>The home-screen icon opens the setup wizard again</td>
+      <td>Normal. A home-screen app has its own storage, separate from the browser. Run the wizard once inside the icon app and it will not ask again.</td>
+    </tr>
+    <tr>
+      <td>Connects, then Drive requests fail with 403</td>
+      <td>The Google Drive API was never enabled on the project. Part 2, step 2.</td>
+    </tr>
+    <tr>
       <td>"The folder or file was not found"</td>
       <td>The folder link is wrong, or the signed-in account does not have access to it. Re-copy the link and confirm sharing.</td>
     </tr>
@@ -589,6 +704,47 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     <tr>
       <td>Response counts look wrong</td>
       <td>Database Administration → <em>Rebuild indexes</em>. Counts are a cache and can lag; this rebuilds them from the underlying records.</td>
+    </tr>
+  </table>
+</section>
+
+<!-- ============================= LIMITATIONS ============================= -->
+<section>
+  <h2>What this version cannot do yet</h2>
+  <p class="lead">Alpha 0.4 has been installed and run end to end against real Google Drive, on a
+  Mac and an iPhone. These are the known limits of that build, stated plainly so you can plan
+  around them.</p>
+
+  <table>
+    <tr><th style="width:34%">Limit</th><th>What it means for you</th></tr>
+    <tr>
+      <td><strong>Every device runs the full setup wizard</strong></td>
+      <td>Including every cadet's phone, and it requires pasting an OAuth Client ID. This is the
+      biggest obstacle to fielding the app at scale and the next thing being addressed &mdash; a
+      single shareable link will carry the configuration instead.</td>
+    </tr>
+    <tr>
+      <td><strong>100 users maximum</strong></td>
+      <td>The app must stay in Testing, which caps the test-user list at 100 accounts. Enough for a
+      detachment; not enough for a wing.</td>
+    </tr>
+    <tr>
+      <td><strong>Everyone sees an "unverified app" screen</strong></td>
+      <td>Every user, every time they grant access. Brief people on it so it does not read as a
+      security problem. Removing it requires Google verification and a paid annual security
+      assessment.</td>
+    </tr>
+    <tr>
+      <td><strong>Everyone who submits needs Editor access to the folder</strong></td>
+      <td>A cadet's device writes its own response file directly to Drive, and Drive grants no
+      write-without-read. So anyone who can submit feedback can also open the folder and read
+      every response in it. <strong>Do not describe responses as private from other cadets until
+      this changes.</strong> Anonymity within the app's own screens is real; the folder is not
+      sealed.</td>
+    </tr>
+    <tr>
+      <td><strong>Some Google accounts cannot be added as test users</strong></td>
+      <td>Cause unknown, Google-side. Those people need a different Google account for now.</td>
     </tr>
   </table>
 </section>

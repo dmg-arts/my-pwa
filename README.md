@@ -405,6 +405,26 @@ choice. The trade is accuracy, and every output is labelled accordingly.
 
 ## Known limits
 
+Alpha 0.4 was installed and run end to end against real Google Drive, on a Mac
+and an iPhone, in August 2026. These are the limits that test confirmed or found.
+
+- **Every device runs the full setup wizard**, including every cadet's phone,
+  and it requires pasting an OAuth Client ID. This is the largest obstacle to
+  fielding the app and the next thing to fix — a shareable link carrying the
+  configuration (`#/setup?c=…&f=…`) would collapse it to one tap.
+- **Everyone who submits needs Editor access to the Drive folder.** A cadet's
+  device writes its own response file, and Drive grants no write-without-read,
+  so anyone who can submit can also read every response in the folder. Anonymity
+  inside the app's screens is real; the folder is not sealed. An Apps Script
+  write proxy is the intended fix. **Until then, do not tell cadets their
+  responses are private from other cadets.**
+- **Google caps the app at 100 users.** `auth/drive` is a *restricted* scope, so
+  production use needs Google verification plus a paid annual security
+  assessment. Staying in Testing avoids that but caps the test-user list and
+  shows every user an unverified-app screen. Switching to `drive.file` plus the
+  Google Picker would remove all three.
+- **Some Google accounts cannot be added as test users.** Cause unknown and
+  Google-side; those people need a different Google account.
 - **Receipt timing can correlate.** For anonymous feedback, a receipt and a
   response are written seconds apart, the response ID encodes its creation time,
   and both index arrays are in submission order — so someone reading the **raw
