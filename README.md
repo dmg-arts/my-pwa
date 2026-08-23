@@ -201,6 +201,18 @@ gets a **join link** from Database Administration → *Invite people*:
 https://det.example.org/app/#/join?c=<client>&f=<folder>&n=<name>
 ```
 
+**Database Administration → Show QR code** puts the same link on a full screen
+as a QR code, for handing out to a room at once — a laptop on a projector, or a
+phone held up. `js/qr.js` is a from-scratch encoder (byte mode, error correction
+level M, versions 1–20); a CDN script would break offline use and vendoring a
+minified library would put unreadable code in a dependency-free codebase.
+
+Its unit tests compare the module matrix against **python-qrcode** for ten
+inputs at all eight masks — 80 matrices, bit for bit — because the failure mode
+here is a code that looks perfect and does not scan. Masks are forced rather
+than auto-chosen: mask *selection* legitimately differs between implementations
+and only changes which of eight valid codes you get.
+
 It carries the Google Client ID, the Drive folder, and the submission proxy if
 the detachment has one — so a cadet taps it, signs in once, and lands on their
 feedback with nothing typed. The proxy travels in the link because a cadet in
@@ -545,6 +557,7 @@ js/
   auth.js               the roster, sessions, roles, sign-in
   google-identity.js    Google Identity Services: the button and the token check
   join.js               join-link building and parsing; DOM-free, unit-tested
+  qr.js                 QR encoder and SVG renderer, no dependencies
   student-data.js       one place that decides: proxy bundle, or read Drive direct
   migrations.js         forward-only schema upgrades, one entry per version
   analysis/
@@ -555,6 +568,7 @@ js/
   views/
     setup.js            first-run wizard, for whoever creates the detachment
     join.js             the join-link screen everyone else gets instead
+    invite.js           the full-screen join QR code
     sign-in.js          the Google sign-in gate, shared by all three roles
     home.js             the three entry points + settings
     student.js          username filter, fill-out, one-submission guard

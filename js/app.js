@@ -11,6 +11,7 @@ import { route, startRouter, navigate, currentPath } from './router.js';
 import { renderHome } from './views/home.js';
 import { renderSetup } from './views/setup.js';
 import { renderJoin } from './views/join.js';
+import { renderInvite } from './views/invite.js';
 import { renderStudentList, renderStudentFill } from './views/student.js';
 import { renderInstructor } from './views/instructor.js';
 import { renderFormCreator } from './views/formCreator.js';
@@ -42,6 +43,8 @@ route('/instructor', ({ outlet, query }) => renderInstructor(outlet, { query }),
 route('/instructor/create/:id', ({ outlet, params }) => renderFormCreator(outlet, { params }),
   { guard: requireSetup, title: 'Create Feedback' });
 
+route('/admin/invite', ({ outlet }) => renderInvite(outlet),
+  { guard: requireSetup, title: 'Invite' });
 route('/admin', ({ outlet, query }) => renderAdmin(outlet, { query }),
   { guard: requireSetup, title: 'Database Administration' });
 

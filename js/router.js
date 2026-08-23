@@ -29,6 +29,21 @@ export function startRouter(outletEl, { afterRender = null } = {}) {
   resolve();
 }
 
+/**
+ * Goes back to where the user came from, falling back to `fallback`.
+ *
+ * History is preferred so the browser's own back button and this one agree, but
+ * a screen reached by a pasted link or a fresh tab has nothing behind it — hence
+ * the fallback, rather than stranding someone on a dead end.
+ */
+export function back(fallback = '/home') {
+  if (window.history.length > 1) {
+    window.history.back();
+    return;
+  }
+  navigate(fallback, { replace: true });
+}
+
 export function navigate(path, { replace = false } = {}) {
   const target = `#${path.startsWith('/') ? path : `/${path}`}`;
   if (location.hash === target) return resolve();

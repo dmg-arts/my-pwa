@@ -468,7 +468,11 @@ export function inviteCard() {
       el('a', {
         class: 'btn',
         href: joinMailto({ link, orgName: conn.orgName, appName: APP.name }),
-      }, icon('mail'), 'Email it')),
+      }, icon('mail'), 'Email it'),
+      el('button', {
+        type: 'button', class: 'btn',
+        onclick: () => navigate('/admin/invite'),
+      }, icon('qr'), 'Show QR code')),
 
     notice('info', 'The link is not a password',
       el('p', {}, 'Everything in it is public or an address: the Client ID ships in the page '

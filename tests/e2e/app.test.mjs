@@ -598,6 +598,97 @@ await step('a join link for the folder already in use says so', async () => {
   if (backend !== 'local') throw new Error(`connection changed to ${backend} without consent`);
 });
 
+/**
+ * The suite runs on the local backend, which has no Client ID or folder — so a
+ * join link cannot be built and the screen correctly refuses. Supply both, then
+ * reload: the connection store caches at module load, so writing storage after
+ * the page is up has no effect until it re-reads.
+ */
+const giveJoinConfig = async () => {
+  await page.evaluate(() => {
+    const key = 'topfb.connection.v1';
+    const conn = JSON.parse(localStorage.getItem(key));
+    conn.clientId = '724504040762-rrq3q51dip6rib0g8lof5pq5r6da2g03.apps.googleusercontent.com';
+    conn.folderId = '1Te9Pc7JgOSUluq3tc0FCK4IqbKm1MTIM';
+    localStorage.setItem(key, JSON.stringify(conn));
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+};
+
+await step('the QR screen renders a scannable code from the live link', async () => {
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes');
+  await page.goto(`${BASE}#/admin/invite`, { waitUntil: 'networkidle' });
+  await giveJoinConfig();
+  await page.waitForSelector('.qr-screen__code svg', { timeout: 12000 });
+
+  const shape = await page.evaluate(() => {
+    const svg = document.querySelector('.qr-screen__code svg');
+    const box = svg.getBoundingClientRect();
+    const style = getComputedStyle(svg);
+    return {
+      square: Math.abs(box.width - box.height) < 2,
+      wide: box.width > 100,
+      // Contrast is a scanning requirement, so the plate must stay white in
+      // every theme rather than following the surface token.
+      plate: style.backgroundColor,
+      viewBox: svg.getAttribute('viewBox'),
+      darkModules: svg.querySelector('path').getAttribute('fill'),
+    };
+  });
+  if (!shape.square) throw new Error('the code is not square');
+  if (!shape.wide) throw new Error('the code rendered too small to scan');
+  if (shape.plate !== 'rgb(255, 255, 255)') throw new Error(`plate is ${shape.plate}`);
+  if (shape.darkModules !== '#000000') throw new Error(`modules are ${shape.darkModules}`);
+
+  // The quiet zone is four light modules on every side; without it many
+  // scanners cannot find the code's edges at all.
+  const [, , w] = shape.viewBox.split(' ').map(Number);
+  const size = await page.evaluate(async () => {
+    const { encodeQr } = await import('/js/qr.js');
+    return encodeQr('x').size;
+  });
+  if (w <= size) throw new Error(`viewBox ${w} leaves no quiet zone`);
+});
+
+await step('the QR screen goes back where it came from', async () => {
+  await page.goto(`${BASE}#/admin`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(500);
+  await page.goto(`${BASE}#/admin/invite`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('.qr-screen__code svg', { timeout: 12000 });
+  await page.click('.qr-screen__head .btn');
+  await page.waitForTimeout(900);
+  const hash = await page.evaluate(() => location.hash);
+  if (!hash.startsWith('#/admin') || hash.includes('invite')) {
+    throw new Error(`back landed on ${hash}`);
+  }
+});
+
+await step('the join config is put back so later screens do not call Google', async () => {
+  // A real-looking Client ID makes Google Identity initialise against
+  // 127.0.0.1, which is not a registered origin — harmless, but it fills the
+  // console with errors the suite treats as failures.
+  await page.evaluate(() => {
+    const key = 'topfb.connection.v1';
+    const conn = JSON.parse(localStorage.getItem(key));
+    conn.clientId = '';
+    localStorage.setItem(key, JSON.stringify(conn));
+  });
+  await page.goto(`${BASE}#/admin`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  const cleared = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('topfb.connection.v1')).clientId);
+  if (cleared) throw new Error('the client id was not cleared');
+});
+
+await step('the encoder refuses input it cannot represent', async () => {
+  const msg = await page.evaluate(async () => {
+    const { encodeQr } = await import('/js/qr.js');
+    try { encodeQr('x'.repeat(5000)); return 'NO ERROR'; }
+    catch (e) { return e.message; }
+  });
+  if (!/too long/i.test(msg)) throw new Error(`message was: ${msg}`);
+});
+
 /* ---------- disclosure threshold ---------- */
 
 await step('a lone anonymous response is withheld from analysis', async () => {

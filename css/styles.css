@@ -875,3 +875,78 @@ hr.rule { border: 0; border-top: 1px solid var(--border); margin: var(--sp-5) 0;
   body { background: #fff; color: #000; }
   .card, .table-wrap { box-shadow: none; border-color: #999; break-inside: avoid; }
 }
+
+/* ------------------------------------------------------------------ *
+ * QR join screen
+ *
+ * Built to be pointed at by a room: a laptop on a projector, or a phone held up.
+ *
+ * The code is capped against the viewport height rather than the screen being
+ * pinned to it. Pinning meant subtracting the header, the footer and the
+ * padding by hand, and any of those changing silently pushed the code off the
+ * bottom. Capping needs no arithmetic and cannot overflow.
+ *
+ * It stays black on white in every theme — contrast is a scanning requirement,
+ * not a style choice, so a dark-mode QR code would simply be a broken one.
+ * ------------------------------------------------------------------ */
+
+.qr-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  max-width: 60rem;
+  margin: 0 auto;
+}
+
+.qr-screen__head {
+  display: flex; align-items: center; gap: var(--sp-4);
+  flex-wrap: wrap; width: 100%;
+}
+.qr-screen__title h1 {
+  margin: 0; font-size: var(--step-3); line-height: 1.15; letter-spacing: -0.02em;
+}
+.qr-screen__title .eyebrow {
+  font-size: var(--step--1); font-weight: 650; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--accent);
+}
+
+.qr-screen__code { display: flex; justify-content: center; width: 100%; min-width: 0; }
+
+/* The white plate carries the quiet zone, which scanners use to find the
+   code's edges — without it a perfectly valid code often will not read. */
+.qr-screen__code svg {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(62vh, 30rem);
+  background: #ffffff;
+  padding: var(--sp-2);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-2);
+}
+
+.qr-screen__foot {
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-3);
+  text-align: center; width: 100%; min-width: 0;
+}
+.qr-screen__hint { margin: 0; color: var(--text-muted); max-width: 34rem; }
+.qr-screen__link {
+  font-family: var(--font-mono); font-size: var(--step--1);
+  color: var(--text-faint);
+  /* A join link is one long unbroken token; without these it forces the page
+     sideways on a narrow phone. */
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  max-width: 100%;
+  min-width: 0;
+  background: none; padding: 0;
+}
+
+/* On a short window — a laptop driving a projector — the code is the only thing
+   that matters, so the supporting text gets out of its way. */
+@media (max-height: 34rem) {
+  .qr-screen__link, .qr-screen__hint { display: none; }
+  .qr-screen__code svg { max-height: 72vh; }
+}
