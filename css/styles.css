@@ -328,6 +328,8 @@ h1[tabindex="-1"]:focus { outline: none; }
   color: var(--text);
   font-size: var(--step-0); font-weight: 550;
   white-space: nowrap;
+  /* Anchors styled as buttons inherit the global link underline otherwise. */
+  text-decoration: none;
   transition: background var(--transition), border-color var(--transition),
               color var(--transition), opacity var(--transition);
 }

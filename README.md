@@ -151,6 +151,39 @@ sharing settings.
 
 ---
 
+## Join links
+
+Only the person who sets a detachment up runs the setup wizard. Everyone else
+gets a **join link** from Database Administration → *Invite people*:
+
+```
+https://det.example.org/app/#/join?c=<client>&f=<folder>&n=<name>
+```
+
+It carries the Google Client ID and the Drive folder, so a cadet taps it,
+approves Google once, and lands on their feedback — nothing typed. The admin
+console offers it three ways: copy, a native share sheet on phones, and a
+pre-written mail draft that warns about the unverified-app screen.
+
+**A join link is not a credential**, and the UI says so. The Client ID is public
+by design, the folder ID is an address rather than a key, and connecting grants
+nothing on its own — the roster still decides who may sign in, and an unknown
+email is turned away. It is safe to post wherever the detachment already talks.
+
+Link building and parsing live in `js/join.js`, deliberately DOM-free so the
+format is unit-testable and so a QR renderer can consume `buildJoinLink()`
+without pulling in a view. The client ID's fixed
+`.apps.googleusercontent.com` suffix is stripped in transit, which keeps a
+typical link inside 152 characters.
+
+The join screen never calls `db.initialize()`. The wizard does, because the
+wizard creates a detachment; a joining device is arriving at a folder that
+already exists, and a cadet's phone has no business creating folder structure.
+If `config/org.json` is missing, the screen says no administrator has set the
+folder up yet rather than quietly repairing it.
+
+---
+
 ## Accounts and sign-in
 
 **Everyone signs in with their Google account. This app issues no passwords and
@@ -408,10 +441,6 @@ choice. The trade is accuracy, and every output is labelled accordingly.
 Alpha 0.4 was installed and run end to end against real Google Drive, on a Mac
 and an iPhone, in August 2026. These are the limits that test confirmed or found.
 
-- **Every device runs the full setup wizard**, including every cadet's phone,
-  and it requires pasting an OAuth Client ID. This is the largest obstacle to
-  fielding the app and the next thing to fix — a shareable link carrying the
-  configuration (`#/setup?c=…&f=…`) would collapse it to one tap.
 - **Everyone who submits needs Editor access to the Drive folder.** A cadet's
   device writes its own response file, and Drive grants no write-without-read,
   so anyone who can submit can also read every response in the folder. Anonymity
@@ -471,6 +500,7 @@ js/
     idb.js              IndexedDB wrapper
   auth.js               the roster, sessions, roles, sign-in
   google-identity.js    Google Identity Services: the button and the token check
+  join.js               join-link building and parsing; DOM-free, unit-tested
   migrations.js         forward-only schema upgrades, one entry per version
   analysis/
     stats.js            descriptive stats, agreement, clustering, outliers
@@ -478,13 +508,15 @@ js/
     lexicon.js          the word lists — meant to be edited
     wordcloud.js        SVG cloud plus its accessible table
   views/
-    setup.js            first-run wizard
+    setup.js            first-run wizard, for whoever creates the detachment
+    join.js             the join-link screen everyone else gets instead
+    sign-in.js          the Google sign-in gate, shared by all three roles
     home.js             the three entry points + settings
     student.js          username filter, fill-out, one-submission guard
     instructor.js       portal shell, feedback forms, students, database
     formCreator.js      the standardized form builder
     analysis.js         filtering, statistics, completion tracking
-    admin.js            account maintenance and sign-in screens
+    admin.js            roster maintenance, invite links, audit, rollover
     settings.js         storage, appearance, accessibility, access, about
 ```
 

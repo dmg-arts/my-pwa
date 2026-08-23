@@ -16,7 +16,7 @@ import {
   emptyState, download, toCsv, pickFile, readFileAsText, pluralize, fmtDate, fmtDateTime,
   mount, remount } from '../util.js';
 import {
-  AS_CLASSES, ROLES, ROLE_LABELS, AS_PROGRESSION,
+  APP, AS_CLASSES, BACKENDS, ROLES, ROLE_LABELS, AS_PROGRESSION,
   currentSchoolYear, isDevMode,
 } from '../config.js';
 import { record, recent, AUDIT, AUDIT_LABELS } from '../audit.js';
@@ -25,6 +25,8 @@ import {
   signOut, currentUser, hasRole, normalizeEmail,
 } from '../auth.js';
 import { renderLogin } from './sign-in.js';
+import { buildJoinLink, joinMailto } from '../join.js';
+import { connection } from '../state.js';
 import { db } from '../storage/index.js';
 import { navigate } from '../router.js';
 
@@ -331,6 +333,7 @@ async function renderConsole(root) {
 
       table),
 
+    inviteCard(),
     rolloverCard(reload),
     await auditCard(),
     await schemaCard(),
@@ -378,6 +381,103 @@ async function renderConsole(root) {
  * stays part of the record, and the account can be reactivated if someone
  * returns.
  */
+/**
+ * The join link, and the ways an admin hands it out.
+ *
+ * Lives here because giving someone access and putting them on the roster are
+ * the same act from an administrator's point of view — you add an email, then
+ * you send them the link. Splitting those across two screens would guarantee
+ * that half the roster never gets told how to get in.
+ */
+export function inviteCard() {
+  const conn = connection.get();
+  const host = el('div', { class: 'stack' });
+
+  const card = el('section', { class: 'card stack' },
+    el('h2', { class: 'section-title', style: { margin: '0' } }, 'Invite people'),
+    host);
+
+  // A join link points at a Drive folder. The local and folder backends are
+  // device-local by definition, so there is nothing another device could join.
+  if (conn.backend !== BACKENDS.drive) {
+    mount(host, notice('info', 'Join links need Google Drive storage',
+      el('p', {}, 'This installation stores its records ',
+        conn.backend === BACKENDS.local ? 'in this browser' : 'in a folder on this computer',
+        ', which no other device can reach. Switch to Google Drive in Settings to invite people.')));
+    return card;
+  }
+
+  let link;
+  try {
+    link = buildJoinLink({
+      clientId: conn.clientId,
+      folderId: conn.folderId,
+      orgName: conn.orgName,
+    });
+  } catch (err) {
+    mount(host, notice('warn', 'No join link yet', el('p', {}, err.message)));
+    return card;
+  }
+
+  const linkBox = el('input', {
+    class: 'input mono', type: 'text', readonly: true, value: link,
+    onclick: (e) => e.target.select(),
+  });
+
+  const copyBtn = el('button', {
+    type: 'button', class: 'btn btn--primary',
+    onclick: async () => {
+      try {
+        await navigator.clipboard.writeText(link);
+        toast('Join link copied.', 'ok');
+      } catch {
+        // Clipboard access is refused in some embedded and insecure contexts;
+        // selecting the text is something the admin can still act on.
+        linkBox.select();
+        toast('Press Cmd-C or Ctrl-C to copy.', 'info', 6000);
+      }
+    },
+  }, icon('copy'), 'Copy link');
+
+  const shareBtn = navigator.share
+    ? el('button', {
+      type: 'button', class: 'btn',
+      onclick: async () => {
+        try {
+          await navigator.share({
+            title: `${APP.name} — join ${conn.orgName || 'the detachment'}`,
+            text: 'Open this to set up feedback on your phone.',
+            url: link,
+          });
+        } catch { /* the share sheet was dismissed */ }
+      },
+    }, icon('send'), 'Share')
+    : null;
+
+  mount(host,
+    el('p', { class: 'muted', style: { margin: '0' } },
+      'Send this to anyone on the roster. It sets up their device for them — no Client ID, '
+      + 'no folder link, nothing to type. They sign in with Google and land on their feedback.'),
+
+    field('Join link', linkBox),
+
+    el('div', { class: 'row row--wrap' },
+      copyBtn,
+      shareBtn,
+      el('a', {
+        class: 'btn',
+        href: joinMailto({ link, orgName: conn.orgName, appName: APP.name }),
+      }, icon('mail'), 'Email it')),
+
+    notice('info', 'The link is not a password',
+      el('p', {}, 'Everything in it is public or an address: the Client ID ships in the page '
+        + 'source, and the folder ID is not a key. Opening the link grants nothing on its own — '
+        + 'the roster decides who may sign in, and an unknown address is turned away. It is safe '
+        + 'to post wherever your detachment already talks.')));
+
+  return card;
+}
+
 function rolloverCard(reload) {
   const host = el('div', {});
 

@@ -10,6 +10,7 @@ import { db } from './storage/index.js';
 import { route, startRouter, navigate, currentPath } from './router.js';
 import { renderHome } from './views/home.js';
 import { renderSetup } from './views/setup.js';
+import { renderJoin } from './views/join.js';
 import { renderStudentList, renderStudentFill } from './views/student.js';
 import { renderInstructor } from './views/instructor.js';
 import { renderFormCreator } from './views/formCreator.js';
@@ -29,6 +30,7 @@ const requireSetup = () => (isConfigured() ? null : '/setup');
 route('/', () => navigate('/home', { replace: true }));
 route('/setup', ({ outlet, query }) => renderSetup(outlet, { rerun: query.get('rerun') === '1' }),
   { title: 'Setup' });
+route('/join', ({ outlet, query }) => renderJoin(outlet, { query }), { title: 'Join' });
 route('/home', ({ outlet }) => renderHome(outlet), { guard: requireSetup, title: 'Home' });
 
 route('/student', ({ outlet }) => renderStudentList(outlet), { guard: requireSetup, title: 'Student' });
@@ -94,7 +96,7 @@ connection.subscribe(() => { buildAppBar(); syncAppBar(); refreshStatus(); });
 /** Hides the back button on the home screen, where it has nowhere to go. */
 function syncAppBar() {
   const path = currentPath();
-  const atHome = path === '/home' || path === '/' || path === '/setup';
+  const atHome = path === '/home' || path === '/' || path === '/setup' || path === '/join';
   const back = $('#appbar .btn--icon');
   if (back) back.hidden = atHome;
 }

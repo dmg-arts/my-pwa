@@ -521,6 +521,83 @@ await step('old /cadre bookmark redirects to the portal', async () => {
 });
 
 
+/* ---------- join links ---------- */
+
+await step('the admin console offers a join link', async () => {
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes');
+  await page.goto(`${BASE}#/admin`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.section-title:has-text("Invite people")', { timeout: 12000 });
+  const text = await page.textContent('#view');
+  // These captures run on the local backend, which no other device can reach,
+  // so the card must say so rather than hand out a link that cannot work.
+  if (!/Join links need Google Drive storage/.test(text)) {
+    throw new Error('the local backend was offered a join link anyway');
+  }
+});
+
+await step('a join link is built from the live connection', async () => {
+  const link = await page.evaluate(async () => {
+    const j = await import('/js/join.js');
+    return j.buildJoinLink({
+      clientId: '724504040762-abcdefghijklmnopqrstuvwxyz012345.apps.googleusercontent.com',
+      folderId: '1Te9Pc7JgOSUluq3tc0FCK4IqbKm1MTIM',
+      orgName: 'Det 025',
+      base: 'https://example.org/app/',
+    });
+  });
+  if (!link.startsWith('https://example.org/app/#/join?')) throw new Error(link);
+  if (!link.includes('c=724504040762-abcdefghijklmnopqrstuvwxyz012345')) {
+    throw new Error('client id suffix was not stripped');
+  }
+  if (link.includes('.apps.googleusercontent.com')) throw new Error('suffix still present');
+});
+
+await step('the join route renders without a session or a configured device', async () => {
+  // The whole point: this must work for someone who has never signed in, on a
+  // device that has never been set up.
+  await page.evaluate(() => sessionStorage.clear());
+  await page.goto(`${BASE}#/join?c=724504040762-abcdefghijklmnopqrstuvwxyz012345&f=1Te9Pc7JgOSUluq3tc0FCK4IqbKm1MTIM&n=Det%20025`,
+    { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.page-title', { timeout: 10000 });
+  const title = await page.textContent('.page-title');
+  if (!/Join Det 025/.test(title)) throw new Error(`title read "${title}"`);
+  const body = await page.textContent('#view');
+  if (!/not been verified/i.test(body)) throw new Error('no warning about the Google consent screen');
+});
+
+await step('a truncated join link is refused rather than half-applied', async () => {
+  await page.goto(`${BASE}#/join?c=724504040762-abcdefghijklmnopqrstuvwxyz012345`,
+    { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.notice--danger', { timeout: 10000 });
+  const text = await page.textContent('#view');
+  if (!/incomplete|missing something/i.test(text)) throw new Error('a truncated link was accepted');
+  // And it must not have touched the device's existing configuration.
+  const backend = await page.evaluate(() => {
+    try { return JSON.parse(localStorage.getItem('topfb.connection.v1')).backend; }
+    catch { return null; }
+  });
+  if (backend !== 'local') throw new Error(`connection was changed to ${backend}`);
+});
+
+await step('a join link for the folder already in use says so', async () => {
+  const link = await page.evaluate(() => {
+    const conn = JSON.parse(localStorage.getItem('topfb.connection.v1'));
+    return `#/join?c=724504040762-abcdefghijklmnopqrstuvwxyz012345&f=${conn.folderId || 'none'}`;
+  });
+  await page.goto(`${BASE}${link}`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.page-title', { timeout: 10000 });
+  // The local backend's folderId is not a Drive id, so this exercises the
+  // mismatch path rather than the already-here path — either way it must not
+  // silently reconfigure the device.
+  const backend = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('topfb.connection.v1')).backend);
+  if (backend !== 'local') throw new Error(`connection changed to ${backend} without consent`);
+});
+
 /* ---------- disclosure threshold ---------- */
 
 await step('a lone anonymous response is withheld from analysis', async () => {

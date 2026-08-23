@@ -543,6 +543,12 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     duplicated.</li>
   </ol>
 
+  <h3>Telling them how to get in</h3>
+  <p>Adding someone to the roster does not notify them &mdash; this app sends no mail. Once they are
+  on the list, send them the join link from <em>Invite people</em> at the top of this same screen.
+  <strong>Copy link</strong> for chat, <strong>Email it</strong> to open a pre-written message, or
+  <strong>Share</strong> on a phone.</p>
+
   <h3>When someone changes email</h3>
   <p>Edit their account and change the address. Their submission history follows them: receipts are
   filed under an internal handle such as <code>alvarez.mia</code>, which does not change when the
@@ -578,12 +584,18 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     </p>
   </div>
 
-  <div class="note">
-    <strong class="title">Every device is set up individually</strong>
+  <div class="note note--ok">
+    <strong class="title">Cadets do not run this wizard &mdash; send them a join link</strong>
     <p>
-      Where the database lives is stored per device, so each phone and laptop runs the wizard once
-      and needs the Client ID and the folder link to do it. Have both ready to send before you
-      start rolling this out to cadets.
+      Everything on this page is for <em>your</em> device. For everyone else, go to
+      <em>Database Administration &rarr; Invite people</em> and send the join link. It carries the
+      Client ID and the folder, so a cadet taps it, approves Google once, and lands on their
+      feedback. Nothing to paste and nothing to explain.
+    </p>
+    <p>
+      The link is safe to post wherever your detachment already talks. Everything in it is public
+      or an address, and opening it grants nothing on its own &mdash; the roster still decides who
+      may sign in.
     </p>
   </div>
 
@@ -711,18 +723,11 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 <!-- ============================= LIMITATIONS ============================= -->
 <section>
   <h2>What this version cannot do yet</h2>
-  <p class="lead">Alpha 0.4 has been installed and run end to end against real Google Drive, on a
-  Mac and an iPhone. These are the known limits of that build, stated plainly so you can plan
-  around them.</p>
+  <p class="lead">This build has been installed and run end to end against real Google Drive, on a
+  Mac and an iPhone. These are its known limits, stated plainly so you can plan around them.</p>
 
   <table>
     <tr><th style="width:34%">Limit</th><th>What it means for you</th></tr>
-    <tr>
-      <td><strong>Every device runs the full setup wizard</strong></td>
-      <td>Including every cadet's phone, and it requires pasting an OAuth Client ID. This is the
-      biggest obstacle to fielding the app at scale and the next thing being addressed &mdash; a
-      single shareable link will carry the configuration instead.</td>
-    </tr>
     <tr>
       <td><strong>100 users maximum</strong></td>
       <td>The app must stay in Testing, which caps the test-user list at 100 accounts. Enough for a
