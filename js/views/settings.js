@@ -23,6 +23,7 @@ export async function renderSettings(root) {
       el('h1', { class: 'page-title' }, 'Settings'),
       el('p', { class: 'page-sub' }, 'Applies to this device. Feedback data is unaffected.')),
     await storageSection(conn),
+    proxySection(conn),
     appearanceSection(),
     defaultsSection(),
     await accessSection(),
@@ -85,6 +86,69 @@ async function accessSection() {
 /* ------------------------------------------------------------------ *
  * Storage / database location
  * ------------------------------------------------------------------ */
+
+/**
+ * The submission proxy.
+ *
+ * Without one, every cadet needs Editor on the Drive folder in order to submit —
+ * and Drive has no write-without-read, so they can also read every response in
+ * it. With one, cadets need no Drive access at all. This is the single setting
+ * that decides whether "anonymous" means anonymous from other cadets.
+ */
+function proxySection(conn) {
+  const input = el('input', {
+    class: 'input mono', type: 'url', value: conn.proxyUrl || '',
+    placeholder: 'https://script.google.com/macros/s/…/exec',
+    spellcheck: 'false', autocapitalize: 'off',
+  });
+  const status = el('div', {});
+
+  const save = async () => {
+    const value = input.value.trim();
+
+    if (!value) {
+      connection.set({ proxyUrl: '' });
+      remount(status, notice('warn', 'Proxy turned off',
+        el('p', {}, 'Cadets will write to Drive directly again, which means they need Editor '
+          + 'access to the folder and can read every response in it.')));
+      return;
+    }
+
+    remount(status, spinner('Checking the deployment…'));
+    const result = await checkProxy(value);
+    if (!result.ok) {
+      remount(status, notice('danger', 'That proxy is not usable yet', el('p', {}, result.error)));
+      return;
+    }
+
+    connection.set({ proxyUrl: value });
+    remount(status, notice('ok', `Connected to proxy v${result.version}`,
+      el('p', {}, 'Cadets who join from now on will submit through it and will not be asked '
+        + 'for Drive access at all.'),
+      el('p', {}, 'Anyone already set up keeps their current configuration until they open a '
+        + 'new join link — and existing cadets still hold whatever Drive access you granted '
+        + 'them, so remove that separately.')));
+  };
+
+  return el('section', { class: 'card stack' },
+    el('h2', { class: 'section-title' }, 'Submission proxy'),
+    el('p', { class: 'muted' },
+      'Optional, and worth doing before you field this. A small script running in your own '
+      + 'Google account files cadets\' feedback for them, so they never need access to the '
+      + 'folder. Setup instructions are in the guide.'),
+    field('Web app URL', input, {
+      hint: 'From Apps Script → Deploy → New deployment → Web app. Ends in /exec. '
+        + 'Leave blank to turn it off.',
+    }),
+    el('div', { class: 'row row--wrap' },
+      el('button', { type: 'button', class: 'btn btn--primary', onclick: save },
+        icon('check'), 'Save and test')),
+    status,
+    conn.proxyUrl ? null : notice('warn', 'No proxy configured',
+      el('p', {}, 'Cadets must have Editor access to the Drive folder to submit, which also '
+        + 'lets them read every response in it. Until this is set up, do not tell cadets their '
+        + 'feedback is private from each other.')));
+}
 
 async function storageSection(conn) {
   const statusRow = el('div', { class: 'row row--wrap' }, spinner('Checking…'));

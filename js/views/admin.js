@@ -413,6 +413,7 @@ export function inviteCard() {
       clientId: conn.clientId,
       folderId: conn.folderId,
       orgName: conn.orgName,
+      proxyUrl: conn.proxyUrl,
     });
   } catch (err) {
     mount(host, notice('warn', 'No join link yet', el('p', {}, err.message)));

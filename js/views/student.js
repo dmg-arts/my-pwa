@@ -18,12 +18,16 @@ import {
   fmtDate, fmtRelative, pluralize, confirmDialog, nowIso, makeId,
   mount, remount } from '../util.js';
 import {
-  SEMESTERS, AS_CLASSES, FORM_RULES, ROLES, countWords,
+  APP, SEMESTERS, AS_CLASSES, FORM_RULES, ROLES, countWords,
   schoolYears, currentSchoolYear, currentSemester,
 } from '../config.js';
-import { studentPrefs, settings } from '../state.js';
+import { studentPrefs, settings, connection } from '../state.js';
 import { db } from '../storage/index.js';
-import { signOut, currentUser, findByUsername } from '../auth.js';
+import { signOut, currentUser, currentIdToken } from '../auth.js';
+import { submitViaProxy } from '../storage/proxy.js';
+import {
+  loadAssignments, loadForFilling, loadOwnAccount, invalidateStudentData, usingProxy,
+} from '../student-data.js';
 import { renderLogin } from './sign-in.js';
 import { navigate } from '../router.js';
 import { renderForm, collectAnswers, showMissing } from '../forms.js';
@@ -79,10 +83,9 @@ async function drawList(root, session) {
   const submitted = new Set();
 
   try {
-    requests = await db.listRequests();
-    for (const request of candidateRequests()) {
-      if (await db.hasSubmitted(request.id, session.username)) submitted.add(request.id);
-    }
+    const data = await loadAssignments(session);
+    requests = data.requests;
+    for (const id of data.submitted) submitted.add(id);
   } catch (err) {
     remount(results, notice('danger', 'Could not load feedback', el('p', {}, err.message)));
     return;
@@ -225,11 +228,14 @@ async function drawFill(root, params, session) {
 
   let request;
   let form;
+  let alreadySubmitted = false;
   try {
-    request = await db.getRequest(params.id);
+    const loaded = await loadForFilling(session, params.id);
+    request = loaded.request;
     if (!request) throw new Error('That feedback form no longer exists.');
-    form = await db.getForm(request.formId);
+    form = loaded.form;
     if (!form) throw new Error('The questions for this form are missing.');
+    alreadySubmitted = loaded.submitted;
   } catch (err) {
     remount(container,
       notice('danger', 'Could not open this form', el('p', {}, err.message)), backLink());
@@ -243,7 +249,7 @@ async function drawFill(root, params, session) {
     return;
   }
 
-  if (await db.hasSubmitted(request.id, session.username)) {
+  if (alreadySubmitted) {
     remount(container,
       notice('ok', 'You have already submitted this feedback',
         el('p', {}, 'Only one response per person is kept. Talk to your instructor if you '
@@ -296,7 +302,7 @@ async function drawFill(root, params, session) {
     // per cadet.
     let account;
     try {
-      account = await findByUsername(session.username);
+      account = await loadOwnAccount(session);
     } catch (err) {
       restore();
       toast(`Could not verify your account: ${err.message}`, 'danger', 8000);
@@ -307,7 +313,10 @@ async function drawFill(root, params, session) {
       toast('Your account is no longer active. Ask your cadre.', 'danger', 8000);
       return undefined;
     }
-    if (await db.hasSubmitted(request.id, session.username)) {
+    // Re-read rather than trusting what the page loaded with: a cadet can sit
+    // on an open form for an hour. In proxy mode the server holds the only
+    // authoritative answer, under a lock, and will refuse a duplicate itself.
+    if (!usingProxy() && await db.hasSubmitted(request.id, session.username)) {
       restore();
       toast('You have already submitted this feedback.', 'warn', 6000);
       return navigate('/student');
@@ -331,6 +340,32 @@ async function drawFill(root, params, session) {
       'You cannot edit it afterwards, and you can only submit once.', { confirmLabel: 'Submit' });
     if (!confirmed) { restore(); return undefined; }
 
+    // Where this goes depends on whether the detachment has deployed the
+    // submission proxy. Through the proxy, the cadet needs no Drive access at
+    // all; without it, they are writing into the folder themselves and can read
+    // everything in it. Same submission either way, very different exposure.
+    const proxyUrl = connection.get().proxyUrl;
+
+    if (proxyUrl) {
+      try {
+        await submitViaProxy(proxyUrl, {
+          idToken: currentIdToken(),
+          requestId: request.id,
+          formId: form.id,
+          answers: values,
+          schemaVersion: APP.schemaVersion,
+        });
+        // The proxy writes the receipt too, under the same lock that enforces
+        // one submission per cadet — so there is nothing to write here.
+        invalidateStudentData();
+        return renderThanks(root, request, false);
+      } catch (err) {
+        restore();
+        toast(`Could not submit: ${err.message}`, 'danger', 9000);
+        return undefined;
+      }
+    }
+
     try {
       const saved = await db.saveResponse({
         id: makeId('res'),
@@ -349,6 +384,7 @@ async function drawFill(root, params, session) {
         submittedAt: nowIso(),
       });
       await db.addReceipt(request.id, session.username);
+      invalidateStudentData();
       return renderThanks(root, request, saved.queued);
     } catch (err) {
       restore();

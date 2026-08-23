@@ -36,6 +36,10 @@
 /** Every Google browser client ID ends this way, so it is not worth carrying. */
 const CLIENT_SUFFIX = '.apps.googleusercontent.com';
 
+/** Every Apps Script web app URL has this shape, so only the id travels. */
+const PROXY_PREFIX = 'https://script.google.com/macros/s/';
+const PROXY_SUFFIX = '/exec';
+
 /** Drive file and folder ids, and Google's client id body. */
 const ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
@@ -58,6 +62,23 @@ export function expandClientId(short) {
   return value.endsWith(CLIENT_SUFFIX) ? value : value + CLIENT_SUFFIX;
 }
 
+/** Reduces a deployed Apps Script URL to its deployment id. Saves ~40 characters. */
+export function shortenProxyUrl(url) {
+  const value = String(url || '').trim();
+  if (value.startsWith(PROXY_PREFIX) && value.endsWith(PROXY_SUFFIX)) {
+    return value.slice(PROXY_PREFIX.length, -PROXY_SUFFIX.length);
+  }
+  return value;
+}
+
+/** Rebuilds the full URL from a deployment id. */
+export function expandProxyUrl(short) {
+  const value = String(short || '').trim();
+  if (!value) return '';
+  if (value.startsWith('https://')) return value;
+  return PROXY_PREFIX + value + PROXY_SUFFIX;
+}
+
 /**
  * The address the app is served from, without any route on the end.
  *
@@ -77,7 +98,7 @@ export function appBaseUrl(loc = window.location) {
  * @throws if the client ID or folder ID is missing or malformed — a broken join
  *         link fails in a cadet's hands, where nobody can debug it.
  */
-export function buildJoinLink({ clientId, folderId, orgName = '', base = null }) {
+export function buildJoinLink({ clientId, folderId, orgName = '', proxyUrl = '', base = null }) {
   const client = shortenClientId(clientId);
   const folder = String(folderId || '').trim();
 
@@ -89,6 +110,14 @@ export function buildJoinLink({ clientId, folderId, orgName = '', base = null })
   const params = new URLSearchParams({ c: client, f: folder });
   if (String(orgName || '').trim()) params.set('n', String(orgName).trim());
 
+  // Carried in the link because a cadet in proxy mode has no Drive access and
+  // therefore cannot read a shared setting to discover it.
+  const proxy = shortenProxyUrl(proxyUrl);
+  if (proxy) {
+    if (!ID_PATTERN.test(proxy)) throw new Error('That submission proxy URL does not look valid.');
+    params.set('p', proxy);
+  }
+
   return `${base || appBaseUrl()}#/join?${params.toString()}`;
 }
 
@@ -98,18 +127,19 @@ export function buildJoinLink({ clientId, folderId, orgName = '', base = null })
  * Takes the router's own `URLSearchParams`, so it never has to re-parse a hash
  * and cannot disagree with the router about what the route was.
  *
- * @returns {{clientId: string, folderId: string, orgName: string}|null}
+ * @returns {{clientId: string, folderId: string, orgName: string, proxyUrl: string}|null}
  *          null when the link is missing either required value.
  */
 export function parseJoinParams(query) {
   const client = expandClientId(query.get('c') || '');
   const folder = String(query.get('f') || '').trim();
   const orgName = String(query.get('n') || '').trim();
+  const proxyUrl = expandProxyUrl(query.get('p') || '');
 
   if (!client || !folder) return null;
   if (!ID_PATTERN.test(shortenClientId(client)) || !ID_PATTERN.test(folder)) return null;
 
-  return { clientId: client, folderId: folder, orgName };
+  return { clientId: client, folderId: folder, orgName, proxyUrl };
 }
 
 /**

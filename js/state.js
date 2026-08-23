@@ -91,7 +91,11 @@ prefersDark.addEventListener('change', () => {
 
 /**
  * Shape:
- *   { backend, orgName, folderId, folderName, folderUrl, clientId, connectedAt }
+ *   { backend, orgName, folderId, folderName, folderUrl, clientId, proxyUrl, connectedAt }
+ * `proxyUrl` is the deployed Apps Script web app, when the detachment has one.
+ * It belongs here rather than in shared settings because a cadet in proxy mode
+ * cannot read shared settings — they have no Drive access. It arrives in their
+ * join link instead.
  * `folderId` is a Drive file id for the `drive` backend; for `folder` it is the
  * IndexedDB key of the saved FileSystemDirectoryHandle.
  */
@@ -102,6 +106,7 @@ export const connection = createStore(LS.connection, {
   folderName: '',
   folderUrl: '',
   clientId: '',
+  proxyUrl: '',
   connectedAt: null,
 });
 

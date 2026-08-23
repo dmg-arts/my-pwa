@@ -268,7 +268,7 @@ const SESSION_MS = 8 * 60 * 60 * 1000;
  * @param {string|null} requiredRole
  * @returns {Promise<Account>}
  */
-export async function signInWithGoogle(profile, requiredRole = null) {
+export async function signInWithGoogle(profile, requiredRole = null, rawToken = null) {
   const email = normalizeEmail(profile?.email);
   if (!email) throw new Error('That Google account did not provide an email address.');
 
@@ -284,7 +284,7 @@ export async function signInWithGoogle(profile, requiredRole = null) {
         name: profile.name || email,
         roles: [ROLES.admin, ROLES.instructor],
       });
-      startSession(founder);
+      startSession(founder, { idToken: rawToken, idTokenExp: profile.exp });
       return founder;
     }
     throw new Error(
@@ -304,7 +304,7 @@ export async function signInWithGoogle(profile, requiredRole = null) {
     updateAccount(account.id, { name: profile.name }).catch(() => {});
   }
 
-  startSession(account);
+  startSession(account, { idToken: rawToken, idTokenExp: profile.exp });
   return account;
 }
 
@@ -340,7 +340,16 @@ export async function hasAnyAccount() {
   return (await listAccounts()).length > 0;
 }
 
-export function startSession(account) {
+/**
+ * @param {object} account
+ * @param {{idToken?: string, idTokenExp?: number}} [credential]
+ *   The raw Google ID token, kept only when there is a submission proxy to send
+ *   it to. The proxy re-verifies it server-side — that is the whole point of it
+ *   — so the browser has to hold the original string, not the decoded claims.
+ *   It lives in sessionStorage beside the session it belongs to, and dies with
+ *   the tab.
+ */
+export function startSession(account, credential = {}) {
   sessionStorage.setItem(LS.session, JSON.stringify({
     id: account.id,
     email: account.email,
@@ -350,8 +359,24 @@ export function startSession(account) {
     // Carried so the student view can match forms to their AS level without
     // another read of the account database on every render.
     asClass: account.asClass || '',
+    idToken: credential.idToken || null,
+    idTokenExp: credential.idTokenExp || null,
     until: Date.now() + SESSION_MS,
   }));
+}
+
+/**
+ * The raw ID token, if one is held and still valid.
+ *
+ * Returns null once it expires rather than handing over something the proxy
+ * will refuse — the caller can then send the cadet back through sign-in with an
+ * honest reason instead of a server error.
+ */
+export function currentIdToken() {
+  const session = currentUser();
+  if (!session?.idToken) return null;
+  if (session.idTokenExp && session.idTokenExp * 1000 < Date.now()) return null;
+  return session.idToken;
 }
 
 export function currentUser() {

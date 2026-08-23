@@ -12,7 +12,9 @@
 
 import {
   shortenClientId, expandClientId, buildJoinLink, parseJoinParams, joinMailto, appBaseUrl,
+  shortenProxyUrl, expandProxyUrl,
 } from '../../js/join.js';
+import { validateProxyUrl } from '../../js/storage/proxy.js';
 
 const CLIENT = '724504040762-rrq3q51dip6rib0g8lof5pq5r6da2g03.apps.googleusercontent.com';
 const FOLDER = '1Te9Pc7JgOSUluq3tc0FCK4IqbKm1MTIM';
@@ -132,6 +134,66 @@ check('a truncated link is rejected', () => {
 check('junk in the parameters is rejected, not passed to Google', () => {
   const bad = new URLSearchParams({ c: 'a b c', f: FOLDER });
   if (parseJoinParams(bad) !== null) throw new Error('accepted a malformed client id');
+});
+
+/* ---------- the submission proxy ---------- */
+
+const PROXY = 'https://script.google.com/macros/s/AKfycbwEXAMPLEdeploymentid0123456789/exec';
+
+check('a proxy url reduces to its deployment id and back', () => {
+  const short = shortenProxyUrl(PROXY);
+  if (short.includes('/')) throw new Error(`still a url: ${short}`);
+  if (expandProxyUrl(short) !== PROXY) throw new Error('round trip lost data');
+});
+
+check('expanding tolerates a full url', () => {
+  if (expandProxyUrl(PROXY) !== PROXY) throw new Error('a full url was mangled');
+});
+
+check('an empty proxy expands to empty, not to a bare prefix', () => {
+  if (expandProxyUrl('') !== '') throw new Error('invented a url from nothing');
+});
+
+check('the proxy rides along in the link and comes back whole', () => {
+  const link = buildJoinLink({ clientId: CLIENT, folderId: FOLDER, proxyUrl: PROXY, base: BASE });
+  const out = parseJoinParams(paramsOf(link));
+  if (out.proxyUrl !== PROXY) throw new Error(`proxy came back as ${out.proxyUrl}`);
+});
+
+check('a link without a proxy reports no proxy rather than a broken one', () => {
+  const link = buildJoinLink({ clientId: CLIENT, folderId: FOLDER, base: BASE });
+  if (link.includes('p=')) throw new Error('an empty proxy was written into the link');
+  if (parseJoinParams(paramsOf(link)).proxyUrl !== '') throw new Error('invented a proxy');
+});
+
+check('a link carrying a proxy is still short enough to be worth a QR code', () => {
+  const link = buildJoinLink({
+    clientId: CLIENT, folderId: FOLDER, orgName: 'Det 025', proxyUrl: PROXY, base: BASE,
+  });
+  // Version 11 at error correction M holds 254 bytes. Past that a projected
+  // code gets too dense for a phone at the back of a room.
+  if (link.length > 254) throw new Error(`link is ${link.length} chars`);
+});
+
+check('the /dev deployment url is refused with the reason', () => {
+  const dev = PROXY.replace('/exec', '/dev');
+  const problem = validateProxyUrl(dev);
+  if (!problem || !/test URL/i.test(problem)) throw new Error(`message was: ${problem}`);
+});
+
+check('a non-Apps-Script url is refused', () => {
+  const problem = validateProxyUrl('https://example.com/submit');
+  if (!problem || !/Apps Script/i.test(problem)) throw new Error(`message was: ${problem}`);
+});
+
+check('a valid exec url is accepted', () => {
+  const problem = validateProxyUrl(PROXY);
+  if (problem) throw new Error(`rejected a valid url: ${problem}`);
+});
+
+check('an http url is refused', () => {
+  const problem = validateProxyUrl(PROXY.replace('https://', 'http://'));
+  if (!problem) throw new Error('accepted an insecure url');
 });
 
 /* ---------- the mail draft ---------- */

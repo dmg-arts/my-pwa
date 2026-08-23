@@ -58,10 +58,10 @@ export async function renderLogin(root, role, title, onSuccess) {
     onSuccess(account);
   };
 
-  async function accept(profile) {
+  async function accept(profile, rawToken = null) {
     error.hidden = true;
     try {
-      finish(await signInWithGoogle(profile, role));
+      finish(await signInWithGoogle(profile, role, rawToken));
     } catch (err) {
       fail(err.message);
     }
@@ -112,7 +112,7 @@ export async function renderLogin(root, role, title, onSuccess) {
   try {
     await renderSignInButton(buttonHost, {
       clientId,
-      onCredential: (profile) => accept(profile),
+      onCredential: (profile, raw) => accept(profile, raw),
       onError: (err) => fail(err.message),
     });
   } catch (err) {

@@ -59,16 +59,38 @@ export async function renderJoin(root, { query }) {
           'Home'))));
   }
 
+  const viaProxy = Boolean(config.proxyUrl);
   const switching = isConfigured() && current.folderId && current.folderId !== config.folderId;
   const status = el('div', {});
   const joinBtn = el('button', {
     type: 'button', class: 'btn btn--primary btn--block btn--lg', onclick: () => join(),
-  }, icon('check'), switching ? 'Switch to this detachment' : 'Connect');
+  }, icon('check'), switching ? 'Switch to this detachment' : 'Continue');
 
   async function join() {
     joinBtn.disabled = true;
-    remount(status, spinner('Connecting to Google Drive…'));
 
+    // Through a proxy there is nothing to connect to. The cadet has no Drive
+    // access by design, so asking Google for the Drive scope would request a
+    // permission they neither need nor can use — and would put the alarming
+    // full-Drive consent screen in front of them for no reason. Store the
+    // configuration and let the ordinary sign-in gate identify them.
+    if (viaProxy) {
+      connection.set({
+        backend: BACKENDS.drive,
+        orgName: config.orgName || 'Detachment',
+        folderId: config.folderId,
+        folderName: '',
+        folderUrl: '',
+        clientId: config.clientId,
+        proxyUrl: config.proxyUrl,
+        connectedAt: new Date().toISOString(),
+      });
+      markSetupComplete(true);
+      toast('Ready. Sign in to see your feedback.', 'ok');
+      return navigate('/student');
+    }
+
+    remount(status, spinner('Connecting to Google Drive…'));
     try {
       db.use(BACKENDS.drive, { clientId: config.clientId, folderId: config.folderId });
       const result = await adapters.drive.connect({ interactive: true });
@@ -93,6 +115,7 @@ export async function renderJoin(root, { query }) {
         folderName: result.folderName || 'Drive folder',
         folderUrl: `https://drive.google.com/drive/folders/${config.folderId}`,
         clientId: config.clientId,
+        proxyUrl: '',
         connectedAt: new Date().toISOString(),
       });
       markSetupComplete(true);
@@ -121,15 +144,19 @@ export async function renderJoin(root, { query }) {
       el('div', { class: 'row', style: { justifyContent: 'center' } },
         el('span', { class: 'role-card__icon' }, icon('cloud'))),
 
-      el('p', {}, 'When you continue, Google will ask you to sign in and to let '
-        + `${APP.name} use your Drive. Two things worth knowing before you tap it:`),
+      viaProxy
+        ? el('p', {}, 'Next you will sign in with Google, and that is all. '
+          + `${APP.name} never asks for access to your Google Drive — your detachment's `
+          + 'server handles the filing.')
+        : el('p', {}, 'When you continue, Google will ask you to sign in and to let '
+          + `${APP.name} use your Drive. Two things worth knowing before you tap it:`),
 
       // Left as a plain block list on purpose: flex and grid both blockify their
       // children, which silently drops the bullets.
       el('ul', { style: { paddingLeft: '1.25rem', margin: '0', listStyle: 'disc' } },
         el('li', { style: { marginBottom: 'var(--sp-2)' } },
           'Use the Google account your detachment mails you at — that is the one on the roster.'),
-        el('li', {},
+        viaProxy ? null : el('li', {},
           'Google will warn that this app has not been verified. That is expected. Choose ',
           el('strong', {}, 'Advanced'), ', then continue.')),
 

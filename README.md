@@ -151,6 +151,47 @@ sharing settings.
 
 ---
 
+## The submission proxy
+
+Optional, and the setting that decides whether "anonymous" means anonymous from
+*other cadets*. Deployment instructions are in `tools/proxy/README.md`.
+
+Without it, a cadet's phone writes its own response into Drive, which requires
+Editor on the folder, which also grants read. With it, cadets have no Drive
+access at all: their device posts to a Google Apps Script running in the
+detachment's own account, which verifies their Google ID token **server-side**,
+checks the roster, and writes the files as the folder's owner.
+
+That closes the loop `js/google-identity.js` describes — the browser-side token
+check "stops mistakes, not attackers", and this is the server-side check it
+defers to.
+
+A write-only proxy would not have worked. A cadet with no Drive access cannot
+read `requests/` or `forms/` either, so the script also serves a **bundle**:
+that cadet's assignments, the forms to render them, and which they have already
+answered. No responses, not even their own. One round trip, which matters on a
+phone with two bars.
+
+Two further gains that fall out of it:
+
+- **One submission per cadet becomes a rule, not a convention.** The receipt
+  check and the write happen under an Apps Script lock, so two taps on a slow
+  connection cannot both land. The client alone could never guarantee that.
+- **Cadets never see the full-Drive consent screen**, because they are never
+  asked for Drive access. The join screen skips the OAuth step entirely when a
+  proxy is configured.
+
+Cadre still read Drive directly — analysing responses needs exactly the access
+this removes from cadets — so instructors remain inside the trust boundary.
+Removing that would need a real backend, which is not what this is.
+
+`js/storage/proxy.js` is the client. Two things in it look wrong and are not:
+requests go out as `text/plain` so they stay CORS-simple, because Apps Script
+cannot answer a preflight; and refusals arrive as HTTP 200 with `ok: false`,
+because Apps Script renders thrown errors as HTML a fetch cannot parse.
+
+---
+
 ## Join links
 
 Only the person who sets a detachment up runs the setup wizard. Everyone else
@@ -160,8 +201,11 @@ gets a **join link** from Database Administration → *Invite people*:
 https://det.example.org/app/#/join?c=<client>&f=<folder>&n=<name>
 ```
 
-It carries the Google Client ID and the Drive folder, so a cadet taps it,
-approves Google once, and lands on their feedback — nothing typed. The admin
+It carries the Google Client ID, the Drive folder, and the submission proxy if
+the detachment has one — so a cadet taps it, signs in once, and lands on their
+feedback with nothing typed. The proxy travels in the link because a cadet in
+proxy mode has no Drive access and therefore cannot read a shared setting to
+discover it. The admin
 console offers it three ways: copy, a native share sheet on phones, and a
 pre-written mail draft that warns about the unverified-app screen.
 
@@ -441,12 +485,11 @@ choice. The trade is accuracy, and every output is labelled accordingly.
 Alpha 0.4 was installed and run end to end against real Google Drive, on a Mac
 and an iPhone, in August 2026. These are the limits that test confirmed or found.
 
-- **Everyone who submits needs Editor access to the Drive folder.** A cadet's
-  device writes its own response file, and Drive grants no write-without-read,
-  so anyone who can submit can also read every response in the folder. Anonymity
-  inside the app's screens is real; the folder is not sealed. An Apps Script
-  write proxy is the intended fix. **Until then, do not tell cadets their
-  responses are private from other cadets.**
+- **Without the submission proxy, everyone who submits needs Editor access to
+  the Drive folder** — and Drive grants no write-without-read, so anyone who can
+  submit can also read every response in it. Deploying the proxy
+  (`tools/proxy/`) removes that entirely. **Until a detachment deploys it, do
+  not tell cadets their responses are private from each other.**
 - **Google caps the app at 100 users.** `auth/drive` is a *restricted* scope, so
   production use needs Google verification plus a paid annual security
   assessment. Staying in Testing avoids that but caps the test-user list and
@@ -493,6 +536,7 @@ js/
   forms.js              renders form templates and collects answers
   storage/
     index.js            facade — every view talks to this
+    proxy.js            the submission proxy client
     queue.js            offline write queue, replayed on reconnect
     drive.js            Google Drive REST + OAuth
     folder.js           File System Access API
@@ -501,6 +545,7 @@ js/
   auth.js               the roster, sessions, roles, sign-in
   google-identity.js    Google Identity Services: the button and the token check
   join.js               join-link building and parsing; DOM-free, unit-tested
+  student-data.js       one place that decides: proxy bundle, or read Drive direct
   migrations.js         forward-only schema upgrades, one entry per version
   analysis/
     stats.js            descriptive stats, agreement, clustering, outliers
