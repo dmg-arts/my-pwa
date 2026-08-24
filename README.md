@@ -597,6 +597,53 @@ targets, and heading focus on navigation.
 Currently shipped: the complete shell and a working end-to-end cycle — issue a
 request, fill it out, read it, report on it, back it up.
 
+### The road to beta
+
+Roughly in dependency order. The first item gates several of the others.
+
+1. **Move to a clean GitHub account or organisation**, off the current personal
+   one. Decided; deferred until just before beta. This changes the origin, which
+   is load-bearing: the OAuth authorised JavaScript origin has to follow it, and
+   **every join link and QR code already handed out stops working**, because the
+   origin is encoded in them. Regenerate and redistribute after the move.
+   - Worth settling at the same time: a **custom domain**, which would fix the
+     origin permanently so no future host change breaks anything again, and
+     would allow a host that can set real response headers — the only route to
+     `frame-ancestors`, currently absent because GitHub Pages cannot set one.
+   - Also the moment to replace the branch-build deploy with a GitHub Actions
+     workflow. Branch builds have silently failed to trigger twice.
+
+2. **Privacy policy.** Blocking for Google verification, and needed whichever
+   scope path is taken. Must live on the domain from item 1, so writing it
+   earlier is wasted work. Needs decisions, not just drafting: contact address,
+   retention period, and what cadets are told about cadre access to the folder.
+
+3. **Cadre panel.** Requested; specification pending. Do not infer the scope
+   from the name — it is to be described before anything is built.
+
+4. **After-thoughts.** A standing topic rather than a task: the answers to the
+   open questions listed below, to be worked through together. Items graduate
+   out of here into real work once decided.
+
+5. **Trends and per-instructor baselines**, described below.
+
+6. **Closing the loop**, deferred by decision — see below.
+
+### Open questions, awaiting decisions
+
+These are the ones actually blocking or shaping work, not idle curiosities.
+
+- **Is the submission proxy deployed for beta?** Until it is, every cadet needs
+  Editor access to the Drive folder and can therefore read every response in it.
+  This decides whether feedback can honestly be described as private from other
+  cadets.
+- **Privacy policy specifics:** contact address, retention period, and how cadre
+  access is disclosed to cadets.
+- **Custom domain:** yes or no, and which.
+- **Why Google refuses to add some accounts as test users.** Unexplained, no
+  published fix found. Under 100 users it is not blocking, but it can silently
+  keep a specific cadet out.
+
 Not yet built:
 
 - **Trends across terms.** Everything today analyses one filtered slice. Asking
