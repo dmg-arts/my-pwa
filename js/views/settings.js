@@ -83,6 +83,77 @@ async function accessSection() {
       + 'roster, and by who your detachment has shared the Drive folder with.'));
 }
 
+/**
+ * Checks for a new version, and says what it found.
+ *
+ * The previous version of this button called `registration.update()` and always
+ * reported "Checked for updates", which resolves whether or not anything was
+ * found — so it looked identical when an update existed and when none did.
+ *
+ * The version shown above it is read from the code *currently running*, which is
+ * the cached copy. It cannot change until a new worker has installed and the
+ * page has reloaded, so a stale number there is expected rather than a fault.
+ * That is the whole reason this needs to report an outcome: without one, there
+ * is no way to tell "already current" from "update sitting there unapplied".
+ */
+function updateButton() {
+  const button = el('button', { type: 'button', class: 'btn btn--sm' },
+    icon('refresh'), 'Check for updates');
+  const status = el('div', {});
+
+  const offerReload = () => {
+    remount(status, notice('ok', 'An update is ready',
+      el('p', {}, 'It installs when the app reloads.'),
+      el('div', { style: { marginTop: 'var(--sp-3)' } },
+        el('button', {
+          type: 'button', class: 'btn btn--sm btn--primary',
+          onclick: () => window.location.reload(),
+        }, icon('refresh'), 'Reload now'))));
+  };
+
+  button.onclick = async () => {
+    button.disabled = true;
+    remount(status, spinner('Asking the server…'));
+    try {
+      const registration = await navigator.serviceWorker?.getRegistration();
+      if (!registration) {
+        remount(status, notice('warn', 'Not installed as an app',
+          el('p', {}, 'Updates arrive on the next page load.')));
+        return;
+      }
+
+      // A worker already waiting means a previous check found an update that
+      // has not been applied yet.
+      if (registration.waiting) return offerReload();
+
+      await registration.update();
+
+      // update() resolves as soon as the request is made, so give the new
+      // worker a moment to reach `installing` before deciding nothing changed.
+      const found = await new Promise((resolve) => {
+        if (registration.installing || registration.waiting) return resolve(true);
+        const timer = setTimeout(() => resolve(false), 3000);
+        registration.addEventListener('updatefound', () => {
+          clearTimeout(timer);
+          resolve(true);
+        }, { once: true });
+      });
+
+      if (found) offerReload();
+      else {
+        remount(status, notice('ok', `You are on the latest version (${APP.version})`,
+          el('p', {}, 'Nothing new is available.')));
+      }
+    } catch (err) {
+      remount(status, notice('danger', 'Could not check for updates', el('p', {}, err.message)));
+    } finally {
+      button.disabled = false;
+    }
+  };
+
+  return el('div', { class: 'stack-sm' }, el('div', { class: 'row row--wrap' }, button), status);
+}
+
 /* ------------------------------------------------------------------ *
  * Storage / database location
  * ------------------------------------------------------------------ */
@@ -441,16 +512,8 @@ function aboutSection() {
       row('Offline', navigator.onLine ? 'Online' : 'Offline'),
       row('Installed', window.matchMedia('(display-mode: standalone)').matches ? 'Yes' : 'No')),
     install,
+    updateButton(),
     el('div', { class: 'row row--wrap' },
-      el('button', {
-        type: 'button', class: 'btn btn--sm',
-        onclick: async () => {
-          const registration = await navigator.serviceWorker?.getRegistration();
-          if (!registration) return toast('No service worker registered.', 'warn');
-          await registration.update();
-          return toast('Checked for updates.', 'ok');
-        },
-      }, icon('refresh'), 'Check for updates'),
       el('button', {
         type: 'button', class: 'btn btn--sm',
         onclick: () => download('top-feedback-diagnostics.json', JSON.stringify({

@@ -239,7 +239,14 @@ if ('serviceWorker' in navigator) {
         const installing = registration.installing;
         installing?.addEventListener('statechange', () => {
           if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-            toast('An update is ready — reload to apply.', 'info', 8000);
+            // An installed app has no address bar to reload from, so the
+            // notice has to carry the action itself.
+            const notice = toast('An update is ready.', 'info', 15000);
+            mount(notice, el('button', {
+              type: 'button', class: 'btn btn--sm',
+              style: { marginLeft: 'var(--sp-3)' },
+              onclick: () => window.location.reload(),
+            }, 'Reload'));
           }
         });
       });
