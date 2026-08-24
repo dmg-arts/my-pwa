@@ -411,7 +411,3 @@ export function hasRole(role) {
   return Boolean(currentUser()?.roles?.includes(role));
 }
 
-/** Roles the signed-in account holds, for the UI to label the session. */
-export function currentRoles() {
-  return currentUser()?.roles || [];
-}

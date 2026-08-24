@@ -135,7 +135,6 @@ export const db = {
     if (!shared) {
       shared = {
         schemaVersion: APP.schemaVersion,
-        cadrePasscode: null,      // set on first cadre unlock
         allowAnonymous: true,
         requireStudentName: true,
         updatedAt: nowIso(),

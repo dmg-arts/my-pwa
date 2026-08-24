@@ -9,7 +9,7 @@
 export const APP = {
   name: 'TOP-Feedback',
   shortName: 'TOP-FB',
-  version: '0.6.1',
+  version: '0.6.2',
   /**
    * Bump when the on-disk record shape changes, and add a matching entry to
    * MIGRATIONS in js/migrations.js. The runner upgrades a detachment's existing
@@ -22,7 +22,6 @@ export const APP = {
 export const LS = {
   settings: 'topfb.settings.v1',
   connection: 'topfb.connection.v1',
-  cadreSession: 'topfb.cadre.session.v1',
   studentPrefs: 'topfb.student.prefs.v1',
   setupComplete: 'topfb.setup.complete.v1',
   session: 'topfb.session.v1',

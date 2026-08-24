@@ -193,14 +193,3 @@ export async function drain(adapter) {
   return { sent, remaining, error: lastError };
 }
 
-export async function clearQueue() {
-  await idb.clear(STORE);
-  overlay.clear();
-  deleted.clear();
-  await announce();
-}
-
-/** Queued items, for the diagnostics panel. */
-export async function inspectQueue() {
-  return (await allItems()).map(({ id, kind, path, queuedAt }) => ({ id, kind, path, queuedAt }));
-}

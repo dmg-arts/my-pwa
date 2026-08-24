@@ -223,14 +223,6 @@ export function groupBy(items, keyFn) {
   return map;
 }
 
-export function debounce(fn, ms = 250) {
-  let timer;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), ms);
-  };
-}
-
 
 /* ------------------------------------------------------------------ *
  * Files

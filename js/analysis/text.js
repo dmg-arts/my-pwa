@@ -28,13 +28,6 @@ export function tokenize(text) {
     .filter(Boolean);
 }
 
-export function sentences(text) {
-  return String(text || '')
-    .split(/(?<=[.!?])\s+|\n+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
 /**
  * Collapses obvious inflections so "organised", "organising" and "organise"
  * land on one entry in the cloud. Deliberately crude — a real stemmer would

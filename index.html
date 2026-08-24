@@ -18,6 +18,24 @@
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./css/styles.css">
 
+  <!--
+    Content Security Policy. Served as a meta tag because GitHub Pages cannot
+    set response headers. Everything the app talks to is Google or itself, so
+    the allowlist is short and closed: no CDN, no analytics, no third party.
+
+    frame-ancestors is deliberately absent — it is ignored in a meta tag and
+    would only give false comfort. Clickjacking protection needs a real
+    header, which is a reason to prefer a host that can set one.
+
+    style-src allows 'unsafe-inline' because Google Identity Services styles its
+    own sign-in button inline and pulls a stylesheet from accounts.google.com;
+    without it the button renders unstyled. This is far weaker than allowing
+    inline *script*, which is not permitted here — the one inline script on the
+    page is pinned by hash. The app itself adds no inline styles: element styles
+    go through the CSSOM, which this does not relax.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'sha256-U9cAmcnerim/b6XbIYNU/FJeLhIyxo+Xlb3hj6aZ/Yo=' https://accounts.google.com https://apis.google.com; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://script.google.com https://script.googleusercontent.com; img-src 'self' data: https://*.googleusercontent.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; font-src 'self'; frame-src https://accounts.google.com;">
+
   <script>
     // Resolve the theme before first paint so the app never flashes white on a
     // dark device. Mirrors applySettings() in js/state.js.

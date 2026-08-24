@@ -9,7 +9,7 @@ import {
   fmtDateTime, download, modal,
   mount, remount } from '../util.js';
 import { APP, BACKENDS, SEMESTERS, schoolYears, isDevMode, setDevMode } from '../config.js';
-import { settings, connection, applySettings, markSetupComplete, endCadreSession } from '../state.js';
+import { settings, connection, applySettings, markSetupComplete } from '../state.js';
 import { hasAdmin, signOut } from '../auth.js';
 import { db, adapters, parseFolderId } from '../storage/index.js';
 import { navigate } from '../router.js';
@@ -323,7 +323,6 @@ async function storageSection(conn) {
           if (connection.get().backend === BACKENDS.drive) adapters.drive.signOut();
           if (connection.get().backend === BACKENDS.folder) await adapters.folder.forget();
           connection.reset();
-          endCadreSession();
           signOut();
           markSetupComplete(false);
           resetSetupDraft();

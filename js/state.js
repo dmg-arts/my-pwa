@@ -119,29 +119,7 @@ export function markSetupComplete(done = true) {
   else localStorage.removeItem(LS.setupComplete);
 }
 
-/* ------------------------------------------------------------------ *
- * cadre session (unlocks the cadre area for a while)
- * ------------------------------------------------------------------ */
-
 const SESSION_MS = 4 * 60 * 60 * 1000; // 4 hours
-
-export function startCadreSession() {
-  sessionStorage.setItem(LS.cadreSession, String(Date.now() + SESSION_MS));
-}
-
-export function endCadreSession() {
-  sessionStorage.removeItem(LS.cadreSession);
-}
-
-export function hasCadreSession() {
-  const until = Number(sessionStorage.getItem(LS.cadreSession) || 0);
-  if (!until) return false;
-  if (Date.now() > until) {
-    endCadreSession();
-    return false;
-  }
-  return true;
-}
 
 /* ------------------------------------------------------------------ *
  * student view preferences (last-used filters, remembered name)
