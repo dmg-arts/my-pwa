@@ -602,7 +602,12 @@ request, fill it out, read it, report on it, back it up.
 Roughly in dependency order. The first item gates several of the others.
 
 1. **Move to a clean GitHub account or organisation**, off the current personal
-   one. Decided; deferred until just before beta. This changes the origin, which
+   one, **and rename the app.** Decided; deferred until just before beta. The
+   product name and company name are being worked out, and the custom domain
+   depends on them, so the whole move happens once rather than in pieces.
+   Renaming touches the manifest, `APP.name`, cache keys, both generated
+   documents and the deck — mechanical, but wide, which is another reason to do
+   it in the same pass. This changes the origin, which
    is load-bearing: the OAuth authorised JavaScript origin has to follow it, and
    **every join link and QR code already handed out stops working**, because the
    origin is encoded in them. Regenerate and redistribute after the move.
@@ -615,11 +620,27 @@ Roughly in dependency order. The first item gates several of the others.
 
 2. **Privacy policy.** Blocking for Google verification, and needed whichever
    scope path is taken. Must live on the domain from item 1, so writing it
-   earlier is wasted work. Needs decisions, not just drafting: contact address,
-   retention period, and what cadets are told about cadre access to the folder.
+   earlier is wasted work.
+
+   The data model behind it is settled, and it is deliberately tiny. **The
+   maintainer keeps one record per deployment: the administrator's email, the
+   organisation's name, and when they started.** Nothing else — no Drive URLs,
+   no folder IDs, no access to any detachment's data. The detachment owns its
+   Drive and owns its records; the maintainer's role is the source code and
+   updating it. No back doors, and nothing retained beyond that one line.
+
+   Still open: whether that record is supplied **manually** by an administrator
+   or reported **automatically** by the app. The second would be the first time
+   anything left a detachment's own Drive and would contradict the claim made in
+   this README, the setup guide and the deck that nothing is transmitted
+   anywhere else — so it would need consent at setup and those documents
+   rewritten, not just a line in the policy.
+
+   Cadre access disclosure is handled by the cadre panel (item 3), not here.
 
 3. **Cadre panel.** Requested; specification pending. Do not infer the scope
-   from the name — it is to be described before anything is built.
+   from the name — it is to be described before anything is built. It also owns
+   the question of what cadets are told about cadre access to the folder.
 
 4. **After-thoughts.** A standing topic rather than a task: the answers to the
    open questions listed below, to be worked through together. Items graduate
@@ -639,10 +660,12 @@ These are the ones actually blocking or shaping work, not idle curiosities.
   cadets.
 - **Privacy policy specifics:** contact address, retention period, and how cadre
   access is disclosed to cadets.
-- **Custom domain:** yes or no, and which.
-- **Why Google refuses to add some accounts as test users.** Unexplained, no
-  published fix found. Under 100 users it is not blocking, but it can silently
-  keep a specific cadet out.
+- **What the product and company are called.** Blocks the custom domain, which
+  blocks the privacy policy URL and Google's brand verification.
+- **Whether the deployment record is collected manually or by the app** — see
+  item 2.
+- ~~**Why Google refuses to add some accounts as test users.**~~ Answered
+  elsewhere; the explanation is to be written up here once transcribed.
 
 Not yet built:
 
