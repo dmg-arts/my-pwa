@@ -643,9 +643,34 @@ Roughly in dependency order. The first item gates several of the others.
 
    Cadre access disclosure is handled by the cadre panel (item 3), not here.
 
-3. **Cadre panel.** Requested; specification pending. Do not infer the scope
-   from the name — it is to be described before anything is built. It also owns
-   the question of what cadets are told about cadre access to the folder.
+3. **Cadre panel, and with it the move to proxy-enforced access.** Specified;
+   this is the largest change the project has had, and it is deliberately its
+   own release. Two roles above instructor:
+
+   - **Cadre** — everything the Instructor Portal does, plus a cadre-only area
+     instructors cannot see. A superset of instructor. Not automatically a
+     Database admin; the two are separate and may be held together.
+   - **Commander** — a superuser with no separate portal, but a locked space
+     holding the feedback requests it creates and the responses to them, plus
+     visibility into everything else. **Capped at two at any time**, so command
+     transitions overlap. The space belongs to the detachment and the
+     designation rotates, so a handover moves a role and migrates no data.
+
+   Database admins grant both. Cadre cannot see commander requests; commanders
+   see everything; audit log and roster go to Database admins and commanders.
+
+   **Enforcement is server-side, through the proxy.** App-level role checks were
+   rejected outright: every cadre member needs Drive access today, so anything
+   the UI hides is readable by opening Drive — worthless for commander feedback
+   about instructors, and unsellable as a security feature. Making it real means
+   moving *all* Drive access behind the Apps Script, which also removes
+   verification, CASA and the unverified-app warning. Sequenced as three
+   landable steps, each leaving a working app:
+
+   1. Proxy serves cadre **reads**. Nothing user-visible; the foundation.
+   2. Proxy serves cadre **writes** — at which point Drive OAuth leaves the app
+      entirely and the verification problem goes with it.
+   3. Roles and locked folders — cadre area, commander area, the cap of two.
 
 4. **After-thoughts.** A standing topic rather than a task: the answers to the
    open questions listed below, to be worked through together. Items graduate
