@@ -599,6 +599,11 @@ request, fill it out, read it, report on it, back it up.
 
 ### The road to beta
 
+**Beta is one detachment, not many: AFROTC Det 752 at Wilkes University.** There
+will be no parallel pilots. 145 detachments is the market, not the test. The path
+is a successful beta at 752, then a pitch to AFROTC HQ, positioned alongside a
+partner's teaching system as a way to train cadet instructors.
+
 Roughly in dependency order. The first item gates several of the others.
 
 1. **Move to a clean GitHub account or organisation**, off the current personal
@@ -650,33 +655,56 @@ Roughly in dependency order. The first item gates several of the others.
 
 6. **Closing the loop**, deferred by decision — see below.
 
-### Verification: the current architecture already avoids it
+### Verification, and the single Client ID
 
-Worth stating plainly, because advice written for the usual multi-tenant shape
-does not apply here. **Each detachment creates its own Google Cloud project and
-its own OAuth Client ID** — the client id is per-device configuration, delivered
-by the setup wizard or the join link, and the maintainer owns no client at all.
+**Today** each detachment creates its own Cloud project and its own Client ID, so
+the 100-user cap applies per detachment and never binds at ~50 people. Nothing
+needs verifying and nothing costs anything. Advice written for the usual
+multi-tenant shape does not describe this.
 
-So the 100-user cap applies *per detachment*, where it never binds at ~50 people.
-No detachment needs verification, and none needs the annual CASA assessment that
-a restricted scope like `auth/drive` would otherwise require. Cost: zero,
-permanently. The maintainer is also entirely outside the auth path, which matches
-the data posture in item 2.
+**That ends at beta.** The fielded product uses **one Client ID owned by the
+maintainer**, created under the new name during the migration. Not because Google
+objects to 145 self-hosted instances — it does not — but because 145 detachments
+each standing up a Cloud project is an unsellable support burden, and AFROTC HQ
+cannot be handed a product that requires every detachment to be a developer.
 
-Centralising onto one shared Client ID would make setup much easier for
-detachments — no Cloud project to create — but would pool all users into one
-project, force Production status, and trigger verification plus CASA
-($500–$4,500, annually). It would also place the maintainer inside every cadet's
-authentication. That trade is open, not decided.
+What follows from one Client ID:
 
-**The option that improves either choice: split the client IDs.** With the
-submission proxy deployed, cadets never touch Drive — they need only
-`openid email profile`, which is non-sensitive. Only cadre need `auth/drive`.
-Given separate clients, the cadet-facing one can go to Production free and
-uncapped, with **no unverified-app warning**, which is currently the first thing
-every cadet sees. The cadre client keeps the restricted scope but serves a
-handful of people per detachment. This holds even if the project is later
-centralised, because the high-volume path stops being restricted.
+- ~145 detachments x ~50 users pools well past the cap, forcing Production, which
+  forces verification, which with `auth/drive` forces an annual CASA assessment.
+- **The data posture is unaffected.** A Client ID identifies the *app*, not a
+  grant of data. Tokens are issued in each user's browser and reach only that
+  user's own Drive; the maintainer never receives one. What changes is
+  accountability, not access.
+- **A new single point of failure.** Suspension of that one Client ID would break
+  every detachment at once. Per-detachment clients failed independently.
+
+**Some Google accounts refuse unverified apps outright.** This is a standing
+limitation, not a misconfiguration, and it is why verification is not merely
+cosmetic: without it a fraction of cadets cannot use the app at all, and there is
+no way to know which in advance.
+
+### The option that could remove verification entirely
+
+Decide this **before** the rename, because it determines what the new project's
+consent screen has to request.
+
+The submission proxy already proves the pattern: Apps Script runs as the folder's
+owner, so cadets need no Drive access — only `openid email profile`, which is
+non-sensitive. **If cadre reads and writes also went through the proxy, nobody
+would need Drive OAuth at all**, and the app would request non-sensitive scopes
+only.
+
+That would mean Production, free, uncapped, **no verification, no CASA, and no
+unverified-app warning for anyone** — including the accounts that refuse
+unverified apps — at any number of detachments. Quota scales, because each
+detachment runs its own Apps Script under its own account.
+
+The costs are real: considerably more proxy surface (cadre read *and* write —
+forms, requests, roster, rollover, deletions), offline reads get harder because
+the Drive adapter currently caches them, and the Drive adapter would survive only
+for the self-hosted path. This supersedes the earlier split-client-ID idea rather
+than complementing it.
 
 ### Open questions, awaiting decisions
 
@@ -692,10 +720,11 @@ These are the ones actually blocking or shaping work, not idle curiosities.
   blocks the privacy policy URL and Google's brand verification.
 - **Whether the deployment record is collected manually or by the app** — see
   item 2.
-- **Why Google refuses to add some accounts as test users.** Still open. Research
-  done elsewhere answered the adjacent question — where the caps live and what
-  verification costs — but not this one. Under 100 users it is not blocking; it
-  can still silently keep a specific person out.
+- ~~**Why Google refuses to add some accounts as test users.**~~ **Answered:**
+  some Google accounts do not permit unverified apps at all. A standing
+  limitation, not a fault to chase.
+- **Whether all Drive access moves behind the proxy**, removing the need for
+  verification entirely. Decide before the rename.
 - **Whether `drive.file` is classified non-sensitive or sensitive.** Two sources
   disagree. It decides between "no verification, ever" and "free verification
   after weeks of review". Settle it against Google's own scope list.
