@@ -25,8 +25,9 @@ With the proxy, cadets need **no Drive access at all**. They never see the
 folder, and they are never asked to approve access to their own Google Drive —
 which also means they never meet the alarming full-Drive consent screen.
 
-What it does not change: cadre still read Drive directly, because analysing
-responses requires exactly the access this removes from cadets.
+**Cadre reads now come through the script too.** Their *writes* still go to Drive
+directly, so cadre still need folder access for the moment — that is the next
+step, and once it lands nobody but the folder's owner needs Drive at all.
 
 ---
 
@@ -149,7 +150,9 @@ will need paging if one runs for years.
 - **Quota.** A consumer Gmail account gets about 90 minutes of script runtime a
   day. A submission takes roughly a second, so a detachment of fifty is nowhere
   near it.
-- **It serves cadets only.** Cadre keep direct Drive access.
+- **Cadre writes still go straight to Drive**, so cadre still need folder access.
+  Reads already come through here. Once writes follow, only the folder's owner
+  needs Drive, and the app stops asking anyone for the Drive scope.
 - **It does not re-validate answers** against the form definition — the app does
   that. What the script enforces is *who* may write and *how often*, which is the
   part a browser cannot be trusted with.
