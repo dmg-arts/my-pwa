@@ -650,6 +650,34 @@ Roughly in dependency order. The first item gates several of the others.
 
 6. **Closing the loop**, deferred by decision — see below.
 
+### Verification: the current architecture already avoids it
+
+Worth stating plainly, because advice written for the usual multi-tenant shape
+does not apply here. **Each detachment creates its own Google Cloud project and
+its own OAuth Client ID** — the client id is per-device configuration, delivered
+by the setup wizard or the join link, and the maintainer owns no client at all.
+
+So the 100-user cap applies *per detachment*, where it never binds at ~50 people.
+No detachment needs verification, and none needs the annual CASA assessment that
+a restricted scope like `auth/drive` would otherwise require. Cost: zero,
+permanently. The maintainer is also entirely outside the auth path, which matches
+the data posture in item 2.
+
+Centralising onto one shared Client ID would make setup much easier for
+detachments — no Cloud project to create — but would pool all users into one
+project, force Production status, and trigger verification plus CASA
+($500–$4,500, annually). It would also place the maintainer inside every cadet's
+authentication. That trade is open, not decided.
+
+**The option that improves either choice: split the client IDs.** With the
+submission proxy deployed, cadets never touch Drive — they need only
+`openid email profile`, which is non-sensitive. Only cadre need `auth/drive`.
+Given separate clients, the cadet-facing one can go to Production free and
+uncapped, with **no unverified-app warning**, which is currently the first thing
+every cadet sees. The cadre client keeps the restricted scope but serves a
+handful of people per detachment. This holds even if the project is later
+centralised, because the high-volume path stops being restricted.
+
 ### Open questions, awaiting decisions
 
 These are the ones actually blocking or shaping work, not idle curiosities.
@@ -664,8 +692,13 @@ These are the ones actually blocking or shaping work, not idle curiosities.
   blocks the privacy policy URL and Google's brand verification.
 - **Whether the deployment record is collected manually or by the app** — see
   item 2.
-- ~~**Why Google refuses to add some accounts as test users.**~~ Answered
-  elsewhere; the explanation is to be written up here once transcribed.
+- **Why Google refuses to add some accounts as test users.** Still open. Research
+  done elsewhere answered the adjacent question — where the caps live and what
+  verification costs — but not this one. Under 100 users it is not blocking; it
+  can still silently keep a specific person out.
+- **Whether `drive.file` is classified non-sensitive or sensitive.** Two sources
+  disagree. It decides between "no verification, ever" and "free verification
+  after weeks of review". Settle it against Google's own scope list.
 
 Not yet built:
 
