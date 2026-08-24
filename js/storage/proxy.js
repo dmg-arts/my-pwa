@@ -156,6 +156,59 @@ export async function fetchBundle(url, idToken) {
 }
 
 /**
+ * The cadre-side reads.
+ *
+ * Each is a named action the script decides the shape of. Nothing here sends a
+ * path — the client asks for a kind of thing, and the proxy decides whether this
+ * account may have it. That is what makes the role checks worth anything: a
+ * generic "fetch this file" call would put the decision back in the browser,
+ * which is exactly the arrangement being replaced.
+ */
+async function ask(url, idToken, payload) {
+  if (!idToken) throw new Error('Your sign-in has expired. Sign in again.');
+  const result = await postJson(url, { ...payload, idToken });
+  if (!result || result.ok !== true) {
+    throw new Error(result?.error || 'The server refused that request.');
+  }
+  return result;
+}
+
+/** Forms and requests — what the portal lists on arrival. */
+export async function fetchCatalog(url, idToken) {
+  return (await ask(url, idToken, { action: 'catalog' })).catalog;
+}
+
+/** Responses and receipts for one request. */
+export async function fetchResponses(url, idToken, requestId) {
+  const result = await ask(url, idToken, { action: 'responses', requestId });
+  return { responses: result.responses, receipts: result.receipts };
+}
+
+/**
+ * Every response across every request, for cross-form analysis.
+ *
+ * The one call that can get large. Fine for a detachment with a term of
+ * feedback; the first thing that will need paging if one runs for years.
+ */
+export async function fetchAllResponses(url, idToken) {
+  return (await ask(url, idToken, { action: 'allResponses' })).responses;
+}
+
+export async function fetchRoster(url, idToken) {
+  return (await ask(url, idToken, { action: 'roster' })).users;
+}
+
+export async function fetchAudit(url, idToken, months = 6) {
+  return (await ask(url, idToken, { action: 'audit', months })).entries;
+}
+
+/** Org record and headline counts, without shipping the records themselves. */
+export async function fetchOverview(url, idToken) {
+  const result = await ask(url, idToken, { action: 'overview' });
+  return { org: result.org, stats: result.stats };
+}
+
+/**
  * Submits one response through the proxy.
  *
  * Note what is *not* sent: no respondent, no username, no path. The script

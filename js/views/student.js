@@ -27,7 +27,7 @@ import { signOut, currentUser, currentIdToken } from '../auth.js';
 import { submitViaProxy } from '../storage/proxy.js';
 import {
   loadAssignments, loadForFilling, loadOwnAccount, invalidateStudentData, usingProxy,
-} from '../student-data.js';
+} from '../data-source.js';
 import { renderLogin } from './sign-in.js';
 import { navigate } from '../router.js';
 import { renderForm, collectAnswers, showMissing } from '../forms.js';

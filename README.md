@@ -558,7 +558,7 @@ js/
   google-identity.js    Google Identity Services: the button and the token check
   join.js               join-link building and parsing; DOM-free, unit-tested
   qr.js                 QR encoder and SVG renderer, no dependencies
-  student-data.js       one place that decides: proxy bundle, or read Drive direct
+  data-source.js       one place that decides: proxy bundle, or read Drive direct
   migrations.js         forward-only schema upgrades, one entry per version
   analysis/
     stats.js            descriptive stats, agreement, clustering, outliers

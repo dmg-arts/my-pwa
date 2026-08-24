@@ -16,7 +16,9 @@ import {
   mount, remount } from '../util.js';
 import { AS_CLASSES, SEMESTERS, PRIVACY, ROLES, schoolYears, nearestAnchor } from '../config.js';
 import { db } from '../storage/index.js';
-import { listStudents } from '../auth.js';
+import {
+  loadCatalog, loadAllResponses, loadResponsesFor, loadStudents,
+} from '../data-source.js';
 import { renderForm, formItems } from '../forms.js';
 import { navigate } from '../router.js';
 import { hasRole } from '../auth.js';
@@ -51,9 +53,12 @@ export async function renderAnalysis(host) {
   let forms;
   let students;
   try {
-    [requests, responses, forms, students] = await Promise.all([
-      db.listRequests(), db.listAllResponses(), db.listForms(), listStudents(),
+    const [catalog, allResponses, roster] = await Promise.all([
+      loadCatalog(), loadAllResponses(), loadStudents(),
     ]);
+    ({ requests, forms } = catalog);
+    responses = allResponses;
+    students = roster;
   } catch (err) {
     remount(host, notice('danger', 'Could not load feedback', el('p', {}, err.message)));
     return;
@@ -817,7 +822,7 @@ export async function renderAnalysis(host) {
     (async () => {
       const cards = el('div', { class: 'stack' });
       for (const request of inScope.slice(0, 25)) {
-        const receipts = await db.listReceipts(request.id);
+        const { receipts } = await loadResponsesFor(request.id);
         const submitted = new Set(receipts.map((r) => r.username));
         const targeted = request.assignedUsernames?.length
           ? students.filter((s) => request.assignedUsernames.includes(s.username))

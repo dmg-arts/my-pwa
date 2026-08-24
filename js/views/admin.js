@@ -13,19 +13,19 @@
 
 import {
   el, icon, field, select, notice, toast, spinner, badge, modal, confirmDialog,
-  emptyState, download, toCsv, pickFile, readFileAsText, pluralize, fmtDate, fmtDateTime,
-  mount, remount } from '../util.js';
+  emptyState, download, toCsv, pickFile, readFileAsText, pluralize, fmtDate,
+  fmtDateTime, mount, remount } from '../util.js';
 import {
   APP, AS_CLASSES, BACKENDS, ROLES, ROLE_LABELS, AS_PROGRESSION,
   currentSchoolYear, isDevMode,
 } from '../config.js';
-import { record, recent, AUDIT, AUDIT_LABELS } from '../audit.js';
+import { record, AUDIT, AUDIT_LABELS } from '../audit.js';
 import {
-  listAccounts, createAccount, updateAccount, deleteAccount,
-  signOut, currentUser, hasRole, normalizeEmail,
+  createAccount, updateAccount, deleteAccount, signOut, currentUser, hasRole, normalizeEmail,
 } from '../auth.js';
 import { renderLogin } from './sign-in.js';
 import { buildJoinLink, joinMailto } from '../join.js';
+import { loadRoster, loadAudit } from '../data-source.js';
 import { connection } from '../state.js';
 import { db } from '../storage/index.js';
 import { navigate } from '../router.js';
@@ -46,12 +46,12 @@ export async function renderAdmin(root, { query }) {
 
 async function renderConsole(root) {
   remount(root, spinner('Loading accounts…'));
-  let accounts = await listAccounts();
+  let accounts = await loadRoster();
 
   const table = el('div', {});
   const state = { role: '', search: '' };
 
-  const reload = async () => { accounts = await listAccounts(); paint(); };
+  const reload = async () => { accounts = await loadRoster(); paint(); };
 
   async function editAccount(existing = null, defaults = {}) {
     const isNew = !existing;
@@ -487,7 +487,7 @@ function rolloverCard(reload) {
   const host = el('div', {});
 
   const preview = async () => {
-    const accounts = await listAccounts();
+    const accounts = await loadRoster();
     const students = accounts.filter((a) => a.roles?.includes(ROLES.student) && a.active !== false);
     const moves = new Map();
     for (const student of students) {
@@ -612,7 +612,7 @@ async function auditCard() {
       el('button', {
         type: 'button', class: 'btn btn--sm',
         onclick: async () => {
-          const rows = await recent({ months: 24, limit: 5000 });
+          const rows = (await loadAudit(24)).slice(0, 5000);
           download(`activity-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(rows, [
             { key: 'at', label: 'When' },
             { key: 'who', label: 'Who', get: (r) => r.actor?.username || '' },
@@ -628,7 +628,8 @@ async function auditCard() {
       + 'removes an entry.'),
     host);
 
-  recent({ months: 6, limit: 60 }).then((rows) => {
+  loadAudit(6).then((all) => {
+    const rows = all.slice(0, 60);
     if (!rows.length) {
       remount(host, el('p', { class: 'muted' }, 'No recorded activity yet.'));
       return;

@@ -64,6 +64,36 @@ var MAX_BODY_BYTES = 96 * 1024;
 /** Ids come from the client, so they are pattern-checked before use in a path. */
 var ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
+/**
+ * Every action this script will perform, and who may perform it.
+ *
+ * An action not listed here does not exist. That is the whole access model:
+ * there is no generic "read a path" call to be talked into handing over the
+ * wrong file, because the caller never names a path — it names an intention,
+ * and this table decides whether it may.
+ *
+ * `commander` and `cadre` are accepted already so that rosters written by a
+ * newer app do not fail against a proxy deployed slightly earlier.
+ */
+var ACTIONS = {
+  bundle:       ['student'],
+  submit:       ['student'],
+  catalog:      ['instructor', 'cadre', 'commander', 'admin'],
+  responses:    ['instructor', 'cadre', 'commander', 'admin'],
+  allResponses: ['instructor', 'cadre', 'commander', 'admin'],
+  roster:       ['instructor', 'cadre', 'commander', 'admin'],
+  audit:        ['commander', 'admin'],
+  overview:     ['instructor', 'cadre', 'commander', 'admin']
+};
+
+function hasAnyRole(account, allowed) {
+  var held = account.roles || [];
+  for (var i = 0; i < allowed.length; i++) {
+    if (held.indexOf(allowed[i]) !== -1) return true;
+  }
+  return false;
+}
+
 /* ------------------------------------------------------------------ *
  * configuration
  * ------------------------------------------------------------------ */
@@ -125,7 +155,8 @@ function doPost(e) {
       return fail('That request was not valid JSON.');
     }
 
-    if (body.action !== 'submit' && body.action !== 'bundle') return fail('Unknown action.');
+    var required = ACTIONS[body.action];
+    if (!required) return fail('Unknown action.');
 
     // --- 1. who is this, according to Google ---------------------------
     var identity = verifyIdToken(body.idToken, cfg.clientId);
@@ -140,20 +171,45 @@ function doPost(e) {
     if (account.active === false) {
       return fail('That account has been deactivated.');
     }
-    if (!account.roles || account.roles.indexOf('student') === -1) {
-      return fail('That account cannot submit feedback.');
+    if (!hasAnyRole(account, required)) {
+      return fail('That account is not allowed to do this.');
     }
 
+    // --- 3. read actions ------------------------------------------------
     // A cadet with no Drive access cannot read the folder to find out what was
-    // assigned to them, so the proxy has to answer that too. One call returns
-    // everything their screens need — fewer round trips on bad cellular, and
-    // the server decides what they may see rather than the client filtering
-    // data it should never have received.
+    // assigned to them, and once cadre lose Drive access the same is true of
+    // them. Every read is a named action with its own role requirement: the
+    // caller can never name a path, so it can never reach a file this script
+    // did not decide to hand over.
     if (body.action === 'bundle') {
       return json({ ok: true, bundle: buildBundle(root, account) });
     }
+    if (body.action === 'catalog') {
+      return json({ ok: true, catalog: readCatalog(root) });
+    }
+    if (body.action === 'responses') {
+      var forId = String(body.requestId || '');
+      if (!ID_PATTERN.test(forId)) return fail('That feedback request id is not valid.');
+      return json({ ok: true, responses: readResponses(root, forId), receipts: readReceipts(root, forId) });
+    }
+    if (body.action === 'allResponses') {
+      return json({ ok: true, responses: readAllResponses(root) });
+    }
+    if (body.action === 'roster') {
+      return json({ ok: true, users: readRoster(root) });
+    }
+    if (body.action === 'audit') {
+      return json({ ok: true, entries: readAudit(root, Number(body.months) || 6) });
+    }
+    if (body.action === 'overview') {
+      return json({ ok: true, org: readJson(root, ['config'], 'org.json'), stats: readStats(root) });
+    }
 
-    // --- 3. is the target a real, open request -------------------------
+    // --- 4. the one write action ----------------------------------------
+    // Explicit rather than a fall-through: an action added to ACTIONS and not
+    // handled above would otherwise drop quietly into the submit path.
+    if (body.action !== 'submit') return fail('That action is not implemented.');
+
     var requestId = String(body.requestId || '');
     if (!ID_PATTERN.test(requestId)) return fail('That feedback request id is not valid.');
 
@@ -320,6 +376,108 @@ function buildBundle(root, account) {
     requests: requests,
     forms: forms,
     submitted: submitted
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * cadre reads
+ *
+ * Every one of these returns records the caller was already entitled to read
+ * from Drive directly. Moving them here changes who holds the Drive permission,
+ * not who may see what — that comes later, when the cadre and commander spaces
+ * arrive and these functions start filtering by folder.
+ * ------------------------------------------------------------------ */
+
+/** Reads every JSON file in a folder, skipping the roll-up index files. */
+function readFolderDocs(root, segments) {
+  var folder = findFolder(root, segments);
+  var out = [];
+  if (!folder) return out;
+
+  var files = folder.getFiles();
+  while (files.hasNext()) {
+    var file = files.next();
+    var name = file.getName();
+    // Files beginning with an underscore are caches the app rebuilds for
+    // itself; sending them would only invite the client to trust them.
+    if (name.indexOf('_') === 0 || name.slice(-5) !== '.json') continue;
+    try {
+      out.push(JSON.parse(file.getBlob().getDataAsString('UTF-8')));
+    } catch (err) {
+      // One unreadable record must not take the whole listing down.
+      console.warn('unreadable: ' + segments.join('/') + '/' + name);
+    }
+  }
+  return out;
+}
+
+/** Forms and requests together — what the portal lists on arrival. */
+function readCatalog(root) {
+  return {
+    forms: readFolderDocs(root, ['forms']),
+    requests: readFolderDocs(root, ['requests'])
+  };
+}
+
+function readResponses(root, requestId) {
+  return readFolderDocs(root, ['responses', requestId]);
+}
+
+function readReceipts(root, requestId) {
+  return readFolderDocs(root, ['receipts', requestId]);
+}
+
+/**
+ * Every response across every request, for cross-form analysis.
+ *
+ * Deliberately the one call that can get large. A detachment with a term of
+ * feedback is comfortably inside Apps Script's response limit, but this is the
+ * first thing that will need paging if a detachment runs for years.
+ */
+function readAllResponses(root) {
+  var parent = findFolder(root, ['responses']);
+  var out = [];
+  if (!parent) return out;
+
+  var subs = parent.getFolders();
+  while (subs.hasNext()) {
+    var sub = subs.next();
+    var rows = readFolderDocs(root, ['responses', sub.getName()]);
+    for (var i = 0; i < rows.length; i++) out.push(rows[i]);
+  }
+  return out;
+}
+
+function readRoster(root) {
+  var doc = readJson(root, ['users'], 'users.json');
+  return (doc && doc.users) || [];
+}
+
+/** Audit entries, newest month first, walking back from today. */
+function readAudit(root, months) {
+  var out = [];
+  var cursor = new Date();
+  for (var i = 0; i < Math.min(months, 24); i++) {
+    var key = Utilities.formatDate(cursor, 'UTC', 'yyyy-MM');
+    var rows = readFolderDocs(root, ['audit', key]);
+    for (var j = 0; j < rows.length; j++) out.push(rows[j]);
+    cursor.setMonth(cursor.getMonth() - 1);
+  }
+  return out;
+}
+
+/** Counts only — enough for the portal's summary without shipping records. */
+function readStats(root) {
+  var requests = readFolderDocs(root, ['requests']);
+  var open = 0;
+  for (var i = 0; i < requests.length; i++) {
+    if (!requests[i].status || requests[i].status === 'open') open++;
+  }
+  return {
+    requests: requests.length,
+    openRequests: open,
+    forms: readFolderDocs(root, ['forms']).length,
+    accounts: readRoster(root).length
   };
 }
 

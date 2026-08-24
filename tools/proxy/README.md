@@ -117,6 +117,33 @@ nothing.
 
 ---
 
+## What it serves
+
+Every action is named and carries its own role requirement. **The caller never
+names a file** — it names an intention, and the script decides whether this
+account may have it. That is the whole access model: a generic "read this path"
+call would put the decision back in the browser, which is the arrangement being
+replaced.
+
+| Action | Who | What comes back |
+|---|---|---|
+| `bundle` | student | Their assignments, the forms to render them, what they have already answered |
+| `submit` | student | Writes one response and its receipt, under a lock |
+| `catalog` | instructor, cadre, commander, admin | Forms and requests |
+| `responses` | instructor, cadre, commander, admin | Responses and receipts for one request |
+| `allResponses` | instructor, cadre, commander, admin | Every response, for analysis across forms |
+| `roster` | instructor, cadre, commander, admin | The roster |
+| `audit` | commander, admin | Audit entries, newest first |
+| `overview` | instructor, cadre, commander, admin | Org record and headline counts |
+
+Roll-up index files (names beginning `_`) are never served. They are caches the
+app rebuilds for itself, and handing them over would invite the client to trust
+them as though the server had vouched for them.
+
+`allResponses` is the one call that can get large. A detachment with a term of
+feedback is comfortably inside Apps Script's limits; it is the first thing that
+will need paging if one runs for years.
+
 ## Limits
 
 - **Quota.** A consumer Gmail account gets about 90 minutes of script runtime a

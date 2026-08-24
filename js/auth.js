@@ -102,6 +102,14 @@ export function suggestUsername(name, taken = []) {
  * @property {boolean} [needsEmail] set by the v4 migration on records with no email
  */
 
+/**
+ * The roster, read straight from Drive.
+ *
+ * Deliberately *not* routed through the proxy: data-source.js already imports
+ * this module, so importing it back would be a cycle. Screens that need the
+ * roster under either mode call `loadRoster()` from data-source instead; this
+ * remains the direct-mode primitive the write paths use.
+ */
 export async function listAccounts() {
   const doc = await db.getUsers();
   return doc.users || [];

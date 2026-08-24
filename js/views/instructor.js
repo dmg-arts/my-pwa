@@ -10,21 +10,18 @@
 
 import {
   el, icon, badge, field, select, notice, toast, spinner, emptyState, modal,
-  confirmDialog, fmtDate, fmtDateTime, fmtRelative, pluralize, toDateInput,
-  fromDateInput, makeId, nowIso, download, toCsv,
-  pickFile, readFileAsText, initials,
+  confirmDialog, fmtDate, fmtRelative, pluralize, download, pickFile, readFileAsText,
   mount, remount } from '../util.js';
 import {
-  SEMESTERS, AS_CLASSES, REQUEST_STATUS, ROLES, schoolYears,
-  currentSchoolYear, currentSemester, isDevMode,
+  SEMESTERS, AS_CLASSES, REQUEST_STATUS, ROLES, schoolYears, isDevMode,
 } from '../config.js';
 import { connection } from '../state.js';
 import { hasRole, currentUser, signOut, listStudents } from '../auth.js';
 import { db } from '../storage/index.js';
 import { navigate } from '../router.js';
-import { renderForm, formItems } from '../forms.js';
 import { renderAnalysis } from './analysis.js';
 import { renderLogin } from './sign-in.js';
+import { loadCatalog } from '../data-source.js';
 import { record, AUDIT } from '../audit.js';
 
 const TABS = [
@@ -118,9 +115,8 @@ export async function renderInstructor(root, { query }) {
  * ------------------------------------------------------------------ */
 
 async function tabRequests(host) {
-  const [requests, counts, forms] = await Promise.all([
-    db.listRequests(), db.responseCounts(), db.listForms(),
-  ]);
+  const [catalog, counts] = await Promise.all([loadCatalog(), db.responseCounts()]);
+  const { requests, forms } = catalog;
   const templates = forms.filter((f) => f.isTemplate);
   const state = { status: '', schoolYear: '', semester: '', asClass: '', search: '' };
   const list = el('div', {});

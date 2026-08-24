@@ -48,7 +48,12 @@ const step = async (label, fn) => {
 const signInAs = (email, name = null, role = null) => page.evaluate(async ([e, n, r]) => {
   const a = await import('/js/auth.js');
   a.signOut();
-  const account = await a.signInWithGoogle({ email: e, name: n, emailVerified: true }, r);
+  // The raw credential matters: proxy reads send it for the server to re-verify,
+  // so a session without one cannot talk to the proxy at all. Google supplies it
+  // through the sign-in callback; here it is a stand-in with a future expiry.
+  const exp = Math.floor(Date.now() / 1000) + 3600;
+  const account = await a.signInWithGoogle(
+    { email: e, name: n, emailVerified: true, exp }, r, 'test-id-token');
   return { username: account.username, roles: account.roles, name: account.name };
 }, [email, name, role]);
 
@@ -687,6 +692,68 @@ await step('the encoder refuses input it cannot represent', async () => {
     catch (e) { return e.message; }
   });
   if (!/too long/i.test(msg)) throw new Error(`message was: ${msg}`);
+});
+
+/* ---------- proxy read routing ---------- */
+
+await step('cadre reads go to Drive when no proxy is configured', async () => {
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes');
+  const calls = await page.evaluate(async () => {
+    const seen = [];
+    const real = window.fetch;
+    window.fetch = (...args) => { seen.push(String(args[0])); return real(...args); };
+    try {
+      const ds = await import('/js/data-source.js');
+      await ds.loadCatalog();
+      await ds.loadRoster();
+    } finally { window.fetch = real; }
+    return seen.filter((u) => u.includes('script.google.com'));
+  });
+  if (calls.length) throw new Error(`direct mode called the proxy: ${calls.join(', ')}`);
+});
+
+await step('cadre reads go to the proxy when one is configured, with the right actions', async () => {
+  const posted = await page.evaluate(async () => {
+    const key = 'topfb.connection.v1';
+    const conn = JSON.parse(localStorage.getItem(key));
+    const original = conn.proxyUrl;
+    conn.proxyUrl = 'https://script.google.com/macros/s/AKfycbTESTdeployment0123456789/exec';
+    localStorage.setItem(key, JSON.stringify(conn));
+
+    const state = await import('/js/state.js');
+    state.connection.set({ proxyUrl: conn.proxyUrl });
+
+    const bodies = [];
+    const real = window.fetch;
+    // Answer as the script would, so the client parses a real shape rather
+    // than erroring on the way out.
+    window.fetch = async (url, opts) => {
+      bodies.push(JSON.parse(opts.body));
+      return new Response(JSON.stringify({
+        ok: true, catalog: { forms: [], requests: [] }, users: [], entries: [], responses: [],
+      }), { status: 200 });
+    };
+    try {
+      const ds = await import('/js/data-source.js');
+      await ds.loadCatalog();
+      await ds.loadRoster();
+      await ds.loadAllResponses();
+      await ds.loadAudit(3);
+    } finally {
+      window.fetch = real;
+      state.connection.set({ proxyUrl: original || '' });
+    }
+    return bodies;
+  });
+
+  const actions = posted.map((b) => b.action);
+  for (const want of ['catalog', 'roster', 'allResponses', 'audit']) {
+    if (!actions.includes(want)) throw new Error(`never posted "${want}" — saw ${actions.join(', ')}`);
+  }
+  if (!posted.every((b) => b.idToken)) throw new Error('a read went out with no ID token');
+  // The whole access model rests on the client never naming a file.
+  const named = posted.filter((b) => b.path || b.file || b.folder);
+  if (named.length) throw new Error('a read named a path instead of an action');
 });
 
 /* ---------- disclosure threshold ---------- */
