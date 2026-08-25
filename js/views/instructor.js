@@ -26,6 +26,7 @@ import {
   loadCatalog, saveForm, saveRequest, deleteForm, deleteRequest, writeAudit,
   canDoMaintenance, connectionStatus, loadOverview,
 } from '../data-source.js';
+import { buildAnonymisedExport, summariseAnonymisedExport } from '../export-anon.js';
 import { record, AUDIT } from '../audit.js';
 
 const TABS = [
@@ -343,6 +344,80 @@ async function tabDatabase(host) {
       el('div', { class: 'stat__value' }, String(value)),
       note && el('div', { class: 'stat__note' }, note));
 
+  /**
+   * The anonymised export.
+   *
+   * Confirmed rather than immediate, because this is the one file that can
+   * legitimately leave the detachment and an administrator should see what is
+   * in it before it does.
+   */
+  async function exportAnonymised() {
+    const busy = toast('Checking what would be exported…', 'info', 20000);
+    let summary;
+    try {
+      summary = await summariseAnonymisedExport();
+    } catch (err) {
+      busy.remove();
+      return toast(`Could not read the records: ${err.message}`, 'danger', 8000);
+    }
+    busy.remove();
+
+    const includeFlagged = el('input', { type: 'checkbox' });
+    const choice = await modal({
+      title: 'Export anonymised records',
+      body: el('div', { class: 'stack' },
+        el('p', {}, 'A copy of the written feedback with the roster, every respondent, '
+          + 'receipt names and the detachment\'s own name removed. Timestamps are reduced '
+          + 'to the month, because a receipt written seconds before a response identifies '
+          + 'its author by elimination.'),
+
+        el('div', { class: 'grid grid--3' },
+          statCard('Responses', summary.responses),
+          statCard('Written answers', summary.textAnswers),
+          statCard('Flagged', summary.flagged, 'excluded by default')),
+
+        notice('warn', 'Free text can still identify people',
+          el('p', {}, 'Removing fields cannot change what someone wrote. A cadet who says '
+            + 'they are the only AS400 in their flight has identified themselves. Treat this '
+            + 'as feedback, not as anonymous statistics.')),
+
+        summary.flagged
+          ? el('label', { class: 'check' }, includeFlagged,
+            el('span', {},
+              el('span', { class: 'check__text' },
+                `Include the ${pluralize(summary.flagged, 'flagged response')}`),
+              el('span', { class: 'check__desc', style: { display: 'block' } },
+                'These are the ones most likely to describe a real incident and to identify '
+                + 'people by circumstance. Leave this unticked unless you have a specific '
+                + 'reason and the authority to decide it.')))
+          : null),
+      actions: [
+        { label: 'Cancel', value: null },
+        { label: 'Export', value: 'go', variant: 'primary' },
+      ],
+    });
+    if (choice !== 'go') return undefined;
+
+    try {
+      const bundle = await buildAnonymisedExport({ includeFlagged: includeFlagged.checked });
+      download(`top-feedback-anonymised-${new Date().toISOString().slice(0, 7)}.json`,
+        JSON.stringify(bundle, null, 2));
+      await writeAudit({
+        action: AUDIT.dataExported,
+        summary: `Exported ${pluralize(bundle.responses.length, 'response')} anonymised`
+          + (includeFlagged.checked ? ', including flagged ones' : ''),
+        detail: {
+          responses: bundle.responses.length,
+          flaggedIncluded: includeFlagged.checked,
+          flaggedExcluded: bundle.excludedFlaggedCount,
+        },
+      });
+      return toast('Anonymised export downloaded.', 'ok', 6000);
+    } catch (err) {
+      return toast(`Export failed: ${err.message}`, 'danger', 8000);
+    }
+  }
+
   async function exportBundle() {
     try {
       const bundle = await db.exportBundle();
@@ -444,7 +519,18 @@ async function tabDatabase(host) {
           : null,
         canDoMaintenance()
           ? el('button', { type: 'button', class: 'btn', onclick: importBundle }, icon('upload'), 'Import backup')
-          : null)),
+          : null,
+        canDoMaintenance()
+          ? el('button', { type: 'button', class: 'btn', onclick: exportAnonymised },
+            icon('eye'), 'Export anonymised')
+          : null),
+
+      canDoMaintenance()
+        ? el('p', { class: 'field__hint' },
+          'An anonymised export carries the feedback without the roster, the respondents, '
+          + 'receipt names or the detachment\'s name, and rounds timestamps to the month. '
+          + 'It is the version to keep off-site, and the only one appropriate to share.')
+        : null),
 
     canDoMaintenance() ? null : notice('info', 'Maintenance runs from the folder owner\'s device',
       el('p', {}, 'Backup, restore and wipe act on the whole folder, and this detachment routes '

@@ -35,6 +35,7 @@ export const AUDIT = {
   accountUpdated: 'account.updated',
   accountDeleted: 'account.deleted',
   rolloverApplied: 'roster.rollover',
+  dataExported: 'database.exported_anonymised',
   dataImported: 'database.imported',
   dataWiped: 'database.wiped',
   indexesRebuilt: 'database.reindexed',
@@ -52,6 +53,7 @@ export const AUDIT_LABELS = {
   // so entries written before that still read properly in the viewer.
   'account.password_reset': 'Password reset',
   'roster.rollover': 'Academic year advanced',
+  'database.exported_anonymised': 'Anonymised export',
   'database.imported': 'Backup imported',
   'database.wiped': 'All records deleted',
   'database.reindexed': 'Indexes rebuilt',

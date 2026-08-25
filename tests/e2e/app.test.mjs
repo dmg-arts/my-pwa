@@ -756,6 +756,109 @@ await step('cadre reads go to the proxy when one is configured, with the right a
   if (named.length) throw new Error('a read named a path instead of an action');
 });
 
+/* ---------- anonymised export ---------- */
+
+await step('an anonymised export carries no name, address or username', async () => {
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes');
+  const dump = await page.evaluate(async () => {
+    const m = await import('/js/storage/index.js');
+    const { buildAnonymisedExport } = await import('/js/export-anon.js');
+
+    // An attributed response, so there is a respondent to strip.
+    await m.db.saveRequest({
+      id: 'req_anon_test', formId: 'form_anon', title: 'Named feedback',
+      status: 'open', asClass: 'AS200', anonymous: false, space: 'shared',
+    });
+    await m.db.saveForm({ id: 'form_anon', name: 'F', sections: [] });
+    await m.db.saveResponse({
+      requestId: 'req_anon_test', formId: 'form_anon', anonymous: false,
+      respondent: { username: 'alvarez.mia', name: 'Alvarez, Mia', asClass: 'AS200' },
+      answers: { q1: 7, q2: 'the drill practice was well run' },
+    });
+    await m.db.addReceipt('req_anon_test', 'alvarez.mia');
+
+    return JSON.stringify(await buildAnonymisedExport());
+  });
+
+  for (const secret of ['alvarez.mia', 'Alvarez', 'Mia', ADMIN_EMAIL, 'respondent"']) {
+    if (dump.includes(secret)) throw new Error(`"${secret}" survived the anonymised export`);
+  }
+  if (!dump.includes('drill practice was well run')) {
+    throw new Error('the feedback text was lost, which defeats the purpose');
+  }
+});
+
+await step('the export keeps how many answered, without saying who', async () => {
+  const parsed = await page.evaluate(async () => {
+    const { buildAnonymisedExport } = await import('/js/export-anon.js');
+    return buildAnonymisedExport();
+  });
+  const request = parsed.requests.find((r) => r.id === 'req_anon_test');
+  if (!request) throw new Error('the request is missing from the export');
+  if (request.respondents !== 1) throw new Error(`respondents recorded as ${request.respondents}`);
+  // The word appears in the metadata describing what was stripped; what must
+  // not appear is a receipt *record*.
+  if (Array.isArray(parsed.receipts) || (parsed.receipts && typeof parsed.receipts === 'object')) {
+    throw new Error('receipt records were exported');
+  }
+  if (/"username"\s*:\s*"/.test(JSON.stringify(parsed))) {
+    throw new Error('a username survived the export');
+  }
+});
+
+await step('timestamps are reduced to the month, so nothing correlates', async () => {
+  // A receipt written seconds before a response identifies its author by
+  // elimination, and that survives having the names removed.
+  const parsed = await page.evaluate(async () => {
+    const { buildAnonymisedExport } = await import('/js/export-anon.js');
+    return buildAnonymisedExport();
+  });
+  const full = JSON.stringify(parsed);
+  if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(full)) {
+    throw new Error('a full timestamp survived the export');
+  }
+  const response = parsed.responses.find((r) => r.requestId === 'req_anon_test');
+  if (!/^\d{4}-\d{2}$/.test(response.submittedMonth || '')) {
+    throw new Error(`submittedMonth is ${response.submittedMonth}`);
+  }
+  if (response.id) throw new Error('the response id was exported — it encodes creation time');
+});
+
+await step('flagged responses are excluded unless explicitly included', async () => {
+  const counts = await page.evaluate(async () => {
+    const m = await import('/js/storage/index.js');
+    const { buildAnonymisedExport } = await import('/js/export-anon.js');
+    await m.db.saveResponse({
+      requestId: 'req_anon_test', formId: 'form_anon', anonymous: true,
+      answers: { q2: 'the flight commander hazed us repeatedly after the lab' },
+    });
+    const without = await buildAnonymisedExport();
+    const withThem = await buildAnonymisedExport({ includeFlagged: true });
+    return {
+      excludedCount: without.excludedFlaggedCount,
+      withoutHasIt: JSON.stringify(without).includes('hazed us repeatedly'),
+      withHasIt: JSON.stringify(withThem).includes('hazed us repeatedly'),
+      label: without.anonymised.flaggedResponses,
+    };
+  });
+  if (counts.withoutHasIt) throw new Error('a flagged disclosure was exported by default');
+  if (!counts.withHasIt) throw new Error('opting in did not include it');
+  if (counts.excludedCount < 1) throw new Error('the exclusion was not counted');
+  if (!/excluded/i.test(counts.label)) throw new Error('the file does not record the choice');
+});
+
+await step('the export says plainly what it is', async () => {
+  const parsed = await page.evaluate(async () => {
+    const { buildAnonymisedExport } = await import('/js/export-anon.js');
+    return buildAnonymisedExport();
+  });
+  if (parsed.format !== 'top-feedback-anonymised') throw new Error('no format marker');
+  if (!/identify people/i.test(parsed.notice || '')) {
+    throw new Error('the file does not warn that free text can still identify people');
+  }
+  if (!parsed.anonymised?.roster) throw new Error('the file does not record what was stripped');
+});
+
 /* ---------- disclosure threshold ---------- */
 
 await step('a lone anonymous response is withheld from analysis', async () => {

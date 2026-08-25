@@ -749,11 +749,23 @@ Ranked by what would actually hurt, not by how alarming they sound.
    existence — completion counts must still add up — and lose the name. So a
    departed cadet leaves nothing identifying in a backup.
 
-   **The residual is people still on the roster.** An export still carries their
-   responses and receipts in one file, and receipt timestamps still correlate
-   with response timestamps. That is the same limit documented under Known
-   limits, now portable. Excluding receipts from the export would close it, at
-   the cost of a restore not knowing who had taken part.
+   **And addressed for everyone else by a second export.** *Database → Export
+   anonymised* produces a file with no roster, no respondents, no receipt names
+   and no detachment name, with timestamps reduced to the month — because a
+   receipt written seconds before a response identifies its author by
+   elimination, and that survives having the names removed. It is the version to
+   keep off-site.
+
+   It is also the file to hand over when the analysis needs improving: the
+   sentiment lexicon and safety phrase lists were written by guesswork and need
+   real language. Responses the safety screen flags are **excluded by default**,
+   since they are the most likely to describe a real incident and to identify
+   people by circumstance; including them takes a deliberate tick and is recorded
+   in the file.
+
+   What no export can strip is what someone wrote. A cadet who says they are the
+   only AS400 in their flight has identified themselves. The file says so in its
+   own header rather than relying on the reader remembering.
 
 3. **One hosted copy is a supply-chain target.** With per-detachment deployments,
    compromising one account reached one detachment. With a single hosted copy and
