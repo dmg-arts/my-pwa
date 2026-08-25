@@ -12,6 +12,8 @@ import { APP, BACKENDS, SEMESTERS, schoolYears, isDevMode, setDevMode } from '..
 import { settings, connection, applySettings, markSetupComplete } from '../state.js';
 import { hasAdmin, signOut } from '../auth.js';
 import { db, adapters, parseFolderId } from '../storage/index.js';
+import { checkProxy } from '../storage/proxy.js';
+import { connectionStatus } from '../data-source.js';
 import { navigate } from '../router.js';
 import { resetSetupDraft } from './setup.js';
 

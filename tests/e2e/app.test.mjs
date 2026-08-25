@@ -1715,6 +1715,47 @@ await step('mobile: anchored scale does not overflow', async () => {
 });
 if (shots) await page.screenshot({ path: `${shots}/m4-mobile.png`, fullPage: true });
 
+/* ---------- every route renders ---------- */
+
+/**
+ * Visits each route and checks it drew something.
+ *
+ * The suite exercised routes it had a scenario for, which left Settings never
+ * visited — and Settings had been calling an unimported `connectionStatus()`
+ * since 0.8. It threw the moment the page loaded, and shipped through three
+ * releases because nothing here ever opened it.
+ *
+ * This does not test what a page *does*. It tests that opening it does not
+ * explode, which is the failure that actually reached a user.
+ */
+await step('every route renders without throwing', async () => {
+  await page.setViewportSize({ width: 1180, height: 950 });
+  await signInAs(ADMIN_EMAIL);
+
+  // Routes taking an id are visited with one that does not exist: a page that
+  // cannot find its record should say so, not crash.
+  const paths = [
+    '/home', '/student', '/student/fill/nope', '/instructor',
+    '/instructor/create/nope', '/admin', '/admin/invite', '/settings',
+    '/cadre', '/setup?rerun=1',
+  ];
+
+  const broken = [];
+  for (const path of paths) {
+    const before = errors.length;
+    await page.goto(`${BASE}#${path}`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(500);
+
+    const body = await page.textContent('#view').catch(() => '');
+    // The router's own crash screen. Reaching it means the view threw.
+    if (/Something went wrong/i.test(body)) broken.push(`${path}: crash screen`);
+    else if (!body || !body.trim()) broken.push(`${path}: rendered nothing`);
+    else if (errors.length > before) broken.push(`${path}: ${errors[before]}`);
+  }
+
+  if (broken.length) throw new Error(broken.join('; '));
+});
+
 await browser.close();
 console.log('\n' + (errors.length ? `${errors.length} problem(s):` : 'No runtime errors.'));
 for (const e of [...new Set(errors)]) console.log('  - ' + e);
