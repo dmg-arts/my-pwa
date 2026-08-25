@@ -18,7 +18,7 @@
  * worth. Short version: Drive sharing is the boundary that holds.
  */
 
-import { ROLES, isDevMode } from './config.js';
+import { ROLES, isDevMode, effectiveRoles } from './config.js';
 import { startSession, currentUser, signOut } from './session.js';
 import { makeId, nowIso } from './util.js';
 import { AUDIT } from './audit.js';
@@ -359,6 +359,6 @@ export async function hasAnyAccount() {
  */
 export function hasRole(role) {
   if (isDevMode()) return true;
-  return Boolean(currentUser()?.roles?.includes(role));
+  return effectiveRoles(currentUser()?.roles || []).includes(role);
 }
 

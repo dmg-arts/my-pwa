@@ -19,13 +19,13 @@ import {
   mount, remount } from '../util.js';
 import {
   AS_CLASSES, SEMESTERS, FORM_RULES, SCALE_ANCHORS, PRIVACY, makeFeedbackId, scaleValues,
-  currentSchoolYear, currentSemester, schoolYears,
-} from '../config.js';
+  currentSchoolYear, currentSemester, schoolYears, SPACES } from '../config.js';
 import {
   saveForm, saveRequest, deleteRequest, loadForms, loadRequests, getRequest, getForm,
   writeAudit,
 } from '../data-source.js';
-import { listStudents } from '../auth.js';
+import { spaceChoicesFor, spaceHint } from '../spaces.js';
+import { listStudents, currentUser } from '../auth.js';
 import { requireInstructor } from './instructor.js';
 import { record, AUDIT } from '../audit.js';
 import { navigate } from '../router.js';
@@ -98,6 +98,7 @@ async function drawCreator(root, params) {
         feedbackId: request.feedbackId || '',
         eventName: request.eventName || request.title || '',
         asClass: request.asClass || '',
+        space: request.space || SPACES.shared,
         schoolYear: request.schoolYear || currentSchoolYear(),
         semester: request.semester || currentSemester(),
         dueAt: request.dueAt || null,
@@ -118,6 +119,7 @@ async function drawCreator(root, params) {
       feedbackId: makeFeedbackId(requests.map((r) => r.feedbackId)),
       eventName: '',
       asClass: '',
+      space: SPACES.shared,
       schoolYear: currentSchoolYear(),
       semester: currentSemester(),
       dueAt: null,
@@ -215,6 +217,8 @@ async function drawCreator(root, params) {
           oninput: (e) => { draft.eventName = e.target.value; },
         }),
         { required: true, hint: 'What students will see at the top of their list.' }),
+
+      spacePicker(draft),
 
       el('div', { class: 'filters' },
         field('AS level',
@@ -617,6 +621,7 @@ async function drawCreator(root, params) {
         dueAt: draft.dueAt,
         instructions: draft.instructions.trim(),
         anonymous: draft.anonymous,
+        space: draft.space || SPACES.shared,
         assignedUsernames: draft.audience === 'some' ? draft.assignedUsernames : [],
         audience: draft.audience,
         status,
@@ -678,6 +683,30 @@ async function drawCreator(root, params) {
     }
     return undefined;
   }
+}
+
+/**
+ * Where this feedback will live.
+ *
+ * Only rendered when the person has somewhere else to put it — an instructor
+ * has exactly one option and does not need to be asked. The choice is checked
+ * again by the server, so a page edited to add an option the account does not
+ * hold gets a refusal rather than a misfiled request.
+ */
+function spacePicker(draft) {
+  const choices = spaceChoicesFor(currentUser()?.roles || []);
+  if (choices.length < 2) return null;
+
+  const hint = el('span', {}, spaceHint(draft.space));
+  return field('Who can see the responses',
+    select(choices.map((c) => ({ value: c.value, label: c.label })), {
+      value: draft.space,
+      onchange: (e) => {
+        draft.space = e.target.value;
+        hint.textContent = spaceHint(draft.space);
+      },
+    }),
+    { hint });
 }
 
 /* ------------------------------------------------------------------ *

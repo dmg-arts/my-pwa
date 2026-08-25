@@ -9,7 +9,7 @@
 export const APP = {
   name: 'TOP-Feedback',
   shortName: 'TOP-FB',
-  version: '0.8.0',
+  version: '0.9.0',
   /**
    * Bump when the on-disk record shape changes, and add a matching entry to
    * MIGRATIONS in js/migrations.js. The runner upgrades a detachment's existing
@@ -36,12 +36,81 @@ export const LS = {
 export const ROLES = {
   student: 'student',
   instructor: 'instructor',
+  cadre: 'cadre',
+  commander: 'commander',
   admin: 'admin',
 };
+
+/**
+ * Where a feedback request and its responses live.
+ *
+ * Not a label on a record — a different folder, so "locked" means locked rather
+ * than hidden. The proxy decides which spaces a role may read and write, and a
+ * space nobody may reach is simply never returned.
+ */
+export const SPACES = {
+  shared: 'shared',
+  cadre: 'cadre',
+  commander: 'commander',
+};
+
+/**
+ * Which spaces each role may see, most permissive last.
+ *
+ * Students are absent on purpose: a cadet sees the requests addressed to them
+ * wherever they live, because a commander's feedback request is still meant to
+ * be answered. What they never see is anyone's responses, so nothing leaks
+ * across a boundary by being answerable.
+ */
+export const SPACE_ACCESS = {
+  [ROLES.instructor]: [SPACES.shared],
+  [ROLES.admin]: [SPACES.shared],
+  [ROLES.cadre]: [SPACES.shared, SPACES.cadre],
+  [ROLES.commander]: [SPACES.shared, SPACES.cadre, SPACES.commander],
+};
+
+/** At most two, so a change of command overlaps rather than cutting over. */
+export const MAX_COMMANDERS = 2;
+
+/**
+ * Roles that carry another role's access.
+ *
+ * Cadre is a superset of instructor and commander a superset of cadre, so a
+ * cadre member opens the Instructor Portal without also being listed as an
+ * instructor. Without this a cadre-only account is locked out of the portal it
+ * is supposed to have more access to, not less.
+ *
+ * Deliberately not applied to `admin`: managing the roster and running the
+ * portal are separate jobs that happen to be held together often.
+ */
+export const ROLE_IMPLIES = {
+  [ROLES.cadre]: [ROLES.instructor],
+  [ROLES.commander]: [ROLES.cadre, ROLES.instructor],
+};
+
+/** Every role a set of held roles grants, following the implications above. */
+export function effectiveRoles(roles = []) {
+  const out = new Set(roles);
+  for (const role of roles) {
+    for (const implied of ROLE_IMPLIES[role] || []) out.add(implied);
+  }
+  return [...out];
+}
+
+/** The spaces a set of roles can reach, combined. */
+export function spacesFor(roles = []) {
+  const out = new Set();
+  for (const role of roles) {
+    for (const space of SPACE_ACCESS[role] || []) out.add(space);
+  }
+  return [...out];
+}
 
 export const ROLE_LABELS = {
   student: 'Student',
   instructor: 'Instructor',
+  cadre: 'Cadre',
+  commander: 'Commander',
   admin: 'Database admin',
 };
 

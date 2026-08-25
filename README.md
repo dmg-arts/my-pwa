@@ -672,6 +672,8 @@ Roughly in dependency order. The first item gates several of the others.
       entirely and the verification problem goes with it.
    3. Roles and locked folders — cadre area, commander area, the cap of two.
 
+   **All three shipped** as 0.7.0, 0.8.0 and 0.9.0.
+
 4. **After-thoughts.** A standing topic rather than a task: the answers to the
    open questions listed below, to be worked through together. Items graduate
    out of here into real work once decided.

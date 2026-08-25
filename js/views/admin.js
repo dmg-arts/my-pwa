@@ -16,7 +16,7 @@ import {
   emptyState, download, toCsv, pickFile, readFileAsText, pluralize, fmtDate,
   fmtDateTime, mount, remount } from '../util.js';
 import {
-  APP, AS_CLASSES, BACKENDS, ROLES, ROLE_LABELS, AS_PROGRESSION,
+  APP, AS_CLASSES, BACKENDS, ROLES, ROLE_LABELS, AS_PROGRESSION, MAX_COMMANDERS,
   currentSchoolYear, isDevMode,
 } from '../config.js';
 import { record, AUDIT, AUDIT_LABELS } from '../audit.js';
@@ -106,6 +106,20 @@ async function renderConsole(root) {
 
     const roles = roleBoxes.filter((r) => r.input.checked).map((r) => r.role);
     if (!roles.length) return toast('Pick at least one role.', 'warn');
+
+    // The server enforces this under a lock and is the authority; checking here
+    // just means the refusal arrives before the round trip, naming who already
+    // holds it rather than saying no.
+    if (roles.includes(ROLES.commander)) {
+      const holders = accounts.filter((a) => a.id !== existing?.id
+        && a.active !== false && a.roles?.includes(ROLES.commander));
+      if (holders.length >= MAX_COMMANDERS) {
+        return toast(
+          `Only ${MAX_COMMANDERS} commanders at once. ${holders.map((a) => a.name).join(' and ')} `
+          + 'hold it — remove one first, so a handover overlaps rather than a third appearing.',
+          'warn', 9000);
+      }
+    }
 
     try {
       if (isNew) {
@@ -729,7 +743,11 @@ async function schemaCard() {
 const ROLE_HINTS = {
   student: 'Can be targeted by feedback forms, and submits them once.',
   instructor: 'Opens the Instructor Portal to create feedback and read responses.',
-  admin: 'Manages the roster, and can delete feedback flagged by the safety screen.',
+  cadre: 'Everything an instructor can do, plus a cadre-only area instructors cannot '
+    + 'see — a separate folder, not a hidden screen.',
+  commander: 'Sees every area including its own, which nobody else can read. '
+    + `At most ${MAX_COMMANDERS} at a time, so a change of command overlaps.`,
+  admin: 'Manages the roster, and can delete feedback — always with a recorded reason.',
 };
 
 /** Shared with the roster importer — quoted fields, embedded commas/newlines. */

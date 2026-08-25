@@ -25,8 +25,17 @@ const check = (label, fn) => {
   catch (err) { console.log(`  FAIL ${label}: ${err.message}`); failures++; }
 };
 
+/**
+ * Scoped to the ACTIONS object rather than matched across the file: the space
+ * table has the same shape, and a check that quietly included it would report
+ * "instructor" as an unhandled action.
+ */
+const ACTIONS_BLOCK = SOURCE.slice(
+  SOURCE.indexOf('var ACTIONS = {'),
+  SOURCE.indexOf('};', SOURCE.indexOf('var ACTIONS = {')));
+
 const declared = new Set(
-  [...SOURCE.matchAll(/^\s{2}([a-zA-Z]+):\s*\[([^\]]*)\]/gm)].map((m) => m[1]));
+  [...ACTIONS_BLOCK.matchAll(/^\s{2}([a-zA-Z]+):\s*\[([^\]]*)\]/gm)].map((m) => m[1]));
 const handled = new Set(
   [...SOURCE.matchAll(/body\.action === '([a-zA-Z]+)'/g)].map((m) => m[1]));
 const requested = new Set(
@@ -50,14 +59,14 @@ check('every declared action is actually handled', () => {
 });
 
 check('no action is declared with an empty role list', () => {
-  for (const [, name, roles] of SOURCE.matchAll(/^\s{2}([a-zA-Z]+):\s*\[([^\]]*)\]/gm)) {
+  for (const [, name, roles] of ACTIONS_BLOCK.matchAll(/^\s{2}([a-zA-Z]+):\s*\[([^\]]*)\]/gm)) {
     if (!roles.trim()) throw new Error(`${name} is open to everyone`);
   }
 });
 
 check('student-facing actions are limited to students', () => {
   for (const action of ['bundle', 'submit']) {
-    const m = SOURCE.match(new RegExp(`^\\s{2}${action}:\\s*\\[([^\\]]*)\\]`, 'm'));
+    const m = ACTIONS_BLOCK.match(new RegExp(`^\\s{2}${action}:\\s*\\[([^\\]]*)\\]`, 'm'));
     if (!m) throw new Error(`${action} is not declared`);
     if (m[1].replace(/['\s]/g, '') !== 'student') {
       throw new Error(`${action} is open to ${m[1]}`);
@@ -66,7 +75,7 @@ check('student-facing actions are limited to students', () => {
 });
 
 check('the audit log is not readable by instructors', () => {
-  const m = SOURCE.match(/^\s{2}audit:\s*\[([^\]]*)\]/m);
+  const m = ACTIONS_BLOCK.match(/^\s{2}audit:\s*\[([^\]]*)\]/m);
   if (!m) throw new Error('audit is not declared');
   if (/instructor/.test(m[1])) throw new Error(`audit is open to ${m[1]}`);
 });
@@ -113,8 +122,8 @@ check('tokeninfo string values are compared as strings', () => {
 
 check('the receipt check and the write share a lock', () => {
   const locked = SOURCE.indexOf('LockService.getScriptLock');
-  const receipt = SOURCE.indexOf('hasReceipt(root, requestId');
-  const write = SOURCE.indexOf('writeJson(root, [\'responses\'');
+  const receipt = SOURCE.indexOf('hasReceipt(root, located.space, requestId');
+  const write = SOURCE.indexOf("writeJson(root, spacePath(located.space, 'responses'");
   if (locked < 0) throw new Error('no script lock');
   if (!(locked < receipt && receipt < write)) {
     throw new Error('the duplicate check is not inside the lock');
@@ -164,7 +173,7 @@ check('every write action requires more than a student role', () => {
   const writes = ['saveForm', 'saveRequest', 'deleteForm', 'deleteRequest',
     'deleteResponse', 'accountCreate', 'accountUpdate', 'accountDelete', 'rollover'];
   for (const action of writes) {
-    const m = SOURCE.match(new RegExp(`^\\s{2}${action}:\\s*\\[([^\\]]*)\\]`, 'm'));
+    const m = ACTIONS_BLOCK.match(new RegExp(`^\\s{2}${action}:\\s*\\[([^\\]]*)\\]`, 'm'));
     if (!m) throw new Error(`${action} is not declared`);
     if (/student/.test(m[1])) throw new Error(`${action} is open to students`);
   }
@@ -198,6 +207,88 @@ check('at most two commanders, enforced on the server', () => {
     if (!/enforceCommanderCap/.test(body.slice(0, body.indexOf('\n}\n')))) {
       throw new Error(`${fn} can grant commander without the cap`);
     }
+  }
+});
+
+/* ---------- locked spaces ---------- */
+
+check('a space is a folder, not a flag on a record', () => {
+  // The whole point. A label the client could ignore would make "locked" mean
+  // "hidden", which is worthless against someone who opens Drive.
+  if (!/var SPACE_FOLDERS = \{/.test(SOURCE)) throw new Error('no space folders declared');
+  for (const space of ['cadre', 'commander']) {
+    const m = SOURCE.match(new RegExp(`${space}: \\{ requests: \\['([a-z]+)'`));
+    if (!m || m[1] !== space) throw new Error(`${space} does not have its own folder`);
+  }
+});
+
+check('instructors reach only the shared space', () => {
+  const m = SOURCE.match(/^\s{2}instructor: \[([^\]]*)\]/m);
+  if (!m) throw new Error('instructor has no space access declared');
+  if (/cadre|commander/.test(m[1])) throw new Error(`instructors reach ${m[1]}`);
+});
+
+check('cadre cannot reach the commander space', () => {
+  const m = SOURCE.match(/^\s{2}cadre: \[([^\]]*)\]/m);
+  if (!m) throw new Error('cadre has no space access declared');
+  if (/commander/.test(m[1])) throw new Error(`cadre reach ${m[1]}`);
+});
+
+check('the commander reaches everything', () => {
+  const m = SOURCE.match(/^\s{2}commander: \[([^\]]*)\]/m);
+  for (const space of ['shared', 'cadre', 'commander']) {
+    if (!m || !m[1].includes(space)) throw new Error(`commander cannot reach ${space}`);
+  }
+});
+
+check('every read is scoped to the caller, not filtered after the fact', () => {
+  // Reading everything and filtering would mean the records existed in the
+  // response for a moment; these never open the folder at all.
+  for (const fn of ['readCatalog', 'readAllResponses']) {
+    const body = SOURCE.slice(SOURCE.indexOf(`function ${fn}`));
+    if (!/spacesFor\(account\)/.test(body.slice(0, body.indexOf('\n}\n')))) {
+      throw new Error(`${fn} does not scope by the caller's spaces`);
+    }
+  }
+});
+
+check('a request cannot be filed into a space the caller cannot reach', () => {
+  const body = SOURCE.slice(SOURCE.indexOf('function saveRequestInSpace'));
+  const fn = body.slice(0, body.indexOf('\n}\n'));
+  if (!/mayReach\(account, space\)/.test(fn)) {
+    throw new Error('the target space is not checked against the caller');
+  }
+  if (!/cannot be moved between areas/.test(fn)) {
+    throw new Error('an existing request can be moved between spaces, carrying its responses');
+  }
+});
+
+check('the space comes from the stored record, never the request body', () => {
+  // A caller that could name the space could read a commander's responses by
+  // claiming its request lived in the shared area.
+  for (const fn of ['readResponses', 'removeRequest', 'removeResponse']) {
+    const body = SOURCE.slice(SOURCE.indexOf(`function ${fn}`));
+    if (!/locateRequest\(root, requestId\)/.test(body.slice(0, body.indexOf('\n}\n')))) {
+      throw new Error(`${fn} does not look the space up from the record`);
+    }
+  }
+});
+
+check('a cadet is offered requests from every space, but never a response', () => {
+  const body = SOURCE.slice(SOURCE.indexOf('function buildBundle'));
+  const fn = body.slice(0, body.indexOf('\n  return {'));
+  if (!/Object\.keys\(SPACE_FOLDERS\)/.test(fn)) {
+    throw new Error('cadets cannot be asked for feedback outside the shared space');
+  }
+  if (/readFolderDocs\(root, spacePath\([^)]*'responses'/.test(fn)) {
+    throw new Error('the cadet bundle reads responses');
+  }
+});
+
+check('a submitted answer is filed in its request\'s own space', () => {
+  const body = SOURCE.slice(SOURCE.indexOf('// The response is filed'));
+  if (!/spacePath\(located\.space, 'responses', requestId\)/.test(body.slice(0, 600))) {
+    throw new Error('answers to a commander request would land in the shared folder');
   }
 });
 

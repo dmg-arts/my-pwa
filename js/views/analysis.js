@@ -20,6 +20,7 @@ import {
   loadCatalog, loadAllResponses, loadResponsesFor, loadStudents,
   deleteResponse as removeResponse, writeAudit,
 } from '../data-source.js';
+import { isRestricted, spaceShort } from '../spaces.js';
 import { renderForm, formItems } from '../forms.js';
 import { navigate } from '../router.js';
 import { hasRole } from '../auth.js';

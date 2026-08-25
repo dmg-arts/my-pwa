@@ -64,6 +64,59 @@ var MAX_BODY_BYTES = 96 * 1024;
 /** Two, so a change of command overlaps rather than cutting over. */
 var MAX_COMMANDERS = 2;
 
+/**
+ * Where a request and its responses live.
+ *
+ * A different folder, not a label on a record — that is what makes "locked"
+ * mean locked. `shared` keeps the original paths so nothing already written has
+ * to move.
+ */
+var SPACE_FOLDERS = {
+  shared: { requests: ['requests'], responses: ['responses'], receipts: ['receipts'] },
+  cadre: { requests: ['cadre', 'requests'], responses: ['cadre', 'responses'], receipts: ['cadre', 'receipts'] },
+  commander: { requests: ['commander', 'requests'], responses: ['commander', 'responses'], receipts: ['commander', 'receipts'] }
+};
+
+/** Which spaces each role may reach. Students are handled separately. */
+var SPACE_ACCESS = {
+  instructor: ['shared'],
+  admin: ['shared'],
+  cadre: ['shared', 'cadre'],
+  commander: ['shared', 'cadre', 'commander']
+};
+
+/** Every space this account may see, combined across the roles it holds. */
+function spacesFor(account) {
+  var roles = effectiveRoles(account);
+  var seen = {};
+  for (var i = 0; i < roles.length; i++) {
+    var allowed = SPACE_ACCESS[roles[i]] || [];
+    for (var j = 0; j < allowed.length; j++) seen[allowed[j]] = true;
+  }
+  return Object.keys(seen);
+}
+
+/** The folder path for one collection in one space, or null if the space is unknown. */
+function spacePath(space, collection, requestId) {
+  var entry = SPACE_FOLDERS[space];
+  if (!entry) return null;
+  var base = entry[collection];
+  if (!base) return null;
+  return requestId ? base.concat([requestId]) : base;
+}
+
+/**
+ * The space a request belongs to.
+ *
+ * Read from the record rather than trusted from the caller: a client that could
+ * name the space could file a commander's request into the shared folder, or
+ * read one out of it.
+ */
+function spaceOf(request) {
+  var space = String((request && request.space) || 'shared');
+  return SPACE_FOLDERS[space] ? space : 'shared';
+}
+
 /** Ids come from the client, so they are pattern-checked before use in a path. */
 var ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -106,8 +159,32 @@ var ACTIONS = {
   recordAudit:    ['instructor', 'cadre', 'commander', 'admin']
 };
 
-function hasAnyRole(account, allowed) {
+/**
+ * Roles that carry another's access.
+ *
+ * Cadre is a superset of instructor, commander of cadre. Listed here as well as
+ * in the app because the action table names concrete roles, and a cadre-only
+ * account must satisfy an instructor-level action without being listed twice on
+ * the roster.
+ */
+var ROLE_IMPLIES = {
+  cadre: ['instructor'],
+  commander: ['cadre', 'instructor']
+};
+
+function effectiveRoles(account) {
   var held = account.roles || [];
+  var out = {};
+  for (var i = 0; i < held.length; i++) {
+    out[held[i]] = true;
+    var implied = ROLE_IMPLIES[held[i]] || [];
+    for (var j = 0; j < implied.length; j++) out[implied[j]] = true;
+  }
+  return Object.keys(out);
+}
+
+function hasAnyRole(account, allowed) {
+  var held = effectiveRoles(account);
   for (var i = 0; i < allowed.length; i++) {
     if (held.indexOf(allowed[i]) !== -1) return true;
   }
@@ -205,15 +282,17 @@ function doPost(e) {
       return json({ ok: true, bundle: buildBundle(root, account) });
     }
     if (body.action === 'catalog') {
-      return json({ ok: true, catalog: readCatalog(root) });
+      return json({ ok: true, catalog: readCatalog(root, account) });
     }
     if (body.action === 'responses') {
       var forId = String(body.requestId || '');
       if (!ID_PATTERN.test(forId)) return fail('That feedback request id is not valid.');
-      return json({ ok: true, responses: readResponses(root, forId), receipts: readReceipts(root, forId) });
+      var found = readResponses(root, account, forId);
+      if (!found) return fail('That feedback is not available to this account.');
+      return json({ ok: true, responses: found.responses, receipts: found.receipts });
     }
     if (body.action === 'allResponses') {
-      return json({ ok: true, responses: readAllResponses(root) });
+      return json({ ok: true, responses: readAllResponses(root, account) });
     }
     if (body.action === 'roster') {
       return json({ ok: true, users: readRoster(root) });
@@ -231,9 +310,9 @@ function doPost(e) {
     // the client-side compare-and-retry it replaces: two administrators editing
     // the roster at once are serialised here rather than racing and retrying.
     if (body.action === 'saveForm') return writeRecord(root, 'forms', body.form, 'form_');
-    if (body.action === 'saveRequest') return writeRecord(root, 'requests', body.request, 'req_');
+    if (body.action === 'saveRequest') return saveRequestInSpace(root, account, body.request);
     if (body.action === 'deleteForm') return removeRecord(root, ['forms'], body.formId);
-    if (body.action === 'deleteRequest') return removeRequest(root, body.requestId);
+    if (body.action === 'deleteRequest') return removeRequest(root, account, body.requestId);
     if (body.action === 'deleteResponse') return removeResponse(root, body, account);
     if (body.action === 'accountCreate') return withRoster(function (users) {
       return addAccount(users, body.account);
@@ -257,8 +336,9 @@ function doPost(e) {
     var requestId = String(body.requestId || '');
     if (!ID_PATTERN.test(requestId)) return fail('That feedback request id is not valid.');
 
-    var request = readJson(root, ['requests'], requestId + '.json');
-    if (!request) return fail('That feedback request no longer exists.');
+    var located = locateRequest(root, requestId);
+    if (!located) return fail('That feedback request no longer exists.');
+    var request = located.request;
     if (request.status && request.status !== 'open') {
       return fail('That feedback is closed.');
     }
@@ -278,13 +358,16 @@ function doPost(e) {
     }
 
     try {
-      if (hasReceipt(root, requestId, account.username)) {
+      if (hasReceipt(root, located.space, requestId, account.username)) {
         return fail('You have already submitted this feedback.');
       }
 
+      // The response is filed in the request's own space, so answering a
+      // commander's request puts the answer where only a commander can read it.
       var record = buildResponse(body, request, account);
-      writeJson(root, ['responses', requestId], record.id + '.json', record);
-      writeJson(root, ['receipts', requestId], account.username + '.json', {
+      record.space = located.space;
+      writeJson(root, spacePath(located.space, 'responses', requestId), record.id + '.json', record);
+      writeJson(root, spacePath(located.space, 'receipts', requestId), account.username + '.json', {
         schemaVersion: record.schemaVersion,
         requestId: requestId,
         username: account.username,
@@ -374,22 +457,18 @@ function verifyIdToken(token, expectedClientId) {
 function buildBundle(root, account) {
   var requests = [];
   var formIds = {};
-  var requestsFolder = findFolder(root, ['requests']);
 
-  if (requestsFolder) {
-    var files = requestsFolder.getFiles();
-    while (files.hasNext()) {
-      var file = files.next();
-      if (file.getName().indexOf('_') === 0) continue;   // roll-up indexes
-      var request;
-      try {
-        request = JSON.parse(file.getBlob().getDataAsString('UTF-8'));
-      } catch (err) {
-        continue;
-      }
+  // Every space, deliberately. A cadet answers a commander's feedback request
+  // like any other — the point of the locked space is that they never see
+  // anyone's *responses*, not that they are excluded from being asked.
+  var spaces = Object.keys(SPACE_FOLDERS);
+  for (var s = 0; s < spaces.length; s++) {
+    var rows = readFolderDocs(root, spacePath(spaces[s], 'requests'));
+    for (var r = 0; r < rows.length; r++) {
+      var request = rows[r];
       if (!request || !request.id) continue;
       if (!isAddressedTo(request, account)) continue;
-
+      request.space = spaces[s];
       requests.push(request);
       if (request.formId) formIds[request.formId] = true;
     }
@@ -405,7 +484,9 @@ function buildBundle(root, account) {
 
   var submitted = [];
   for (var j = 0; j < requests.length; j++) {
-    if (hasReceipt(root, requests[j].id, account.username)) submitted.push(requests[j].id);
+    if (hasReceipt(root, requests[j].space, requests[j].id, account.username)) {
+      submitted.push(requests[j].id);
+    }
   }
 
   return {
@@ -430,6 +511,24 @@ function buildBundle(root, account) {
  * and pattern-checked when supplied, so nothing a caller sends can escape the
  * folder it belongs in.
  * ------------------------------------------------------------------ */
+
+/** Writes one record into an explicit folder path. */
+function writeRecordAt(root, segments, record, prefix) {
+  if (!record || typeof record !== 'object') return fail('That record is missing.');
+
+  var id = String(record.id || '');
+  if (!id) {
+    id = prefix + Utilities.getUuid().replace(/-/g, '').slice(0, 12);
+    record.id = id;
+  }
+  if (!ID_PATTERN.test(id)) return fail('That record has an invalid id.');
+
+  if (!record.createdAt) record.createdAt = new Date().toISOString();
+  record.updatedAt = new Date().toISOString();
+
+  writeJson(root, segments, id + '.json', record);
+  return json({ ok: true, record: record });
+}
 
 /** Writes one record into a collection, minting an id if it has none. */
 function writeRecord(root, collection, record, prefix) {
@@ -459,12 +558,46 @@ function removeRecord(root, segments, id) {
   return json({ ok: true });
 }
 
+/**
+ * Files a request into a space this account is allowed to write to.
+ *
+ * The space is taken from the record but validated against the caller's roles,
+ * so an instructor cannot file into the commander's space and a cadre member
+ * cannot quietly move an existing request out of one.
+ */
+function saveRequestInSpace(root, account, request) {
+  if (!request || typeof request !== 'object') return fail('That request is missing.');
+
+  var space = spaceOf(request);
+  if (!mayReach(account, space)) {
+    return fail('This account cannot file feedback into that area.');
+  }
+
+  // Moving a request between spaces would carry its responses somewhere they
+  // were never meant to be readable, so it is refused rather than handled.
+  var existing = request.id ? locateRequest(root, String(request.id)) : null;
+  if (existing && existing.space !== space) {
+    return fail('Feedback cannot be moved between areas once it exists.');
+  }
+  if (existing && !mayReach(account, existing.space)) {
+    return fail('That feedback is not available to this account.');
+  }
+
+  request.space = space;
+  return writeRecordAt(root, spacePath(space, 'requests'), request, 'req_');
+}
+
 /** Removing a request takes its responses and receipts with it. */
-function removeRequest(root, requestId) {
+function removeRequest(root, account, requestId) {
   if (!ID_PATTERN.test(String(requestId || ''))) return fail('That id is not valid.');
-  trashFolder(findFolder(root, ['responses', requestId]));
-  trashFolder(findFolder(root, ['receipts', requestId]));
-  return removeRecord(root, ['requests'], requestId);
+  var located = locateRequest(root, requestId);
+  if (!located) return json({ ok: true });
+  if (!mayReach(account, located.space)) {
+    return fail('That feedback is not available to this account.');
+  }
+  trashFolder(findFolder(root, spacePath(located.space, 'responses', requestId)));
+  trashFolder(findFolder(root, spacePath(located.space, 'receipts', requestId)));
+  return removeRecord(root, spacePath(located.space, 'requests'), requestId);
 }
 
 function trashFolder(folder) {
@@ -488,7 +621,13 @@ function removeResponse(root, body, account) {
   }
   if (reason.length < 4) return fail('Deleting feedback requires a recorded reason.');
 
-  var result = removeRecord(root, ['responses', requestId], responseId);
+  var located = locateRequest(root, requestId);
+  if (!located) return fail('That feedback no longer exists.');
+  if (!mayReach(account, located.space)) {
+    return fail('That feedback is not available to this account.');
+  }
+
+  var result = removeRecord(root, spacePath(located.space, 'responses', requestId), responseId);
   appendAudit(root, {
     action: 'response.deleted',
     summary: 'Deleted a response from ' + requestId,
@@ -691,20 +830,65 @@ function readFolderDocs(root, segments) {
   return out;
 }
 
-/** Forms and requests together — what the portal lists on arrival. */
-function readCatalog(root) {
+/**
+ * Forms and requests, from the spaces this account may see.
+ *
+ * A request in a space this account cannot reach is not filtered out of a
+ * larger result — it is never read at all. There is nothing here for a client
+ * to sift through, because the folder was never opened.
+ */
+function readCatalog(root, account) {
+  var spaces = spacesFor(account);
+  var requests = [];
+  for (var i = 0; i < spaces.length; i++) {
+    var rows = readFolderDocs(root, spacePath(spaces[i], 'requests'));
+    for (var j = 0; j < rows.length; j++) {
+      rows[j].space = spaces[i];
+      requests.push(rows[j]);
+    }
+  }
+  return { forms: readFolderDocs(root, ['forms']), requests: requests };
+}
+
+/**
+ * Responses for one request, if this account may reach the space it lives in.
+ *
+ * The space comes from the request record, so a caller naming a request it
+ * cannot see gets nothing rather than a redirect to somewhere it can.
+ */
+function readResponses(root, account, requestId) {
+  var located = locateRequest(root, requestId);
+  if (!located || !mayReach(account, located.space)) return null;
   return {
-    forms: readFolderDocs(root, ['forms']),
-    requests: readFolderDocs(root, ['requests'])
+    responses: readFolderDocs(root, spacePath(located.space, 'responses', requestId)),
+    receipts: readFolderDocs(root, spacePath(located.space, 'receipts', requestId))
   };
 }
 
-function readResponses(root, requestId) {
-  return readFolderDocs(root, ['responses', requestId]);
+function mayReach(account, space) {
+  return spacesFor(account).indexOf(space) !== -1;
 }
 
-function readReceipts(root, requestId) {
-  return readFolderDocs(root, ['receipts', requestId]);
+/** Finds a request across every space, returning it with the space it was in. */
+function locateRequest(root, requestId) {
+  var spaces = Object.keys(SPACE_FOLDERS);
+  for (var i = 0; i < spaces.length; i++) {
+    var doc = readJsonAt(root, spacePath(spaces[i], 'requests'), requestId + '.json');
+    if (doc) return { request: doc, space: spaces[i] };
+  }
+  return null;
+}
+
+function readJsonAt(root, segments, name) {
+  var folder = findFolder(root, segments);
+  if (!folder) return null;
+  var files = folder.getFilesByName(name);
+  if (!files.hasNext()) return null;
+  try {
+    return JSON.parse(files.next().getBlob().getDataAsString('UTF-8'));
+  } catch (err) {
+    return null;
+  }
 }
 
 /**
@@ -714,16 +898,21 @@ function readReceipts(root, requestId) {
  * feedback is comfortably inside Apps Script's response limit, but this is the
  * first thing that will need paging if a detachment runs for years.
  */
-function readAllResponses(root) {
-  var parent = findFolder(root, ['responses']);
+function readAllResponses(root, account) {
+  var spaces = spacesFor(account);
   var out = [];
-  if (!parent) return out;
-
-  var subs = parent.getFolders();
-  while (subs.hasNext()) {
-    var sub = subs.next();
-    var rows = readFolderDocs(root, ['responses', sub.getName()]);
-    for (var i = 0; i < rows.length; i++) out.push(rows[i]);
+  for (var s = 0; s < spaces.length; s++) {
+    var parent = findFolder(root, spacePath(spaces[s], 'responses'));
+    if (!parent) continue;
+    var subs = parent.getFolders();
+    while (subs.hasNext()) {
+      var sub = subs.next();
+      var rows = readFolderDocs(root, spacePath(spaces[s], 'responses', sub.getName()));
+      for (var i = 0; i < rows.length; i++) {
+        rows[i].space = spaces[s];
+        out.push(rows[i]);
+      }
+    }
   }
   return out;
 }
@@ -786,8 +975,8 @@ function isAddressedTo(request, account) {
   return String(request.asClass) === String(account.asClass || '');
 }
 
-function hasReceipt(root, requestId, username) {
-  var folder = findFolder(root, ['receipts', requestId]);
+function hasReceipt(root, space, requestId, username) {
+  var folder = findFolder(root, spacePath(space, 'receipts', requestId));
   if (!folder) return false;
   return folder.getFilesByName(username + '.json').hasNext();
 }

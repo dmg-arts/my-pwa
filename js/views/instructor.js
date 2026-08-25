@@ -21,6 +21,7 @@ import { db } from '../storage/index.js';
 import { navigate } from '../router.js';
 import { renderAnalysis } from './analysis.js';
 import { renderLogin } from './sign-in.js';
+import { isRestricted, spaceShort } from '../spaces.js';
 import {
   loadCatalog, saveForm, saveRequest, deleteForm, deleteRequest, writeAudit,
   canDoMaintenance, connectionStatus, loadOverview,
@@ -163,7 +164,11 @@ async function tabRequests(host) {
           el('span', { class: 'list__title', style: { display: 'block' } },
             request.feedbackId
               ? [el('span', { class: 'mono faint' }, `${request.feedbackId} `), request.title]
-              : request.title),
+              : request.title,
+            // Restricted feedback is labelled wherever it appears, so nobody
+            // has to remember which area they filed something into.
+            isRestricted(request.space)
+              ? [' ', badge(spaceShort(request.space), 'warn', 'lock')] : null),
           el('span', { class: 'list__meta', style: { display: 'block' } },
             [request.asClass, request.semester, request.schoolYear].filter(Boolean).join(' \u00b7 '),
             ` \u00b7 ${audience}`),
