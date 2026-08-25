@@ -346,20 +346,26 @@ def s04_data():
 def s05_roles():
     s = slide()
     eyebrow(s, "Who uses it")
-    title(s, "One app, three doors")
-    picture(s, "home.png", M, Inches(2.2), Inches(6.5), Inches(4.15))
-    points(s, Inches(7.9), Inches(2.45), Inches(4.6), Inches(3.9), [
-        "Student",
-        "-Signs in, sees only the feedback assigned to them, submits it once.",
-        "Instructor Portal",
+    title(s, "Built around the chain of command")
+    picture(s, "home.png", M, Inches(2.2), Inches(6.1), Inches(4.15))
+    points(s, Inches(7.5), Inches(2.2), Inches(5.0), Inches(4.4), [
+        "Cadet",
+        "-Sees only what is assigned to them. Submits once.",
+        "Instructor",
         "-Creates feedback, reads responses, runs the analysis.",
-        "Database Administration",
-        "-Keeps the roster of who may use the app, and as what.",
-    ], size=16, gap=13)
+        "Cadre",
+        "-All of that, plus an area instructors cannot see.",
+        "Commander",
+        "-Sees every area, including one only they can read.",
+        "Database admin",
+        "-Keeps the roster. A separate job, often held alongside.",
+    ], size=15, gap=9)
     page_no(s, 5)
-    notes(s, "Everyone signs in with their own Google account, cadets included. That is what makes "
-             "one-submission-per-student a fact rather than an honour system. Nobody issues or "
-             "resets a password, because the app has none.")
+    notes(s, "The point of this slide is that access follows rank, and that it is enforced rather "
+             "than assumed. Cadre and commander areas are separate folders on the detachment's "
+             "Drive, not hidden screens — an instructor cannot reach commander feedback by opening "
+             "Drive directly, because the server will not open that folder for them. "
+             "At most two commanders at a time, so a change of command overlaps.")
 
 
 def s06_student_list():
@@ -556,12 +562,82 @@ def s16_admin():
     eyebrow(s, "Running it")
     title(s, "A roster, not a password list",
           "Everyone signs in with the Google account you already mail them at. Add people by email, one at a time or a whole class by CSV.")
-    picture(s, "admin.png", M, Inches(2.8), Inches(11.5), Inches(3.75))
+    picture(s, "admin.png", M, Inches(2.8), Inches(11.5), Inches(3.6))
     page_no(s, 16)
     notes(s, "Worth dwelling on for a cadre audience: there is nothing to distribute and nothing "
              "to reset. Cadets travel in from several schools, so there is no one campus login to "
              "key on, but they all already have a Google account because that is where we mail "
              "them. Being on this list is what grants access, and that is your decision.")
+
+
+def s16b_invite():
+    """Onboarding is the thing that kills tools like this. Say how it is solved."""
+    s = slide()
+    eyebrow(s, "Getting a detachment onto it")
+    title(s, "One link. Or point a room at a screen.",
+          "Cadets do not install anything, configure anything, or type anything.")
+    points(s, M, Inches(2.4), Inches(6.2), Inches(4.0), [
+        "Send a join link",
+        "-Chat, email, however you already reach them. It carries the whole setup.",
+        "Or show the QR code",
+        "-On a projector at the start of a meeting. Thirty phones in a minute.",
+        "They sign in with Google",
+        "-The account you already mail them at. That is the whole enrolment.",
+    ], size=16, gap=12)
+    picture(s, "qr-desktop.png", Inches(7.3), Inches(2.4), Inches(5.2), Inches(4.0))
+    page_no(s, 17)
+    notes(s, "This slide answers the objection that kills tools like this: 'my cadets will never "
+             "set that up'. They do not have to. The link carries the configuration, so there is "
+             "no Client ID or folder address in anybody's hands but yours. "
+             "Worth demonstrating live if there is a screen in the room — it takes about ten "
+             "seconds and it lands better than any slide.")
+
+
+def s16c_commander():
+    """The differentiator for a military customer."""
+    s = slide()
+    eyebrow(s, "For the commander")
+    title(s, "How is this instructor doing?",
+          "The same feedback, grouped by the person it reflects on.")
+    picture(s, "people-list.png", M, Inches(2.5), Inches(11.5), Inches(3.9))
+    page_no(s, 18)
+    notes(s, "This is the capability a commander will care about most, and the one no general "
+             "purpose survey tool offers. Every other screen answers 'how did the event go'. "
+             "This answers 'how is this person doing', across a term, without anyone compiling "
+             "a spreadsheet. "
+             "Say plainly that it is not a ranking, and that the app says so on the screen — "
+             "response counts and cohorts differ, and an average of nine ordinal points is not a "
+             "performance score. It also withholds anyone under three responses, counting their "
+             "total rather than each form, because two responses across two forms is still two "
+             "identifiable cadets.")
+
+
+def s16d_privacy():
+    """The posture, stated as a commitment rather than a feature list."""
+    s = slide()
+    background(s, NAVY)
+    block(s, M, Inches(1.2), Inches(11.5), Inches(1.1),
+          [("Your detachment owns its data. Nobody else can reach it.", 32, True, WHITE, 0)])
+    y = Inches(2.7)
+    for head, body in [
+        ("It lives in your Google Drive, in your account",
+         "No vendor database, no copy anywhere else. Delete the folder and it is gone."),
+        ("Only the folder's owner needs access to it",
+         "Cadets and cadre reach their feedback through your own server, not the folder."),
+        ("Removing somebody removes them permanently",
+         "Their feedback stays; their name is stripped out of it and does not come back."),
+        ("There is an export built for sharing",
+         "No roster, no names, timestamps rounded to the month. Safe to keep off-site."),
+    ]:
+        block(s, M, y, Inches(11.4), Inches(0.95),
+              [(head, 19, True, WHITE, 4), (body, 14, False, WHITE, 0)])
+        y += Inches(1.02)
+    notes(s, "Expect the data question early from anyone senior. The answer is that there is no "
+             "vendor holding anything: the records sit in the detachment's own Drive, and the "
+             "maintainer's role is the source code. "
+             "The strongest single fact here is that after setup, nobody but the folder owner has "
+             "access to the folder at all — cadets and cadre both go through the detachment's own "
+             "server. That is unusual, and it is worth saying slowly.")
 
 
 def s17_start():
@@ -570,21 +646,23 @@ def s17_start():
     block(s, M, Inches(1.1), Inches(10), Inches(0.95),
           [("Getting started", 42, True, WHITE, 0)], shrink=False)
 
-    y = Inches(2.45)
+    y = Inches(2.3)
     for n, head, body in [
         ("1", "Create the folder",
          "A Google account the detachment owns, and a folder named TOP-Feedback."),
         ("2", "Register the app",
          "One free Google Cloud project, so the app can reach that Drive. About ten minutes."),
-        ("3", "Run the wizard",
-         "Paste the folder link, sign in with Google to claim it, add cadets by email."),
+        ("3", "Deploy the server",
+         "A short script in the same account. Fifteen minutes, and nobody else needs the folder."),
+        ("4", "Send the link",
+         "Add people by email, then send one join link. Cadets configure nothing."),
     ]:
         circ = shape(s, MSO_SHAPE.OVAL, M, y, Inches(0.6), Inches(0.6), WHITE)
         block(s, M, y + Inches(0.09), Inches(0.6), Inches(0.42),
               [(n, 19, True, NAVY, 0)], align=PP_ALIGN.CENTER, shrink=False)
         block(s, M + Inches(0.95), y - Inches(0.02), Inches(9.6), Inches(1.05),
               [(head, 21, True, WHITE, 4), (body, 15, False, WHITE, 0)])
-        y += Inches(1.25)
+        y += Inches(1.08)
 
     rect(s, M, Inches(6.35), Inches(11.4), Emu(19050), WHITE)
     block(s, M, Inches(6.6), Inches(11.4), Inches(0.45),
@@ -596,7 +674,8 @@ def s17_start():
 
 for build in [s01_title, s02_what, s03_problem, s04_data, s05_roles, s06_student_list,
               s07_scale, s08_phone, s09_portal, s10_create, s11_ratings, s12_split,
-              s13_written, s14_safety, s15_anonymity, s16_admin, s17_start]:
+              s13_written, s14_safety, s15_anonymity, s16_admin, s16b_invite,
+              s16c_commander, s16d_privacy, s17_start]:
     build()
 
 OUT.parent.mkdir(parents=True, exist_ok=True)

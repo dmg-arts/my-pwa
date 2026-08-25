@@ -202,6 +202,81 @@ await page.waitForSelector('.quote--flagged', { timeout: 15000 });
 const safety = await page.$('section:has(.quote--flagged)');
 if (safety) { await safety.screenshot({ path: `${OUT}/safety.png` }); console.log('  captured safety'); }
 
+/* ---------- the commander's by-instructor view ---------- */
+
+// Seeded with a spread that shows the interesting cases together: somebody with
+// plenty of feedback, somebody with a weaker picture, and somebody under the
+// disclosure threshold so the withholding is visible rather than described.
+await page.evaluate(async () => {
+  const m = await import('/js/storage/index.js');
+  const a = await import('/js/auth.js');
+  for (const [name, email, roles] of [
+    ['Okafor, Sam', 'sam.okafor@det025.edu', ['cadre']],
+    ['Lindqvist, Ana', 'ana.lindqvist@det025.edu', ['instructor']],
+    ['Vance, Robert', 'robert.vance@det025.edu', ['commander']],
+  ]) { try { await a.createAccount({ name, email, roles }); } catch { /* already there */ } }
+
+  const seed = async (subject, batches) => {
+    for (let i = 0; i < batches.length; i++) {
+      const id = `req_${subject.replace('.', '')}_${i}`;
+      await m.db.saveRequest({
+        id, formId: 'form_demo', title: `Leadership Lab ${i + 1}`,
+        eventName: `Leadership Lab ${i + 1}`, status: 'open', asClass: 'AS200',
+        schoolYear: '2026-2027', semester: 'Fall', anonymous: true, space: 'shared',
+        subject, createdBy: subject, assignedUsernames: [],
+      });
+      for (const score of batches[i]) {
+        await m.db.saveResponse({
+          requestId: id, formId: 'form_demo', anonymous: true, asClass: 'AS200',
+          schoolYear: '2026-2027', semester: 'Fall',
+          answers: { q1: score, q2: 'the drill sequence was clear and well paced' },
+        });
+      }
+    }
+  };
+  await seed('reyes.maria', [[8, 7, 9, 8, 7, 8], [9, 8, 8, 7]]);
+  await seed('okafor.sam', [[4, 3, 5, 6, 4, 5, 4]]);
+  await seed('lindqvist.ana', [[9, 8]]);
+
+  const s = JSON.parse(sessionStorage.getItem('topfb.session.v1'));
+  s.roles = ['commander'];
+  sessionStorage.setItem('topfb.session.v1', JSON.stringify(s));
+});
+await page.goto(`${BASE}#/instructor?tab=people`, { waitUntil: 'networkidle' });
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForSelector('table.table', { timeout: 15000 });
+await shot('people-list');
+
+await page.evaluate(() =>
+  [...document.querySelectorAll('tbody tr')].find((r) => /Reyes/.test(r.textContent)).click());
+await page.waitForTimeout(700);
+await shot('people-detail', { fullPage: true });
+
+/* ---------- the join QR code ---------- */
+
+// Needs a Client ID to build a link from, and the admin role: commander implies
+// instructor but deliberately not admin, since keeping the roster is a separate
+// job from running the portal.
+await page.evaluate(async () => {
+  const { connection } = await import('/js/state.js');
+  const session = JSON.parse(sessionStorage.getItem('topfb.session.v1'));
+  session.roles = ['admin', 'instructor'];
+  sessionStorage.setItem('topfb.session.v1', JSON.stringify(session));
+  connection.set({
+    clientId: '000000000000-topfeedbackdemo.apps.googleusercontent.com',
+    folderId: '1DemoFolderIdForTheScreenshotsOnly',
+  });
+});
+await page.goto(`${BASE}#/admin/invite`, { waitUntil: 'networkidle' });
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForSelector('.qr-screen__code svg', { timeout: 15000 });
+await page.waitForTimeout(400);
+await shot('qr-desktop');
+await page.evaluate(async () => {
+  const { connection } = await import('/js/state.js');
+  connection.set({ clientId: '', folderId: 'demo' });
+});
+
 /* ---------- admin ---------- */
 await page.goto(`${BASE}#/admin`, { waitUntil: 'networkidle' });
 await page.waitForSelector('table.table', { timeout: 12000 });

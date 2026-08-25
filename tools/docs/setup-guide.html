@@ -148,7 +148,7 @@
   </div>
   <h1>TOP-Feedback</h1>
   <p class="sub">Installation and Setup Guide</p>
-  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Alpha 0.4</p>
+  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Alpha 0.11</p>
   <div class="meta">
     <strong>Before you start</strong>
     Allow about 45 minutes for a first-time setup using Google Drive. You will need
@@ -176,9 +176,10 @@
     <li><span class="n">3</span><span><strong>Publish the app</strong><span class="d"> — free hosting, or run it from one computer</span></span></li>
     <li><span class="n">4</span><span><strong>Run the setup wizard</strong><span class="d"> — connect the app to your folder</span></span></li>
     <li><span class="n">5</span><span><strong>Claim the folder</strong><span class="d"> — the first Google sign-in, and turning off development mode</span></span></li>
-    <li><span class="n">6</span><span><strong>Build the roster</strong><span class="d"> — instructors and cadets, one at a time or by CSV</span></span></li>
-    <li><span class="n">7</span><span><strong>Install on phones and laptops</strong><span class="d"> — add to home screen</span></span></li>
-    <li><span class="n">8</span><span><strong>Verify and hand over</strong><span class="d"> — a checklist before first use</span></span></li>
+    <li><span class="n">6</span><span><strong>Deploy the submission server</strong><span class="d"> — 15 minutes, and it changes what everything below costs</span></span></li>
+    <li><span class="n">7</span><span><strong>Build the roster</strong><span class="d"> — roles, and adding people by email or CSV</span></span></li>
+    <li><span class="n">8</span><span><strong>Invite everyone</strong><span class="d"> — one link, or a QR code on a projector</span></span></li>
+    <li><span class="n">9</span><span><strong>Verify and hand over</strong><span class="d"> — a checklist before first use</span></span></li>
     <li><span class="n">—</span><span><strong>Troubleshooting and reference</strong><span class="d"> — common problems, folder layout, backups</span></span></li>
   </ol>
 
@@ -249,7 +250,9 @@
     <li><strong>Open Google Drive and create a folder named <code>TOP-Feedback</code>.</strong>
       The name is a convention, not a requirement, but it makes the folder obvious later.</li>
     <li><strong>Share the folder with the cadre who need access.</strong>
-      Give <em>Editor</em> access to anyone who will use the Instructor Portal.
+      Share it with <strong>nobody yet</strong>. Once the submission server is deployed in
+      Part 6, only the account that owns this folder needs access to it &mdash; cadre and
+      cadets both reach their data through the server instead.
       <ul>
         <li>Anyone with access to this folder can read every record directly, including the raw
         feedback. Share it only with people entitled to see all of it.</li>
@@ -316,9 +319,8 @@
     <strong class="title">Do not click "Publish app"</strong>
     <p>
       It sounds like the step that makes things work. It is the opposite. TOP-Feedback asks for
-      full Google Drive access, which Google classes as a <em>restricted</em> scope: in production
-      that requires completed verification plus a paid third-party security assessment. Publishing
-      without it blocks <em>everyone</em>, including you, with
+      Google Drive access on your behalf while you are setting up. Publishing to production without
+      completing Google's verification blocks <em>everyone</em>, including you, with
       <em>"Access blocked &hellip; has not completed the Google verification process"</em> and no way
       through. If you have already clicked it, open the consent screen and choose
       <strong>Back to testing</strong>.
@@ -504,16 +506,97 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 
 <!-- ============================= PART 6 ============================= -->
 <section>
-  <h2><span class="num">6</span>Build the roster</h2>
+  <h2><span class="num">6</span>Deploy the submission server</h2>
+
+  <p class="lead">Fifteen minutes, and it changes what everything else costs. A small script
+  running inside your own Google account files everyone's feedback for them, so nobody but you
+  needs access to the Drive folder.</p>
+
+  <div class="note note--danger">
+    <strong class="title">Without this, everyone who uses the app can read every response</strong>
+    <p>Google requires <em>Editor</em> permission to write a file, and Drive has no
+    write-without-read. So without the server, every cadet who submits feedback can also open
+    the folder and read every response in it, including anonymous ones &mdash; and can alter
+    them, or delete the activity log. The anonymity in the app's own screens is real and worth
+    nothing against somebody who opens Drive directly.</p>
+  </div>
+
+  <p>With it deployed, three things become true at once:</p>
+
+  <ul>
+    <li><strong>Nobody but you needs Drive access.</strong> Cadets and cadre both reach their
+    data through the server.</li>
+    <li><strong>Nobody sees a Google permission screen asking for their Drive.</strong> The app
+    stops asking for it entirely, which also removes the <em>"Google hasn't verified this app"</em>
+    warning your cadets would otherwise meet before they ever saw the product.</li>
+    <li><strong>One submission per cadet becomes a rule rather than a convention</strong>, because
+    the server checks and writes under a lock. Two taps on a bad connection cannot both land.</li>
+  </ul>
+
+  <h3>Deploy it</h3>
+  <ol class="steps">
+    <li><strong>Open script.google.com</strong> signed in as the account that owns the Drive
+    folder. This matters: the script files everything using that account's access.</li>
+    <li><strong>New project</strong>, named <code>TOP-Feedback Server</code>. Delete what is
+    there and paste in <code>tools/proxy/Code.gs</code> from the app's files.</li>
+    <li><strong>Fill in the two values at the bottom</strong> of the file &mdash; your folder ID
+    and your Client ID &mdash; then run <code>setUp</code> once and clear them out again.</li>
+    <li><strong>Deploy &rarr; New deployment &rarr; Web app</strong>, set to
+    <em>Execute as: Me</em> and <em>Who has access: Anyone</em>, and copy the address it gives
+    you. It ends in <code>/exec</code>.</li>
+    <li><strong>Paste it into Settings &rarr; Submission proxy</strong> and press
+    <em>Save and test</em>. It checks the deployment is reachable, is the right script, and is
+    configured, so you find out now rather than when a cadet cannot submit.</li>
+  </ol>
+
+  <div class="note note--warn">
+    <strong class="title">"Anyone" sounds wrong. It is not.</strong>
+    <p>The address is public, and the script refuses everything that does not carry a valid
+    Google sign-in for somebody on your roster &mdash; it checks that with Google on every
+    single request. Access is decided by your roster, not by the address being hard to guess.
+    Cadets are not part of any organisation account, so there is no narrower setting that
+    would work.</p>
+  </div>
+
+  <div class="note">
+    <strong class="title">Full instructions live with the script</strong>
+    <p><code>tools/proxy/README.md</code> covers each step with screenshots of the settings,
+    what every error message means, and how to redeploy after a change &mdash; forgetting to
+    redeploy is the most common reason an edit appears to do nothing.</p>
+  </div>
+</section>
+
+<!-- ============================= PART 7 ============================= -->
+<section>
+  <h2><span class="num">7</span>Build the roster</h2>
   <p class="lead">Everyone signs in &mdash; cadets included. That is what makes "one submission per
   student" mean something rather than relying on an honour system.</p>
 
   <table>
-    <tr><th style="width:26%">Role</th><th>Can do</th></tr>
+    <tr><th style="width:22%">Role</th><th>Can do</th></tr>
     <tr><td><strong>Student</strong></td><td>See feedback assigned to them and submit it once.</td></tr>
     <tr><td><strong>Instructor</strong></td><td>Create feedback, read responses, run analysis.</td></tr>
-    <tr><td><strong>Database admin</strong></td><td>Add and remove people, maintain the database, delete feedback the safety screen has flagged.</td></tr>
+    <tr><td><strong>Cadre</strong></td><td>Everything an instructor can, plus a <em>cadre-only area</em> instructors cannot see. Not a hidden screen &mdash; a separate folder they have no access to.</td></tr>
+    <tr><td><strong>Commander</strong></td><td>Sees every area including its own, which nobody else can read. Also gets <em>By instructor</em>, which groups feedback by the person it reflects on. <strong>At most two at a time</strong>, so a change of command overlaps.</td></tr>
+    <tr><td><strong>Database admin</strong></td><td>Add and remove people, maintain the database, delete feedback &mdash; always with a recorded reason.</td></tr>
   </table>
+
+  <div class="note">
+    <strong class="title">Cadre and Commander are about who can read what</strong>
+    <p>When someone creates feedback they choose which area it belongs to. Detachment feedback is
+    visible to every instructor; cadre-only feedback is not; commander-only feedback is visible to
+    the commander alone. These are separate folders on Drive, enforced by the submission server,
+    so "locked" means locked rather than hidden.</p>
+    <p>Cadets are asked to fill in feedback from every area &mdash; a commander's request is still
+    meant to be answered &mdash; and never see anybody's responses, so being asked reveals nothing.</p>
+  </div>
+
+  <div class="note">
+    <strong class="title">Two commanders, deliberately</strong>
+    <p>Not one, so a change of command overlaps rather than cutting over: the outgoing and incoming
+    commander both hold it during the handover. The area belongs to the detachment, so handing over
+    means moving the designation &mdash; no records move, and nothing is lost.</p>
+  </div>
 
   <div class="note">
     <strong class="title">Which email address?</strong>
@@ -561,8 +644,13 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 
   <h3>When someone leaves</h3>
   <p>Untick <strong>Active</strong> rather than deleting them. A deactivated account cannot sign in,
-  but the record stays, so past feedback still makes sense. Deleting is available too, and is
-  recorded in the activity log either way.</p>
+  but the record stays, so past feedback still makes sense.</p>
+
+  <p><strong>Deleting goes further, permanently.</strong> Their feedback is kept, but their name is
+  stripped out of it for good: every response they wrote becomes anonymous, and their submission
+  receipts stop identifying them while still counting toward completion. This cannot be undone, and
+  restoring a backup taken afterwards does not bring it back. It is the right choice when somebody
+  asks to be removed; it is not a way to tidy the roster.</p>
 
   <div class="note note--warn">
     <strong class="title">There is nothing to reset</strong>
@@ -575,65 +663,72 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 
 <!-- ============================= PART 7 ============================= -->
 <section>
-  <h2><span class="num">7</span>Install on phones and laptops</h2>
-  <p class="lead">TOP-Feedback can be added to a home screen so it opens like an ordinary app, works
-  offline, and does not need anyone to remember a web address.</p>
-
-  <div class="note note--warn">
-    <strong class="title">Add the icon first, then run setup inside it</strong>
-    <p>
-      A home-screen app gets its own private storage, separate from the browser it was added from.
-      Configure the app in the browser first and the icon may open to an empty setup wizard, and
-      you will paste the Client ID and folder link a second time. Adding the icon <em>before</em>
-      setting anything up means doing it once.
-    </p>
-  </div>
+  <h2><span class="num">8</span>Invite everyone</h2>
+  <p class="lead">Everything before this was for your device. Everyone else gets a link.</p>
 
   <div class="note note--ok">
-    <strong class="title">Cadets do not run this wizard &mdash; send them a join link</strong>
-    <p>
-      Everything on this page is for <em>your</em> device. For everyone else, go to
-      <em>Database Administration &rarr; Invite people</em> and send the join link. It carries the
-      Client ID and the folder, so a cadet taps it, approves Google once, and lands on their
-      feedback. Nothing to paste and nothing to explain.
-    </p>
-    <p>
-      The link is safe to post wherever your detachment already talks. Everything in it is public
-      or an address, and opening it grants nothing on its own &mdash; the roster still decides who
-      may sign in.
-    </p>
+    <strong class="title">Nobody else runs the setup wizard</strong>
+    <p>A join link carries the Client ID, the folder and the submission server, so tapping it sets
+    a device up completely. Cadets sign in with Google and land on their feedback. Nothing to paste,
+    nothing to explain, and no Client ID in the hands of a nineteen-year-old on a phone.</p>
   </div>
 
+  <h3>Sending the link</h3>
+  <p>Go to <em>Database Administration &rarr; Invite people</em>. Three ways out, all the same link:</p>
+  <ul>
+    <li><strong>Copy link</strong> for whatever your detachment already uses to talk &mdash; group
+    chat, email, the LMS.</li>
+    <li><strong>Email it</strong> opens a pre-written message that explains what to expect.</li>
+    <li><strong>Share</strong> on a phone hands it to the usual share sheet.</li>
+  </ul>
+
+  <h3>A whole flight at once</h3>
+  <p><strong>Show QR code</strong> fills the screen with a scannable code. Put it on a projector at
+  the start of a meeting and have cadets point their cameras at it &mdash; no app needed, the camera
+  offers to open it. It is the fastest way to set up thirty phones, and nobody types anything.</p>
+
+  <div class="note">
+    <strong class="title">The link is not a password</strong>
+    <p>Everything in it is public or an address. The Client ID appears in the page source of every
+    app that uses one, and the folder ID is not a key. Opening the link grants nothing on its own:
+    the roster decides who may sign in, and an address that is not on it is turned away. Post it
+    wherever is convenient.</p>
+  </div>
+
+  <h3>Adding it to a home screen</h3>
   <table>
     <tr><th style="width:22%">Device</th><th>How</th></tr>
-    <tr><td>iPhone / iPad</td><td>Open the address, tap the <strong>Share</strong> button, then <em>Add to Home Screen</em>. Safari and Chrome both work; both produce a real full-screen app.</td></tr>
-    <tr><td>Android</td><td>Open in Chrome. Tap the menu, then <em>Install app</em> or <em>Add to Home screen</em>.</td></tr>
-    <tr><td>Windows / macOS</td><td>In Chrome or Edge, click the install icon in the address bar, or use <em>Settings → Access → Install this app</em> inside TOP-Feedback.</td></tr>
+    <tr><td>iPhone / iPad</td><td>Open the link, tap <strong>Share</strong>, then <em>Add to Home Screen</em>. Safari and Chrome both work.</td></tr>
+    <tr><td>Android</td><td>Chrome offers <em>Install app</em> in its menu, or prompts on its own.</td></tr>
+    <tr><td>Mac / Windows</td><td>Chrome and Edge show an install icon in the address bar.</td></tr>
   </table>
 
-  <div class="note note--ok">
-    <strong class="title">What works offline</strong>
-    <p>The app opens and a cadet can fill in a form with no signal. A submission made offline is
-    saved on the device, shown as pending in the header, and sent automatically when the connection
-    returns. Nothing is lost. Reading existing feedback does need a connection.</p>
+  <div class="note note--warn">
+    <strong class="title">Add the icon first, then sign in</strong>
+    <p>A home-screen app gets its own private storage, separate from the browser it was added from.
+    Open the join link, add the icon, and <em>then</em> sign in from the icon &mdash; doing it the
+    other way round means signing in twice.</p>
   </div>
 </section>
 
-<!-- ============================= PART 8 ============================= -->
+<!-- ============================= PART 9 ============================= -->
 <section>
-  <h2><span class="num">8</span>Verify and hand over</h2>
+  <h2><span class="num">9</span>Verify and hand over</h2>
   <p class="lead">Work through this before letting cadets use the app for real.</p>
 
   <ul class="checklist">
     <li><strong>The app opens over HTTPS</strong> at the address you published.</li>
     <li><strong>Settings → Access reads "Sign-in is enforced"</strong> — development mode is off.</li>
     <li><strong>At least two people hold the Database admin role</strong>, so losing one account does not lock the detachment out.</li>
+    <li><strong>The submission server answers</strong> — Settings &rarr; Submission proxy &rarr; <em>Save and test</em> reports a version.</li>
+    <li><strong>The Drive folder is shared with nobody but you.</strong> With the server deployed, nobody else needs it.</li>
     <li><strong>The connection indicator in the header reads "ready"</strong> on a device other than the one you set up on.</li>
     <li><strong>The Drive folder contains the app's folders</strong> — open it in Drive and confirm you can see <code>config</code>, <code>users</code>, <code>forms</code> and the rest.</li>
-    <li><strong>A test cadet can sign in with their own Google account</strong> and see feedback assigned to them &mdash; on their own phone, not yours.</li>
+    <li><strong>A test cadet can sign in with their own Google account</strong> and see feedback assigned to them &mdash; on their own phone, not yours, reached by tapping a join link.</li>
+    <li><strong>That cadet was never asked for access to their Google Drive.</strong> If they were, the submission server is not configured on their device — re-send the join link.</li>
     <li><strong>A test submission appears</strong> in the Instructor Portal under Responses &amp; Analysis.</li>
     <li><strong>You have exported a backup</strong> from Instructor Portal → Database → Export backup.</li>
-    <li><strong>The Drive folder is shared with exactly the people who should read everything in it</strong> &mdash; this, not the sign-in screen, is what controls access.</li>
+    <li><strong>You have taken one anonymised export</strong> and looked at it, so you know what leaves the detachment when you share one.</li>
   </ul>
 
   <h3>Moving trial data into Drive</h3>
@@ -728,36 +823,50 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 <!-- ============================= LIMITATIONS ============================= -->
 <section>
   <h2>What this version cannot do yet</h2>
-  <p class="lead">This build has been installed and run end to end against real Google Drive, on a
-  Mac and an iPhone. These are its known limits, stated plainly so you can plan around them.</p>
+  <p class="lead">Installed and run end to end against real Google Drive. These are its known
+  limits, stated plainly so you can plan around them.</p>
 
   <table>
     <tr><th style="width:34%">Limit</th><th>What it means for you</th></tr>
     <tr>
-      <td><strong>100 users maximum</strong></td>
-      <td>The app must stay in Testing, which caps the test-user list at 100 accounts. Enough for a
-      detachment; not enough for a wing.</td>
+      <td><strong>100 people per detachment</strong></td>
+      <td>Google caps an app in Testing at 100 authorised accounts. Comfortable for a detachment;
+      not enough for a wing. Lifting it needs Google's verification process, which is a decision
+      for whoever runs the programme rather than for one detachment.</td>
     </tr>
     <tr>
-      <td><strong>Everyone sees an "unverified app" screen</strong></td>
-      <td>Every user, every time they grant access. Brief people on it so it does not read as a
-      security problem. Removing it requires Google verification and a paid annual security
-      assessment.</td>
+      <td><strong>Some Google accounts refuse unverified apps</strong></td>
+      <td>A standing Google behaviour, not a fault here. Those people need a different Google
+      account. It is uncommon, and it is why verification matters beyond appearances.</td>
     </tr>
     <tr>
-      <td><strong>Everyone who submits needs Editor access to the folder</strong></td>
-      <td>A cadet's device writes its own response file directly to Drive, and Drive grants no
-      write-without-read. So anyone who can submit feedback can also open the folder and read
-      every response in it. <strong>Do not describe responses as private from other cadets until
-      this changes.</strong> Anonymity within the app's own screens is real; the folder is not
-      sealed.</td>
+      <td><strong>Maintenance runs from the owner's device</strong></td>
+      <td>Backup, restore, wipe and reindex act on the whole folder, and the submission server
+      deliberately offers no way to do any of them remotely &mdash; an address that could empty a
+      detachment's records on request is not one worth having. Sign in on the account that owns
+      the folder.</td>
     </tr>
     <tr>
-      <td><strong>Some Google accounts cannot be added as test users</strong></td>
-      <td>Cause unknown, Google-side. Those people need a different Google account for now.</td>
+      <td><strong>Written feedback can still identify people</strong></td>
+      <td>No amount of removing names changes what somebody wrote. A cadet who says they are the
+      only AS400 in their flight has identified themselves. This is true of every feedback system
+      and is worth saying to cadets rather than promising more than can be delivered.</td>
+    </tr>
+    <tr>
+      <td><strong>The safety screen matches words, not meaning</strong></td>
+      <td>It cannot tell "we discussed hazing prevention" from "I was hazed", and a clear screen is
+      not proof nothing was reported. It is a prompt to read something now, never a finding.</td>
     </tr>
   </table>
-</section>
+
+  <div class="note note--ok">
+    <strong class="title">Limits that used to be here and no longer are</strong>
+    <p>Earlier versions of this guide warned that everyone who submitted feedback needed Editor
+    access to the Drive folder and could therefore read every response; that every device had to be
+    set up by hand with a Client ID pasted in; and that every user met an alarming Google permission
+    screen. The submission server and join links removed all three. If you are reading an older copy
+    of this guide, replace it.</p>
+  </div>
 
 <!-- ============================= REFERENCE ============================= -->
 <section>
@@ -771,6 +880,9 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 ├── requests/    feedback issued to students, each with an ID
 ├── responses/   submitted feedback, one folder per form
 ├── receipts/    who submitted (kept apart from what they said)
+├── audit/       every deletion and roster change, with who did it
+├── cadre/       feedback only cadre and the commander can read
+├── commander/   feedback only the commander can read
 ├── reports/     exported reports
 └── archive/     closed terms retained for the record</pre>
 
@@ -782,6 +894,12 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
   different folder. This is what lets the app say "two cadets still owe feedback" about responses
   nobody can attribute. The limit: with very few responses, a single answer can be identified by
   elimination, so anonymous results stay hidden until three people have responded.</p>
+
+  <h4>The cadre and commander areas are separate folders</h4>
+  <p>Not hidden screens. <code>cadre/</code> and <code>commander/</code> are real folders that the
+  submission server will not open for somebody without the role, which is why "locked" here means
+  locked. Feedback cannot be moved between areas once it exists, because moving it would carry its
+  responses somewhere they were never meant to be readable.</p>
 
   <h4>Sign-in is not encryption</h4>
   <p>Anyone with access to the Drive folder can read every record directly, regardless of what the
