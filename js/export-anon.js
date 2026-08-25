@@ -1,17 +1,31 @@
 /**
- * Anonymised export.
+ * Anonymised export — a backup that is safe to keep somewhere else.
  *
- * Two jobs, and they pull in slightly different directions.
+ * An ordinary backup carries the roster, every respondent, and every receipt
+ * with a username on it, all in one file that ends up on a laptop, a USB stick
+ * or a personal cloud drive. This one carries the feedback and nothing that says
+ * who wrote it, so the copy kept off-site is not the copy that leaks.
  *
- * **A backup that is safe to keep somewhere else.** An ordinary backup carries
- * the roster, every respondent, and every receipt with a username on it — all in
- * one file that ends up on a laptop, a USB stick or a personal cloud drive. This
- * one carries the feedback and nothing that says who wrote it.
+ * IT HAS ONE PURPOSE, AND THIS IS NOT NEGOTIABLE
  *
- * **A corpus for improving the analysis.** The sentiment lexicon and the safety
- * phrase lists were written by guesswork and need real language to get better.
- * That means text leaving the detachment, which is the one thing this project
- * otherwise never does — so it is deliberate, opt-in, and narrow.
+ * This file exists so a detachment can protect its own backups. It is **not** a
+ * channel for sending feedback to whoever maintains this software, and no such
+ * channel exists anywhere in this app.
+ *
+ * An earlier draft of this module described a second use: shipping the written
+ * answers to the maintainer as raw material for tuning the sentiment lexicon and
+ * the safety phrase lists, which were written by guesswork and would genuinely
+ * improve with real language. That was removed deliberately. Asking a detachment
+ * for its cadets' words would mean cadet feedback leaving the detachment for the
+ * benefit of the software rather than the unit — and once that request exists at
+ * all, a detachment that says yes to be helpful has given away something its
+ * cadets were told stays with them. The lexicon gets improved from published
+ * research and synthetic examples instead.
+ *
+ * So: the maintainer never asks for this file, never receives it, and has no way
+ * to. If a future change adds a "send us your data" affordance, it contradicts
+ * the privacy policy shipped in `privacy.html`, which says plainly that none is
+ * ever collected.
  *
  * WHAT IS STRIPPED
  *

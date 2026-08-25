@@ -182,8 +182,22 @@ const AUDIT = () => {
   };
   // 24x24 is the WCAG 2.5.8 (AA) minimum. Apple asks for 44x44, which is
   // comfort rather than conformance — held to the standard, not the preference.
+  /**
+   * A link inside a sentence is exempt from 2.5.8 — the success criterion says
+   * so explicitly, because its size is constrained by the line-height of the
+   * text around it and enlarging it would break the paragraph. Detected by
+   * asking whether the element sits inline next to other text, not by tag.
+   */
+  const inlineInProse = (node) => {
+    if (getComputedStyle(node).display !== 'inline') return false;
+    const parent = node.parentElement;
+    if (!parent) return false;
+    return [...parent.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+  };
+
   for (const { node } of controls) {
     if (node.type === 'hidden') continue;
+    if (inlineInProse(node)) continue;
     const box = target(node);
     if (box.height < 24 || box.width < 24) {
       add('small-target', `${describe(node)} is ${Math.round(box.width)}x${Math.round(box.height)}px (WCAG 2.5.8 asks 24x24)`);

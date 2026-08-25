@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — TOP-Feedback</title>
+<meta name="description" content="How TOP-Feedback handles your data. The short version: it stays in your organisation's own Google Drive, and the people who publish this software never receive any of it.">
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #f4f6f9;
+    --ink: #14181f;
+    --ink-2: #4d5866;
+    --ink-3: #626b78;
+    --rule: #d8dee8;
+    --accent: #1c4f8b;
+    --accent-soft: #eef3fa;
+    --ok-line: #1c6b3f;
+    --ok-bg: #e8f4ed;
+    --warn-line: #8a5a05;
+    --warn-bg: #fdf6e6;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --ink: #e8edf4;
+      --ink-2: #9aa6b4;
+      --ink-3: #808b99;
+      --rule: #2a3038;
+      --accent: #4d94e0;
+      --accent-soft: #16283d;
+      --ok-line: #4cc07d;
+      --ok-bg: #10291b;
+      --warn-line: #d9a441;
+      --warn-bg: #2c2210;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 3rem 1.25rem 6rem; }
+
+  header.masthead { border-bottom: 2px solid var(--accent); padding-bottom: 1.5rem; margin-bottom: 2.5rem; }
+  h1 { font-size: 2rem; line-height: 1.15; margin: 0 0 .5rem; letter-spacing: -0.02em; }
+  .sub { color: var(--ink-2); margin: 0; }
+  .updated { font-family: var(--mono); font-size: .82rem; color: var(--ink-3); margin-top: 1rem; }
+
+  h2 {
+    font-size: 1.25rem; margin: 2.75rem 0 .75rem; letter-spacing: -0.01em;
+    padding-top: 1.25rem; border-top: 1px solid var(--rule);
+  }
+  h3 { font-size: 1rem; margin: 1.75rem 0 .4rem; color: var(--ink); }
+  p { margin: 0 0 1rem; }
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .5rem; }
+  a { color: var(--accent); }
+  code {
+    font-family: var(--mono); font-size: .85em;
+    background: var(--surface); border: 1px solid var(--rule);
+    padding: .1em .35em; border-radius: 4px;
+  }
+  strong { font-weight: 650; }
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 1rem 1.15rem;
+    margin: 0 0 1.25rem;
+    border-radius: 0 6px 6px 0;
+  }
+  .callout--ok { border-color: var(--ok-line); background: var(--ok-bg); }
+  .callout--warn { border-color: var(--warn-line); background: var(--warn-bg); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .t { display: block; font-weight: 650; margin-bottom: .35rem; }
+
+  table { width: 100%; border-collapse: collapse; margin: 0 0 1.25rem; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { background: var(--surface); font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2); }
+  .scroll { overflow-x: auto; }
+
+  footer { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: .9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <h1>TOP-Feedback Privacy Policy</h1>
+  <p class="sub">How this application handles your information.</p>
+  <p class="updated">Last updated: <!--DATE-->25 August 2026<!--/DATE--> &middot; Applies to: TOP-Feedback</p>
+</header>
+
+<div class="callout callout--ok">
+  <span class="t">The short version</span>
+  <p>
+    TOP-Feedback stores everything in a Google Drive folder belonging to the organisation that
+    installed it. It has no server of ours, no database of ours, and no account with us. The people
+    who publish this software receive <strong>none</strong> of your data and have no technical means
+    of obtaining it. Nothing is sold, shared, or used for advertising, and there are no analytics or
+    tracking of any kind.
+  </p>
+</div>
+
+<h2>1. Who is responsible for what</h2>
+
+<p>Two different parties are involved, and they have very different roles.</p>
+
+<div class="scroll">
+<table>
+  <tr><th style="width:32%">Party</th><th>Role</th></tr>
+  <tr>
+    <td><strong>Your organisation</strong><br>(for example, an AFROTC detachment)</td>
+    <td>Installs TOP-Feedback into a Google account it owns, decides who is on the roster, decides
+    what feedback is collected, and controls the Drive folder holding every record. Your
+    organisation is the <strong>data controller</strong>. Questions about your own feedback,
+    corrections, or deletion go to them first.</td>
+  </tr>
+  <tr>
+    <td><strong>Us</strong><br>(<!--PUBLISHER-->[YOUR COMPANY OR NAME]<!--/PUBLISHER-->, publisher of the software)</td>
+    <td>Writes and publishes the software, and operates the Google OAuth client that lets it sign
+    you in. We do not host your data, do not receive it, and cannot access it. Our role is the
+    source code.</td>
+  </tr>
+</table>
+</div>
+
+<p>
+  This policy describes what the software does. Your organisation may have its own policies about
+  how it uses the feedback it collects; those are separate from this document and we are not party
+  to them.
+</p>
+
+<h2>2. What information the app handles</h2>
+
+<h3>Your Google account identity</h3>
+<p>
+  When you sign in with Google, the app receives your <strong>email address, name, and profile
+  picture</strong> from Google. Your email address is matched against your organisation's roster to
+  decide whether you may use the app and what you may see. Your name is shown in the interface so
+  people know who is signed in on a shared device.
+</p>
+<p>
+  We never receive a password. TOP-Feedback has no passwords of its own and stores none.
+</p>
+
+<h3>Google Drive content</h3>
+<p>
+  The app reads and writes files inside <strong>one folder</strong> in your organisation's Google
+  Drive — the folder your organisation created for it. This is where feedback forms, responses,
+  the roster, and the activity log live. Every one of those files belongs to your organisation's
+  Google account, not to us.
+</p>
+
+<h3>The feedback itself</h3>
+<p>
+  Ratings and written answers you submit are stored in that folder. On a form marked anonymous, the
+  app stores <strong>no link between you and your answers</strong> — the record of who has submitted
+  is kept as a separate file from the answers themselves, so completion can be tracked without
+  attributing content to a person.
+</p>
+
+<div class="callout callout--warn">
+  <span class="t">What anonymity cannot do</span>
+  <p>
+    Removing names cannot change what someone wrote. If a written answer describes circumstances
+    that identify its author — a role only one person holds, an incident only one person witnessed —
+    that answer identifies them regardless of what fields were stored. Please keep that in mind when
+    writing, and if you are handling this data, treat it as feedback rather than as anonymous
+    statistics.
+  </p>
+</div>
+
+<h3>Information stored on your own device</h3>
+<p>The app keeps some data in your browser so it works offline and remembers your preferences:</p>
+<ul>
+  <li><strong>Your session</strong> — who is signed in and the token proving it. Stored only for the
+  current browser tab and erased when you close it or sign out.</li>
+  <li><strong>Display settings</strong> — theme, text size, contrast, colour palette.</li>
+  <li><strong>A local copy of records</strong> you have permission to see, so the app opens without a
+  network connection.</li>
+  <li><strong>Unsent submissions</strong>, if you answered feedback while offline. These are sent
+  when you reconnect and then removed.</li>
+</ul>
+<p>None of this leaves your device except to reach your organisation's own Google Drive or its own
+submission server. TOP-Feedback sets <strong>no cookies</strong>.</p>
+
+<h2>3. How Google user data is used</h2>
+
+<p>
+  We request the minimum access needed for the app to function. Each permission and what it is used
+  for:
+</p>
+
+<div class="scroll">
+<table>
+  <tr><th style="width:40%">Permission</th><th>Used for</th></tr>
+  <tr>
+    <td><code>openid</code>, <code>email</code>, <code>profile</code><br>
+      <span style="color:var(--ink-3)">(Sign in with Google)</span></td>
+    <td>Confirming who you are, matching your email to your organisation's roster, and showing your
+    name in the app. Nothing else.</td>
+  </tr>
+  <tr>
+    <td><!--SCOPE--><code>https://www.googleapis.com/auth/drive</code><!--/SCOPE--></td>
+    <td>Reading and writing the feedback records inside your organisation's TOP-Feedback folder.
+    This is the only thing the app does with Drive: it creates its own folder structure and reads
+    and writes files within it.</td>
+  </tr>
+</table>
+</div>
+
+<p>
+  Google account data is used <strong>only</strong> to provide the features described above, visible
+  to you in the app. It is not used for any other purpose.
+</p>
+
+<h2>4. Limited Use disclosure</h2>
+
+<div class="callout">
+  <p>
+    TOP-Feedback's use and transfer of information received from Google APIs adheres to the
+    <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google
+    API Services User Data Policy</a>, including the Limited Use requirements.
+  </p>
+</div>
+
+<p>Specifically, we confirm that:</p>
+<ul>
+  <li>Google user data is used only to provide or improve user-facing features that are prominent in
+  the app's interface.</li>
+  <li>Google user data is <strong>not</strong> transferred to anyone, except as required by law.
+  There is nowhere for it to be transferred to: the app has no server of ours.</li>
+  <li>Google user data is <strong>not</strong> used for advertising of any kind.</li>
+  <li>Google user data is <strong>not</strong> used to develop, improve, or train generalised
+  artificial intelligence or machine learning models.</li>
+  <li><strong>No human at our organisation reads your data.</strong> This is not a promise about
+  restraint — it is a property of the design. We hold no credentials to your Drive and receive no
+  copy of anything.</li>
+</ul>
+
+<h2>5. What we receive</h2>
+
+<div class="callout callout--ok">
+  <span class="t">From the app: nothing at all</span>
+  <p>
+    The app sends data to exactly three places, all of them Google's or your organisation's:
+    Google's sign-in service, Google Drive (your organisation's account), and — if your organisation
+    deployed one — a submission server running inside your organisation's own Google account. There
+    is no fourth destination. There are no analytics, no error reporting services, no advertising
+    networks, and no third-party components of any kind.
+  </p>
+</div>
+
+<p>
+  <strong>If you contact us for support</strong>, we keep a record of who is using the software so we
+  can help: the name and email address of the administrator who contacted us, and the name of the
+  organisation running it. We do not ask for and do not want your Drive location, your roster, or
+  any feedback content. We keep support records for as long as the organisation uses the software,
+  and delete them on request.
+</p>
+
+<h3>We will never ask you for your feedback data</h3>
+<p>
+  The app includes an <em>anonymised export</em> so that a backup kept off-site does not carry names.
+  That feature exists for <strong>your</strong> protection, not ours. Nobody working on this software
+  will ever ask you to send us that file or any other export.
+  <strong>If you are ever asked for detachment feedback by someone claiming to work on this app,
+  the request is not legitimate</strong> — please refuse it and tell us.
+</p>
+
+<h2>6. Sharing</h2>
+<p>
+  We do not sell, rent, or share your information with anyone. We have none to share.
+</p>
+<p>
+  Within your organisation, who can see what is decided by your organisation's own roster and by
+  Google Drive's sharing settings. Broadly: cadets see only what is assigned to them and never see
+  anyone's responses; instructors see the detachment's feedback; restricted areas are visible only
+  to the roles your organisation grants. Results are withheld entirely until enough responses exist
+  that individuals cannot be identified by elimination.
+</p>
+
+<h2>7. Retention and deletion</h2>
+
+<p>
+  Your organisation controls retention, because your organisation holds the data. Records stay in
+  its Drive folder until someone there deletes them or deletes the folder.
+</p>
+
+<h3>Removing a person</h3>
+<p>
+  When an administrator removes someone from the roster, the app <strong>permanently anonymises</strong>
+  what that person left behind: their responses lose any attribution and become genuinely anonymous,
+  and the records of who submitted are replaced with records that name nobody. This is irreversible.
+</p>
+
+<div class="callout callout--warn">
+  <span class="t">One deliberate exception, stated plainly</span>
+  <p>
+    The activity log keeps an entry recording that the removal happened, and that entry contains the
+    removed person's email address. This is kept on purpose: a log that can be emptied by the person
+    it implicates is not a log. If you need that entry removed as well, the owner of the Drive folder
+    can delete it directly in Drive — your organisation controls this, not us.
+  </p>
+</div>
+
+<h3>Withdrawing the app's access</h3>
+<p>
+  You can revoke TOP-Feedback's access to your Google account at any time at
+  <a href="https://myaccount.google.com/permissions" rel="noopener">myaccount.google.com/permissions</a>.
+  Signing out inside the app also revokes the Drive token it was holding. Revoking access stops the
+  app working for you; it does not delete feedback already submitted, which belongs to your
+  organisation's records.
+</p>
+
+<h3>Clearing your device</h3>
+<p>
+  To remove the local copy, sign out and clear site data for this address in your browser settings,
+  or uninstall the app if you added it to your home screen.
+</p>
+
+<h2>8. Security</h2>
+<ul>
+  <li>All connections use HTTPS.</li>
+  <li>The app holds <strong>no passwords</strong> — sign-in is Google's.</li>
+  <li>Sign-in tokens are short-lived, kept only for the current browser tab, and discarded on
+  sign-out. They are never written to long-term storage.</li>
+  <li>Where an organisation has deployed the submission server, cadets are given <strong>no access
+  to the Drive folder at all</strong>. Their submissions are verified and written by that server, so
+  no participant can read, alter, or delete anyone else's feedback.</li>
+  <li>Destructive actions are recorded in an activity log with the reason and who performed them.</li>
+  <li>The app has <strong>no third-party code</strong> — no libraries, no frameworks, no CDNs —
+  other than Google's own sign-in script.</li>
+</ul>
+<p>
+  No system is perfectly secure. If you believe you have found a security problem, please tell us at
+  the address below rather than disclosing it publicly, and we will respond.
+</p>
+
+<h2>9. Young people</h2>
+<p>
+  TOP-Feedback is used by university students and staff. It is not directed at children and we do not
+  knowingly collect information from anyone under 13. If your organisation enrols anyone under 18, it
+  is responsible for obtaining whatever consent applies in its jurisdiction before asking them to use
+  the app.
+</p>
+
+<h2>10. Where data is held</h2>
+<p>
+  In your organisation's Google account, on Google's infrastructure, subject to
+  <a href="https://policies.google.com/privacy" rel="noopener">Google's own privacy policy</a>. We
+  operate no servers and store nothing.
+</p>
+
+<h2>11. Changes to this policy</h2>
+<p>
+  If this policy changes we will update the date at the top of this page. Because the app receives no
+  data from you, we have no way to email you about it — please check here if it matters to you.
+  Substantive changes will also be noted in the application's release notes.
+</p>
+
+<h2>12. Contact</h2>
+<p>
+  <strong><!--PUBLISHER2-->[YOUR COMPANY OR NAME]<!--/PUBLISHER2--></strong><br>
+  Email: <a href="mailto:PLACEHOLDER@example.com"><!--EMAIL-->[YOUR SUPPORT EMAIL]<!--/EMAIL--></a><br>
+  <!--ADDRESS-->[YOUR POSTAL ADDRESS, IF REQUIRED IN YOUR JURISDICTION]<!--/ADDRESS-->
+</p>
+<p>
+  If your question is about feedback you submitted — what was recorded, correcting it, or removing it
+  — please contact your own organisation's administrator. They hold the data; we do not.
+</p>
+
+<footer>
+  TOP-Feedback is software your organisation runs in its own Google account.
+  &middot; <a href="./index.html">Open the app</a>
+</footer>
+
+</div>
+</body>
+</html>

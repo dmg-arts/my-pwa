@@ -635,8 +635,8 @@ def s16d_privacy():
          "Cadets and cadre reach their feedback through your own server, not the folder."),
         ("Removing somebody removes them permanently",
          "Their feedback stays; their name is stripped out of it and does not come back."),
-        ("There is an export built for sharing",
-         "No roster, no names, timestamps rounded to the month. Safe to keep off-site."),
+        ("There is an export built for safe backups",
+         "No roster, no names, timestamps rounded to the month. Nobody ever asks you for it."),
     ]:
         block(s, M, y, Inches(11.4), Inches(0.95),
               [(head, 19, True, WHITE, 4), (body, 14, False, WHITE, 0)])

@@ -80,6 +80,13 @@ export async function renderLogin(root, role, title, onSuccess) {
       el('p', { class: 'field__hint' },
         'This app issues no password of its own. Whether you can get in is decided by your '
         + 'detachment\'s roster, which an administrator keeps.'),
+      // Said before the Google account is handed over rather than after, and
+      // said in one sentence, because that is the point at which somebody
+      // deciding whether to trust this needs the answer.
+      el('p', { class: 'field__hint' },
+        'Your feedback stays in your detachment\'s own Google Drive. Nothing is sent to '
+        + 'whoever makes this app. ',
+        el('a', { href: './privacy.html', target: '_blank', rel: 'noopener' }, 'Privacy policy')),
       hint),
 
     el('div', { class: 'row', style: { justifyContent: 'center' } },

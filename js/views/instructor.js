@@ -443,6 +443,15 @@ async function tabDatabase(host, { panel } = {}) {
             + 'they are the only AS400 in their flight has identified themselves. Treat this '
             + 'as feedback, not as anonymous statistics.')),
 
+        // Said here rather than only in the privacy policy, because this is the
+        // one moment an administrator is holding a file of cadet feedback and
+        // deciding where to put it.
+        notice('info', 'This is for your backups, not for us',
+          el('p', {}, 'Nobody who maintains this software will ever ask you for this file, '
+            + 'and the app has no way to send it anywhere. If you are ever asked for '
+            + 'detachment feedback by someone claiming to work on this app, the request '
+            + 'is not legitimate. Keep this copy wherever your unit keeps its backups.')),
+
         summary.flagged
           ? el('label', { class: 'check' }, includeFlagged,
             el('span', {},

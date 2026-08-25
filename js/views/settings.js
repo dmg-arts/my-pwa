@@ -525,7 +525,12 @@ function aboutSection() {
           online: navigator.onLine,
           generatedAt: new Date().toISOString(),
         }, null, 2)),
-      }, icon('download'), 'Download diagnostics')));
+      }, icon('download'), 'Download diagnostics'),
+      // Google requires the privacy policy to be reachable from the product,
+      // not only from a listing. This is the durable place for it.
+      el('a', {
+        class: 'btn btn--sm', href: './privacy.html', target: '_blank', rel: 'noopener',
+      }, icon('lock'), 'Privacy policy')));
 }
 
 function row(label, value) {
