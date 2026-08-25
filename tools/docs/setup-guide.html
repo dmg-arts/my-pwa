@@ -186,8 +186,8 @@
   <h3>What you will need</h3>
   <table>
     <tr><th style="width:34%">Item</th><th>Why</th></tr>
-    <tr><td>A Google account owned by the detachment</td><td>Holds every record. Use a shared unit account, not a personal one.</td></tr>
-    <tr><td>Permission to create a Google Cloud project</td><td>Required once, to let the app talk to that account's Drive.</td></tr>
+    <tr><td>A new Google account, created for the detachment</td><td>Holds every record. Create a fresh one — Part 2a explains why a school or university account is the wrong choice here.</td></tr>
+    <tr><td>Permission to create a Google Cloud project</td><td>Required once, to let the app talk to that account's Drive. A new personal Google account can always do this.</td></tr>
     <tr><td>Somewhere to publish the app</td><td>Any static web host. Several free options are listed in Part 3.</td></tr>
     <tr><td>A current browser</td><td>Chrome, Edge, Safari or Firefox, on any device.</td></tr>
   </table>
@@ -243,16 +243,49 @@
   <h2><span class="num">2</span>Prepare the Google account</h2>
   <p class="lead">Do this once, on the Google account that will own the data. About 20 minutes.</p>
 
-  <h3>2a. Create the folder</h3>
+  <h3>2a. Create the detachment's Google account</h3>
+  <p>
+    Create a <strong>new, ordinary Google account</strong> for this — the kind anyone can make at
+    <code>accounts.google.com</code>, ending in <code>@gmail.com</code>. Do not use a school or
+    university account, and do not use anyone's personal account.
+  </p>
+
+  <div class="note note--warn">
+    <strong class="title">Why not the university account</strong>
+    <p>
+      Exactly one account in the whole detachment needs Google Drive permission: this one. Everybody
+      else &mdash; cadre, cadets, the commander &mdash; reaches their data through the submission
+      server you deploy in Part 6, and never grants Drive access at all.
+    </p>
+    <p>
+      Until the app completes Google's verification review, granting that permission means passing an
+      <em>"unverified app"</em> screen. On an ordinary Google account that screen has an
+      <em>Advanced</em> link and you can go through it. On a university or workplace account, the IT
+      department can set a policy that turns the same screen into a refusal with no way past it
+      &mdash; and nobody at the detachment can override it, because the setting does not belong to
+      the detachment.
+    </p>
+    <p>
+      A new account has no such policy attached, so setup always completes. This costs nothing and
+      takes about two minutes.
+    </p>
+  </div>
+
   <ol class="steps">
-    <li><strong>Sign in to the detachment's Google account.</strong>
-      Use a shared unit account. If you use a personal account, the data leaves with the person.</li>
-    <li><strong>Open Google Drive and create a folder named <code>TOP-Feedback</code>.</strong>
+    <li><strong>Create the account at <code>accounts.google.com</code>.</strong>
+      Name it after the unit rather than a person &mdash; <code>det025.feedback@gmail.com</code>, or
+      similar. A personal account takes the data with it when that person moves on.</li>
+    <li><strong>Record the password where the detachment keeps shared credentials.</strong>
+      This account owns every record. Losing it means losing the folder, and the recovery options on
+      a brand-new account are thin. Set up recovery details on a unit phone number or address, not a
+      departing cadet's.</li>
+    <li><strong>Sign in to that account and open Google Drive.</strong></li>
+    <li><strong>Create a folder named <code>TOP-Feedback</code>.</strong>
       The name is a convention, not a requirement, but it makes the folder obvious later.</li>
-    <li><strong>Share the folder with the cadre who need access.</strong>
-      Share it with <strong>nobody yet</strong>. Once the submission server is deployed in
-      Part 6, only the account that owns this folder needs access to it &mdash; cadre and
-      cadets both reach their data through the server instead.
+    <li><strong>Do not share the folder with anyone.</strong>
+      Once the submission server is deployed in Part 6, this account is the only one that
+      needs access to the folder &mdash; cadre, cadets and the commander all reach their data
+      through the server instead.
       <ul>
         <li>Anyone with access to this folder can read every record directly, including the raw
         feedback. Share it only with people entitled to see all of it.</li>
@@ -283,9 +316,9 @@
       <ul>
         <li>Go to <em>APIs &amp; Services → OAuth consent screen</em>. Newer consoles file this
         under <em>Google Auth Platform → Branding</em>.</li>
-        <li>If your account is on Google Workspace, choose <strong>Internal</strong> — this is
-        simplest and needs no review.</li>
-        <li>If it is a standard Gmail account, choose <strong>External</strong>.</li>
+        <li>Choose <strong>External</strong>. This is the only option on the new account you made
+        in Part 2a, and it is the correct one — <em>Internal</em> exists only for Google Workspace
+        domains, and would restrict sign-in to that domain's own members.</li>
         <li>Fill in the app name and support email. Nothing else is required.</li>
         <li><strong>Leave the publishing status on <em>Testing</em>.</strong> Do not click
         <em>Publish app</em> — see the warning below.</li>
@@ -295,7 +328,10 @@
     <li><strong>Add every Google account that will use the app under <em>Test users</em>.</strong>
       <ul>
         <li>Cadre, administrators and <em>every cadet</em>. An account that is not on this list
-        cannot sign in at all.</li>
+        cannot sign in at all. Add whichever address each person will actually sign in with —
+        for most detachments that is the Gmail address the det already mails them at, but a
+        school address works too, because signing in asks for no Drive permission and so does
+        not depend on that school's IT policy.</li>
         <li><strong>The account that owns the project is not automatically a test user.</strong>
         Add it explicitly, like any other.</li>
         <li>The limit is 100 accounts, which covers a detachment.</li>
@@ -345,17 +381,17 @@
     <strong class="title">Known issue: some accounts cannot be added as test users</strong>
     <p>
       Occasionally Google refuses to accept an address on the test-user list, with no useful
-      explanation. This is a Google-side behaviour, not a fault in the app, and there is no
-      published fix. Things that have been worth trying: check whether the account already holds a
-      role under <em>IAM &amp; Admin</em> (project members can be rejected as redundant test users);
-      check whether it is enrolled in Google's <em>Advanced Protection Program</em>, which bars
-      unverified third-party apps outright; and try adding it from the classic
-      <em>Credentials</em> view rather than the newer Google Auth Platform screens, which sometimes
-      fail to save silently.
+      explanation. The cause is that <strong>some Google accounts are configured never to allow
+      unverified apps</strong> — by enrolment in Google's <em>Advanced Protection Program</em>, by
+      being a supervised or Family Link account, or by a workplace or school policy. It is a
+      standing Google-side limitation, not a fault in the app, and it cannot be worked around from
+      this end.
     </p>
     <p>
-      If an account cannot be added, that person cannot use the app while it is in Testing. Use a
-      different Google account for them.
+      There is no way to tell in advance which accounts these are. If one is refused, that person
+      signs in with a different Google account instead — an ordinary personal Gmail address will
+      work. This is the same reason Part 2a has you create a fresh account for the detachment
+      itself: the one account that <em>must</em> work is the one you control from the start.
     </p>
   </div>
 

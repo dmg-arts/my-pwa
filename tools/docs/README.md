@@ -43,15 +43,27 @@ onto its own line — lead with it, or use `<em>`. And check the result: run
 `pdftoppm -png` over the pages you changed and look at them. The last two
 regressions in this document were both invisible in the source.
 
-## 3. The introduction deck (PPTX)
+## 3. The introduction deck (PDF)
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install python-pptx
-.venv/bin/python tools/docs/build-deck.py ./shots docs/TOP-Feedback-Introduction.pptx
+brew install --cask libreoffice                # once
+.venv/bin/python tools/docs/build-deck.py ./shots docs/TOP-Feedback-Introduction.pdf
 ```
 
 Slide layouts, colours and speaker notes all live in that one file. It uses the
 app's own palette so the deck and the product read as one thing.
+
+**Everything in `docs/` ships as PDF.** The deck is *drawn* with python-pptx,
+because that library is what lays out slides, but the .pptx it produces will not
+open in Keynote — so it is written to a temp directory, LibreOffice renders it,
+and only the PDF is kept. Do not commit a .pptx; a deck that opens in one vendor's
+software is a deck that fails in the room where it is presented.
+
+The conversion substitutes Carlito for Calibri, which is metric-compatible, so
+boxes land where `audit()` said they would. That audit still runs against the
+intermediate before conversion, so an overflow fails the build rather than
+reaching the PDF.
 
 ## Keeping them honest
 

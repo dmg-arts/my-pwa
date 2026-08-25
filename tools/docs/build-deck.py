@@ -1,9 +1,15 @@
-"""Builds the TOP-Feedback introduction deck.
+"""Builds the TOP-Feedback introduction deck, as a PDF.
 
     python3 -m venv .venv && .venv/bin/pip install python-pptx
-    .venv/bin/python tools/docs/build-deck.py ./shots docs/TOP-Feedback-Introduction.pptx
+    .venv/bin/python tools/docs/build-deck.py ./shots docs/TOP-Feedback-Introduction.pdf
 
-Two rules keep this file openable everywhere, both learned the hard way:
+**The deliverable is a PDF.** It is drawn with python-pptx, because that library
+is what lays out slides, but PowerPoint files are not what gets sent: Keynote
+will not open the .pptx this produces, and a deck that opens only in PowerPoint
+fails in the room where it matters. The .pptx is an intermediate written to a
+temp directory; LibreOffice renders it, and only the PDF survives.
+
+Two rules keep the layout intact through that conversion, both learned the hard way:
 
   1. **Only fonts that exist on Windows, macOS and Google Slides.** Calibri ships
      with every Office install; Courier New is on all three. A deck that asks for
@@ -17,8 +23,11 @@ Two rules keep this file openable everywhere, both learned the hard way:
      and refuses to finish if anything still overflows.
 """
 
+import shutil
 import struct
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from pptx import Presentation
@@ -648,8 +657,8 @@ def s17_start():
 
     y = Inches(2.3)
     for n, head, body in [
-        ("1", "Create the folder",
-         "A Google account the detachment owns, and a folder named TOP-Feedback."),
+        ("1", "Create the account",
+         "A new Google account for the detachment, and a folder named TOP-Feedback."),
         ("2", "Register the app",
          "One free Google Cloud project, so the app can reach that Drive. About ten minutes."),
         ("3", "Deploy the server",
@@ -679,7 +688,13 @@ for build in [s01_title, s02_what, s03_problem, s04_data, s05_roles, s06_student
     build()
 
 OUT.parent.mkdir(parents=True, exist_ok=True)
-prs.save(str(OUT))
+
+# The deck is *built* as PPTX because python-pptx is what draws it, but PPTX is
+# not what ships. Keynote refuses to open python-pptx output, and a deck that
+# only opens in PowerPoint is a deck that fails in the room it matters in. So
+# the .pptx is an intermediate in a temp directory and the PDF is the product.
+BUILD = Path(tempfile.mkdtemp(prefix="top-feedback-deck-")) / "deck.pptx"
+prs.save(str(BUILD))
 
 
 # -------------------------------------------------------------------- audit
@@ -726,8 +741,8 @@ def audit(path):
     return problems, sorted(fonts)
 
 
-issues, used_fonts = audit(OUT)
-print(f"{len(prs.slides._sldIdLst)} slides -> {OUT}")
+issues, used_fonts = audit(BUILD)
+print(f"{len(prs.slides._sldIdLst)} slides")
 print(f"fonts used: {', '.join(used_fonts)}")
 if issues:
     print(f"OVERFLOW in {len(issues)} box(es):")
@@ -735,3 +750,31 @@ if issues:
         print("  " + i)
     sys.exit(1)
 print("layout audit: no text overflows its box")
+
+
+# ------------------------------------------------------------------ to PDF
+
+def find_soffice():
+    """LibreOffice does the conversion. It is the only part not pure Python."""
+    found = shutil.which("soffice") or shutil.which("libreoffice")
+    if found:
+        return found
+    mac = "/Applications/LibreOffice.app/Contents/MacOS/soffice"
+    return mac if Path(mac).exists() else None
+
+
+soffice = find_soffice()
+if not soffice:
+    sys.exit("LibreOffice not found. Install it (brew install --cask libreoffice) — "
+             "it renders the deck to PDF, which is the only format that ships.")
+
+subprocess.run(
+    [soffice, "--headless", "--convert-to", "pdf", "--outdir", str(BUILD.parent), str(BUILD)],
+    check=True, stdout=subprocess.DEVNULL,
+)
+produced = BUILD.with_suffix(".pdf")
+if not produced.exists():
+    sys.exit("LibreOffice reported success but produced no PDF.")
+shutil.move(str(produced), str(OUT))
+shutil.rmtree(BUILD.parent, ignore_errors=True)
+print(f"wrote {OUT} ({OUT.stat().st_size // 1024} KB)")
