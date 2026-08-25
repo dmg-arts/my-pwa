@@ -13,7 +13,7 @@
  * Bump CACHE_VERSION on release to roll users onto new assets.
  */
 
-const CACHE_VERSION = 'v12';
+const CACHE_VERSION = 'v13';
 const CACHE_NAME = `topfb-shell-${CACHE_VERSION}`;
 
 const SHELL = [
@@ -32,6 +32,7 @@ const SHELL = [
   './js/forms.js',
   './js/google-identity.js',
   './js/join.js',
+  './js/session.js',
   './js/qr.js',
   './js/data-source.js',
   './js/migrations.js',

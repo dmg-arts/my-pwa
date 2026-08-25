@@ -23,13 +23,46 @@ import { connection } from './state.js';
 import { db } from './storage/index.js';
 import {
   fetchBundle, fetchCatalog, fetchResponses, fetchAllResponses, fetchRoster, fetchAudit,
+  saveFormViaProxy, saveRequestViaProxy, deleteFormViaProxy, deleteRequestViaProxy,
+  deleteResponseViaProxy, createAccountViaProxy, updateAccountViaProxy,
+  deleteAccountViaProxy, rolloverViaProxy, recordAuditViaProxy,
 } from './storage/proxy.js';
-import { currentIdToken, findByUsername } from './auth.js';
-import { recent as recentAudit } from './audit.js';
+import { currentIdToken } from './session.js';
+import { recent as recentAudit, record as recordAuditDirect } from './audit.js';
 
-/** True when this detachment routes cadets through the submission proxy. */
+/** True when this detachment routes people through the submission proxy. */
 export function usingProxy() {
   return Boolean(connection.get().proxyUrl);
+}
+
+/**
+ * Whether this device can perform folder maintenance.
+ *
+ * Backup, restore, wipe, reindex and migrate all operate on the folder as a
+ * whole, and the proxy deliberately exposes no action for any of them: an
+ * endpoint that could empty a detachment's records on request is not one worth
+ * having. They stay with whoever owns the folder — which is the account the
+ * Apps Script itself runs as, so someone always can.
+ */
+export function canDoMaintenance() {
+  return !usingProxy();
+}
+
+/** Connection state for the header, without needing a storage adapter. */
+export async function connectionStatus() {
+  if (usingProxy()) {
+    const url = proxyUrl();
+    try {
+      const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+      const body = await response.json();
+      return body?.service === 'top-feedback-proxy'
+        ? { status: 'ready', detail: 'Through your detachment\'s server' }
+        : { status: 'error', detail: 'The submission service did not answer properly.' };
+    } catch {
+      return { status: 'offline', detail: 'Cannot reach the submission service.' };
+    }
+  }
+  return db.status();
 }
 
 /**
@@ -114,7 +147,12 @@ export async function loadOwnAccount(session) {
     const bundle = await loadBundle();
     return bundle.account || null;
   }
-  return findByUsername(session.username);
+  // Direct mode: the roster is readable, so find them in it. Deliberately not
+  // auth.findByUsername — importing auth here would put back the cycle that
+  // session.js exists to prevent.
+  const roster = await loadRoster();
+  const target = String(session.username || '').trim().toLowerCase();
+  return roster.find((a) => String(a.username || '').toLowerCase() === target) || null;
 }
 
 /* ------------------------------------------------------------------ *
@@ -141,6 +179,31 @@ export async function loadCatalog() {
   return { forms, requests };
 }
 
+/** Just the forms. */
+export async function loadForms() {
+  return (await loadCatalog()).forms;
+}
+
+/** Just the requests. */
+export async function loadRequests() {
+  return (await loadCatalog()).requests;
+}
+
+/**
+ * One request, by id.
+ *
+ * Fetched through the catalog rather than by name: the proxy exposes no
+ * single-record read, deliberately, because a call that takes an id and returns
+ * whatever is at that id is a short step from a call that takes a path.
+ */
+export async function getRequest(requestId) {
+  return (await loadRequests()).find((r) => r.id === requestId) || null;
+}
+
+export async function getForm(formId) {
+  return (await loadForms()).find((f) => f.id === formId) || null;
+}
+
 /** Responses and receipts for one request. */
 export async function loadResponsesFor(requestId) {
   if (usingProxy()) return fetchResponses(proxyUrl(), token(), requestId);
@@ -155,6 +218,15 @@ export async function loadResponsesFor(requestId) {
 export async function loadAllResponses() {
   if (usingProxy()) return fetchAllResponses(proxyUrl(), token());
   return db.listAllResponses();
+}
+
+/** Org record and headline counts, without shipping the records. */
+export async function loadOverview() {
+  if (usingProxy()) {
+    const { fetchOverview } = await import('./storage/proxy.js');
+    return fetchOverview(proxyUrl(), token());
+  }
+  return { org: await db.getOrg(), stats: await db.stats() };
 }
 
 export async function loadRoster() {
@@ -183,4 +255,92 @@ export async function loadAudit(months = 6) {
     ? await fetchAudit(proxyUrl(), token(), months)
     : await recentAudit({ months });
   return entries.slice().sort((a, b) => String(b.at).localeCompare(String(a.at)));
+}
+
+/* ------------------------------------------------------------------ *
+ * writes
+ *
+ * The same fork again. Through the proxy these are stronger than the direct
+ * path they replace: the roster ones run their whole read-modify-write inside a
+ * server-side lock, where the direct path could only compare revisions and
+ * retry.
+ * ------------------------------------------------------------------ */
+
+export async function saveForm(form) {
+  if (usingProxy()) return saveFormViaProxy(proxyUrl(), token(), form);
+  return db.saveForm(form);
+}
+
+export async function saveRequest(request) {
+  if (usingProxy()) return saveRequestViaProxy(proxyUrl(), token(), request);
+  return db.saveRequest(request);
+}
+
+export async function deleteForm(formId) {
+  if (usingProxy()) return deleteFormViaProxy(proxyUrl(), token(), formId);
+  return db.deleteForm(formId);
+}
+
+export async function deleteRequest(requestId) {
+  if (usingProxy()) return deleteRequestViaProxy(proxyUrl(), token(), requestId);
+  return db.deleteRequest(requestId);
+}
+
+/**
+ * Deletes one response.
+ *
+ * The reason is mandatory in proxy mode and enforced by the server. Direct mode
+ * cannot enforce it, which is one more reason the proxy is the better position.
+ */
+export async function deleteResponse(requestId, responseId, reason) {
+  if (usingProxy()) {
+    return deleteResponseViaProxy(proxyUrl(), token(), requestId, responseId, reason);
+  }
+  return db.deleteResponse(requestId, responseId);
+}
+
+export async function createAccountRecord(account) {
+  if (usingProxy()) return createAccountViaProxy(proxyUrl(), token(), account);
+  let created = null;
+  await db.updateUsers((users) => {
+    if (users.some((u) => String(u.email || '').toLowerCase() === account.email)) {
+      throw new Error(`${account.email} is already on the roster.`);
+    }
+    created = account;
+    return [...users, account];
+  });
+  return created;
+}
+
+export async function updateAccountRecord(id, patch, mutate) {
+  if (usingProxy()) return updateAccountViaProxy(proxyUrl(), token(), id, patch);
+  let result = null;
+  await db.updateUsers((users) => {
+    const next = mutate(users);
+    result = next.find((a) => a.id === id) || null;
+    return next;
+  });
+  return result;
+}
+
+export async function deleteAccountRecord(id) {
+  if (usingProxy()) return deleteAccountViaProxy(proxyUrl(), token(), id);
+  return db.updateUsers((users) => users.filter((a) => a.id !== id));
+}
+
+export async function applyRollover(moves, deactivate) {
+  if (usingProxy()) return rolloverViaProxy(proxyUrl(), token(), moves, deactivate);
+  return db.updateUsers((users) => users.map((user) => {
+    if (!user.roles?.includes('student')) return user;
+    const to = moves[user.asClass];
+    if (to === undefined) return user;
+    if (to === null) return deactivate === false ? user : { ...user, active: false };
+    return { ...user, asClass: to };
+  }));
+}
+
+/** Writes one audit entry. The actor comes from the token, never the client. */
+export async function writeAudit(entry) {
+  if (usingProxy()) return recordAuditViaProxy(proxyUrl(), token(), entry);
+  return recordAuditDirect(entry.action, entry);
 }

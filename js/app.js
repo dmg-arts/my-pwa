@@ -7,6 +7,7 @@ import { APP } from './config.js';
 import { $, el, icon, toast, mount, remount } from './util.js';
 import { applySettings, connection, isConfigured } from './state.js';
 import { db } from './storage/index.js';
+import { connectionStatus } from './data-source.js';
 import { route, startRouter, navigate, currentPath } from './router.js';
 import { renderHome } from './views/home.js';
 import { renderSetup } from './views/setup.js';
@@ -114,7 +115,7 @@ async function refreshStatus() {
     return;
   }
   try {
-    const status = await db.status();
+    const status = await connectionStatus();
     node.dataset.status = status.status;
     node.querySelector('.conn__label').textContent = status.status;
     node.title = status.detail || '';

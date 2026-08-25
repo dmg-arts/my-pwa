@@ -21,7 +21,10 @@ import { db } from '../storage/index.js';
 import { navigate } from '../router.js';
 import { renderAnalysis } from './analysis.js';
 import { renderLogin } from './sign-in.js';
-import { loadCatalog } from '../data-source.js';
+import {
+  loadCatalog, saveForm, saveRequest, deleteForm, deleteRequest, writeAudit,
+  canDoMaintenance, connectionStatus, loadOverview,
+} from '../data-source.js';
 import { record, AUDIT } from '../audit.js';
 
 const TABS = [
@@ -241,7 +244,7 @@ function templateLibrary(templates) {
             if (!(await confirmDialog('Delete this template?',
               `"${template.name}" will no longer be offered. Feedback already issued from it is `
               + 'unaffected.', { confirmLabel: 'Delete', danger: true }))) return;
-            await db.deleteForm(template.id);
+            await deleteForm(template.id);
             toast('Template deleted.', 'ok');
             navigate('/instructor?tab=requests');
           },
@@ -322,7 +325,12 @@ async function tabStudents(host) {
 
 async function tabDatabase(host) {
   const conn = connection.get();
-  const [stats, status] = await Promise.all([db.stats(), db.status()]);
+  // In proxy mode there is no storage adapter on this device at all, so the
+  // counts come from the server and maintenance is somebody else's job.
+  const [stats, status] = await Promise.all([
+    canDoMaintenance() ? db.stats() : loadOverview().then((o) => o.stats),
+    connectionStatus(),
+  ]);
 
   const statCard = (label, value, note = null) =>
     el('div', { class: 'stat' },
@@ -359,7 +367,8 @@ async function tabDatabase(host) {
     if (!mode) return;
     try {
       const counts = await db.importBundle(JSON.parse(await readFileAsText(file)), { mode });
-      await record(AUDIT.dataImported, {
+      await writeAudit({
+        action: AUDIT.dataImported,
         summary: `Imported a backup (${mode}): ${counts.requests} forms, ${counts.responses} responses`,
         detail: counts,
       });
@@ -378,7 +387,8 @@ async function tabDatabase(host) {
     const typed = await promptText('Type DELETE to confirm');
     if (typed !== 'DELETE') return toast('Cancelled — nothing was deleted.', 'warn');
     await db.wipeData();
-    await record(AUDIT.dataWiped, {
+    await writeAudit({
+      action: AUDIT.dataWiped,
       summary: `Deleted every record (${stats.requests} forms, ${stats.responses} responses)`,
       reason: 'Confirmed by typing DELETE',
     });
@@ -424,8 +434,18 @@ async function tabDatabase(host) {
         'A backup is a single JSON file containing every record. It imports into any '
         + 'TOP-Feedback install, which is also how you migrate from this device to Google Drive.'),
       el('div', { class: 'row row--wrap' },
-        el('button', { type: 'button', class: 'btn', onclick: exportBundle }, icon('download'), 'Export backup'),
-        el('button', { type: 'button', class: 'btn', onclick: importBundle }, icon('upload'), 'Import backup'))),
+        canDoMaintenance()
+          ? el('button', { type: 'button', class: 'btn', onclick: exportBundle }, icon('download'), 'Export backup')
+          : null,
+        canDoMaintenance()
+          ? el('button', { type: 'button', class: 'btn', onclick: importBundle }, icon('upload'), 'Import backup')
+          : null)),
+
+    canDoMaintenance() ? null : notice('info', 'Maintenance runs from the folder owner\'s device',
+      el('p', {}, 'Backup, restore and wipe act on the whole folder, and this detachment routes '
+        + 'through its own server — which deliberately offers no way to do any of that remotely. '
+        + 'An endpoint that could empty a detachment\'s records on request is not one worth '
+        + 'having. Sign in on the account that owns the Drive folder to run them.')),
 
     el('div', { class: 'card stack', style: { marginTop: 'var(--sp-5)' } },
       el('h3', { class: 'section-title' }, 'Danger zone'),

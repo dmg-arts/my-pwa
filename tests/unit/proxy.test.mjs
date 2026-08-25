@@ -129,5 +129,77 @@ check('roll-up index files are never served to a caller', () => {
   }
 });
 
+/* ---------- what proxy mode means for the OAuth scope ---------- */
+
+const JOIN = readFileSync(new URL('../../js/views/join.js', import.meta.url), 'utf8');
+const DATA = readFileSync(new URL('../../js/data-source.js', import.meta.url), 'utf8');
+
+check('joining a proxy detachment never asks for Drive', () => {
+  // This is the whole prize: an app that requests only non-sensitive scopes
+  // needs no verification, no CASA, and shows no unverified-app warning.
+  const guard = JOIN.indexOf('if (viaProxy)');
+  const connect = JOIN.indexOf('adapters.drive.connect');
+  if (guard < 0) throw new Error('the join screen has no proxy branch');
+  if (connect > 0 && connect < guard) throw new Error('Drive is reached before the proxy check');
+  if (!/return navigate\('\/student'\)/.test(JOIN.slice(guard, connect > 0 ? connect : undefined))) {
+    throw new Error('the proxy branch falls through to the Drive path');
+  }
+});
+
+check('maintenance is refused in proxy mode rather than attempted', () => {
+  // Backup, restore and wipe act on the whole folder. The proxy exposes no
+  // action for any of them on purpose: an endpoint that could empty a
+  // detachment on request is not one worth having.
+  if (!/export function canDoMaintenance/.test(DATA)) {
+    throw new Error('no maintenance guard exists');
+  }
+  for (const action of ['wipe', 'import', 'export', 'reindex', 'migrate']) {
+    if (new RegExp(`^\\s{2}${action}`, 'mi').test(SOURCE)) {
+      throw new Error(`the proxy exposes a ${action} action`);
+    }
+  }
+});
+
+check('every write action requires more than a student role', () => {
+  const writes = ['saveForm', 'saveRequest', 'deleteForm', 'deleteRequest',
+    'deleteResponse', 'accountCreate', 'accountUpdate', 'accountDelete', 'rollover'];
+  for (const action of writes) {
+    const m = SOURCE.match(new RegExp(`^\\s{2}${action}:\\s*\\[([^\\]]*)\\]`, 'm'));
+    if (!m) throw new Error(`${action} is not declared`);
+    if (/student/.test(m[1])) throw new Error(`${action} is open to students`);
+  }
+});
+
+check('roster changes run inside the script lock', () => {
+  const withRoster = SOURCE.indexOf('function withRoster');
+  const lock = SOURCE.indexOf('LockService.getScriptLock', withRoster);
+  const write = SOURCE.indexOf("writeJson(root, ['users']", withRoster);
+  if (!(withRoster >= 0 && lock > withRoster && write > lock)) {
+    throw new Error('the roster write is not inside a lock');
+  }
+});
+
+check('the audit actor comes from the token, never the request body', () => {
+  // A client that could name its own actor could write someone else's name
+  // against its own deletion, which is worse than having no log.
+  const fn = SOURCE.slice(SOURCE.indexOf('function appendAudit'));
+  const body = fn.slice(0, fn.indexOf('\n}'));
+  if (/actor:\s*entry\./.test(body)) throw new Error('the actor is taken from the request');
+  if (!/actor: \{ username: account\.username/.test(body)) {
+    throw new Error('the actor is not taken from the verified account');
+  }
+});
+
+check('at most two commanders, enforced on the server', () => {
+  if (!/MAX_COMMANDERS = 2/.test(SOURCE)) throw new Error('no commander cap');
+  if (!/function enforceCommanderCap/.test(SOURCE)) throw new Error('the cap is not enforced');
+  for (const fn of ['addAccount', 'patchAccount']) {
+    const body = SOURCE.slice(SOURCE.indexOf(`function ${fn}`));
+    if (!/enforceCommanderCap/.test(body.slice(0, body.indexOf('\n}\n')))) {
+      throw new Error(`${fn} can grant commander without the cap`);
+    }
+  }
+});
+
 console.log(failures ? `\n${failures} proxy check(s) failed.` : '\nAll proxy checks passed.');
 process.exit(failures ? 1 : 0);

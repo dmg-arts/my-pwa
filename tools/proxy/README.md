@@ -25,9 +25,10 @@ With the proxy, cadets need **no Drive access at all**. They never see the
 folder, and they are never asked to approve access to their own Google Drive —
 which also means they never meet the alarming full-Drive consent screen.
 
-**Cadre reads now come through the script too.** Their *writes* still go to Drive
-directly, so cadre still need folder access for the moment — that is the next
-step, and once it lands nobody but the folder's owner needs Drive at all.
+**Nobody but the folder's owner needs Drive access.** Cadre reads *and* writes
+come through this script now, which means the app asks for no Drive scope at all
+in proxy mode — no verification, no annual assessment, and no unverified-app
+warning for anyone.
 
 ---
 
@@ -94,12 +95,13 @@ You need the two values from your existing setup:
    It now carries the proxy, so anyone who joins with it submits through the
    script and is never asked for Drive access.
 
-## 5. Take back the folder access you no longer need
+## 5. Take back the folder access nobody needs any more
 
 The proxy stops *new* exposure. It does not revoke what you already granted.
 
 1. Open the Drive folder → **Share**.
-2. Remove every cadet. The folder should be shared with **cadre only**.
+2. Remove **everyone except yourself**. Cadets and cadre both reach their data
+   through this script now, so nobody else needs the folder at all.
 3. Re-send the join link to anyone already set up, so their device switches to
    the proxy. Until they open it, their app still tries to reach Drive directly
    and will simply stop working once you remove their access — which is safe, but
@@ -136,6 +138,12 @@ replaced.
 | `roster` | instructor, cadre, commander, admin | The roster |
 | `audit` | commander, admin | Audit entries, newest first |
 | `overview` | instructor, cadre, commander, admin | Org record and headline counts |
+| `saveForm` `saveRequest` | instructor and above | Writes one record |
+| `deleteForm` `deleteRequest` | instructor and above | Removes one, with its responses |
+| `deleteResponse` | admin, commander | Removes one response, **reason required** |
+| `accountCreate` `accountUpdate` `accountDelete` | admin | Roster changes, under a lock |
+| `rollover` | admin | Advances the whole roster in one call |
+| `recordAudit` | instructor and above | Appends an entry; the actor comes from the token |
 
 Roll-up index files (names beginning `_`) are never served. They are caches the
 app rebuilds for itself, and handing them over would invite the client to trust
@@ -150,9 +158,11 @@ will need paging if one runs for years.
 - **Quota.** A consumer Gmail account gets about 90 minutes of script runtime a
   day. A submission takes roughly a second, so a detachment of fifty is nowhere
   near it.
-- **Cadre writes still go straight to Drive**, so cadre still need folder access.
-  Reads already come through here. Once writes follow, only the folder's owner
-  needs Drive, and the app stops asking anyone for the Drive scope.
+- **Folder maintenance is not offered here.** Backup, restore, wipe, reindex and
+  migrate act on the whole folder, and an endpoint that could empty a
+  detachment's records on request is not one worth having. They stay with
+  whoever owns the folder — which is the account this script runs as, so
+  someone always can.
 - **It does not re-validate answers** against the form definition — the app does
   that. What the script enforces is *who* may write and *how often*, which is the
   part a browser cannot be trusted with.

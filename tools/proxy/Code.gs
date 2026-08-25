@@ -61,6 +61,9 @@ var PROXY_VERSION = '1.0.0';
 /** Refuse anything larger; a submission is a few KB at most. */
 var MAX_BODY_BYTES = 96 * 1024;
 
+/** Two, so a change of command overlaps rather than cutting over. */
+var MAX_COMMANDERS = 2;
+
 /** Ids come from the client, so they are pattern-checked before use in a path. */
 var ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -83,7 +86,24 @@ var ACTIONS = {
   allResponses: ['instructor', 'cadre', 'commander', 'admin'],
   roster:       ['instructor', 'cadre', 'commander', 'admin'],
   audit:        ['commander', 'admin'],
-  overview:     ['instructor', 'cadre', 'commander', 'admin']
+  overview:     ['instructor', 'cadre', 'commander', 'admin'],
+
+  saveForm:       ['instructor', 'cadre', 'commander', 'admin'],
+  saveRequest:    ['instructor', 'cadre', 'commander', 'admin'],
+  deleteForm:     ['instructor', 'cadre', 'commander', 'admin'],
+  deleteRequest:  ['instructor', 'cadre', 'commander', 'admin'],
+  // Deleting a response is admin-only here, and always needs a reason. The app
+  // alone let an instructor remove an unflagged one, but the server cannot tell
+  // flagged from unflagged without carrying the safety lexicon — and the audit
+  // trail exists precisely so someone who is the subject of a complaint cannot
+  // quietly remove it. Requiring an administrator is the honest way to keep that
+  // true without duplicating the lexicon.
+  deleteResponse: ['admin', 'commander'],
+  accountCreate:  ['admin'],
+  accountUpdate:  ['admin'],
+  accountDelete:  ['admin'],
+  rollover:       ['admin'],
+  recordAudit:    ['instructor', 'cadre', 'commander', 'admin']
 };
 
 function hasAnyRole(account, allowed) {
@@ -205,7 +225,31 @@ function doPost(e) {
       return json({ ok: true, org: readJson(root, ['config'], 'org.json'), stats: readStats(root) });
     }
 
-    // --- 4. the one write action ----------------------------------------
+    // --- 4. cadre writes -------------------------------------------------
+    // Each takes a record, never a path. Anything that touches a shared
+    // document runs under the script lock, which is a stronger guarantee than
+    // the client-side compare-and-retry it replaces: two administrators editing
+    // the roster at once are serialised here rather than racing and retrying.
+    if (body.action === 'saveForm') return writeRecord(root, 'forms', body.form, 'form_');
+    if (body.action === 'saveRequest') return writeRecord(root, 'requests', body.request, 'req_');
+    if (body.action === 'deleteForm') return removeRecord(root, ['forms'], body.formId);
+    if (body.action === 'deleteRequest') return removeRequest(root, body.requestId);
+    if (body.action === 'deleteResponse') return removeResponse(root, body, account);
+    if (body.action === 'accountCreate') return withRoster(function (users) {
+      return addAccount(users, body.account);
+    });
+    if (body.action === 'accountUpdate') return withRoster(function (users) {
+      return patchAccount(users, body.id, body.patch);
+    });
+    if (body.action === 'accountDelete') return withRoster(function (users) {
+      return dropAccount(users, body.id);
+    });
+    if (body.action === 'rollover') return withRoster(function (users) {
+      return applyRollover(users, body.moves, body.deactivate);
+    });
+    if (body.action === 'recordAudit') return appendAudit(root, body.entry, account);
+
+    // --- 5. the one student write ---------------------------------------
     // Explicit rather than a fall-through: an action added to ACTIONS and not
     // handled above would otherwise drop quietly into the submit path.
     if (body.action !== 'submit') return fail('That action is not implemented.');
@@ -377,6 +421,242 @@ function buildBundle(root, account) {
     forms: forms,
     submitted: submitted
   };
+}
+
+/* ------------------------------------------------------------------ *
+ * cadre writes
+ *
+ * The client sends a record, never a path. Ids are generated here when absent
+ * and pattern-checked when supplied, so nothing a caller sends can escape the
+ * folder it belongs in.
+ * ------------------------------------------------------------------ */
+
+/** Writes one record into a collection, minting an id if it has none. */
+function writeRecord(root, collection, record, prefix) {
+  if (!record || typeof record !== 'object') return fail('That record is missing.');
+
+  var id = String(record.id || '');
+  if (!id) {
+    id = prefix + Utilities.getUuid().replace(/-/g, '').slice(0, 12);
+    record.id = id;
+  }
+  if (!ID_PATTERN.test(id)) return fail('That record has an invalid id.');
+
+  if (!record.createdAt) record.createdAt = new Date().toISOString();
+  record.updatedAt = new Date().toISOString();
+
+  writeJson(root, [collection], id + '.json', record);
+  return json({ ok: true, record: record });
+}
+
+function removeRecord(root, segments, id) {
+  if (!ID_PATTERN.test(String(id || ''))) return fail('That id is not valid.');
+  var folder = findFolder(root, segments);
+  if (folder) {
+    var files = folder.getFilesByName(id + '.json');
+    while (files.hasNext()) files.next().setTrashed(true);
+  }
+  return json({ ok: true });
+}
+
+/** Removing a request takes its responses and receipts with it. */
+function removeRequest(root, requestId) {
+  if (!ID_PATTERN.test(String(requestId || ''))) return fail('That id is not valid.');
+  trashFolder(findFolder(root, ['responses', requestId]));
+  trashFolder(findFolder(root, ['receipts', requestId]));
+  return removeRecord(root, ['requests'], requestId);
+}
+
+function trashFolder(folder) {
+  if (folder) folder.setTrashed(true);
+}
+
+/**
+ * Deletes one response, always with a reason, always recorded.
+ *
+ * The reason is required rather than optional because this is the operation the
+ * audit trail exists for: someone who is the subject of a complaint should not
+ * be able to make it disappear without leaving an account of why.
+ */
+function removeResponse(root, body, account) {
+  var requestId = String(body.requestId || '');
+  var responseId = String(body.responseId || '');
+  var reason = String(body.reason || '').trim();
+
+  if (!ID_PATTERN.test(requestId) || !ID_PATTERN.test(responseId)) {
+    return fail('That id is not valid.');
+  }
+  if (reason.length < 4) return fail('Deleting feedback requires a recorded reason.');
+
+  var result = removeRecord(root, ['responses', requestId], responseId);
+  appendAudit(root, {
+    action: 'response.deleted',
+    summary: 'Deleted a response from ' + requestId,
+    target: responseId,
+    reason: reason,
+    severe: true
+  }, account);
+  return result;
+}
+
+/* ------------------------------------------------------------------ *
+ * the roster
+ *
+ * Every change runs the whole read-modify-write under the script lock. That is
+ * stronger than the compare-and-retry it replaces on the client: two
+ * administrators editing at once are serialised rather than racing.
+ * ------------------------------------------------------------------ */
+
+function withRoster(mutate) {
+  var cfg = config();
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(20000);
+  } catch (err) {
+    return fail('The roster is busy. Try again in a moment.');
+  }
+
+  try {
+    var root = DriveApp.getFolderById(cfg.folderId);
+    var users = readRoster(root);
+    var result = mutate(users);
+    if (result && result.error) return fail(result.error);
+
+    writeJson(root, ['users'], 'users.json', {
+      schemaVersion: 4,
+      users: result.users,
+      updatedAt: new Date().toISOString()
+    });
+    return json({ ok: true, users: result.users, account: result.account || null });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function normaliseEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function addAccount(users, account) {
+  if (!account || !normaliseEmail(account.email)) return { error: 'That account has no email address.' };
+  var email = normaliseEmail(account.email);
+  for (var i = 0; i < users.length; i++) {
+    if (normaliseEmail(users[i].email) === email) {
+      return { error: email + ' is already on the roster.' };
+    }
+  }
+  account.email = email;
+  account.createdAt = account.createdAt || new Date().toISOString();
+  account.updatedAt = new Date().toISOString();
+
+  var capped = enforceCommanderCap(users.concat([account]));
+  if (capped.error) return capped;
+  return { users: capped.users, account: account };
+}
+
+function patchAccount(users, id, patch) {
+  var found = null;
+  var next = users.map(function (user) {
+    if (user.id !== id) return user;
+    found = {};
+    for (var key in user) found[key] = user[key];
+    for (var k in patch) found[k] = patch[k];
+    if (patch.email) found.email = normaliseEmail(patch.email);
+    found.updatedAt = new Date().toISOString();
+    return found;
+  });
+  if (!found) return { error: 'That account no longer exists.' };
+
+  var email = normaliseEmail(found.email);
+  for (var i = 0; i < next.length; i++) {
+    if (next[i].id !== id && normaliseEmail(next[i].email) === email) {
+      return { error: 'That email is already on the roster.' };
+    }
+  }
+  var capped = enforceCommanderCap(next);
+  if (capped.error) return capped;
+  return { users: capped.users, account: found };
+}
+
+/**
+ * At most two commanders, ever.
+ *
+ * Two rather than one so a change of command overlaps: the outgoing and
+ * incoming commander both hold it during the handover. Enforced here rather
+ * than in the app because the app is the thing being guarded against — and
+ * because the roster is the only place the count can be known for certain.
+ */
+function enforceCommanderCap(users) {
+  var commanders = users.filter(function (user) {
+    return user.active !== false && (user.roles || []).indexOf('commander') !== -1;
+  });
+  if (commanders.length > MAX_COMMANDERS) {
+    return {
+      error: 'Only ' + MAX_COMMANDERS + ' commanders are allowed at once. Remove the '
+        + 'designation from someone before granting it, so a handover overlaps rather '
+        + 'than a third person appearing.'
+    };
+  }
+  return { users: users };
+}
+
+function dropAccount(users, id) {
+  return {
+    users: users.filter(function (user) { return user.id !== id; })
+  };
+}
+
+function applyRollover(users, moves, deactivate) {
+  var map = moves || {};
+  return {
+    users: users.map(function (user) {
+      if (!user.roles || user.roles.indexOf('student') === -1) return user;
+      var to = map[user.asClass];
+      if (to === undefined) return user;
+      var copy = {};
+      for (var key in user) copy[key] = user[key];
+      if (to === null) {
+        // Graduating: the level is kept so past feedback still reads sensibly.
+        if (deactivate !== false) copy.active = false;
+      } else {
+        copy.asClass = to;
+      }
+      copy.updatedAt = new Date().toISOString();
+      return copy;
+    })
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * audit
+ * ------------------------------------------------------------------ */
+
+/**
+ * Appends one audit entry.
+ *
+ * The actor is taken from the verified token, never from the request body. A
+ * client that could name its own actor could write someone else's name against
+ * its own deletion, which would make the log worse than not having one.
+ */
+function appendAudit(root, entry, account) {
+  if (!entry || typeof entry !== 'object') return fail('That audit entry is missing.');
+  var at = new Date().toISOString();
+  var id = 'aud_' + Utilities.getUuid().replace(/-/g, '').slice(0, 12);
+
+  writeJson(root, ['audit', at.slice(0, 7)], id + '.json', {
+    schemaVersion: 4,
+    id: id,
+    action: String(entry.action || 'unknown'),
+    at: at,
+    actor: { username: account.username, name: account.name, roles: account.roles || [] },
+    summary: String(entry.summary || ''),
+    target: entry.target || null,
+    reason: entry.reason || null,
+    detail: entry.detail || null,
+    severe: Boolean(entry.severe),
+    viaProxy: true
+  });
+  return json({ ok: true, id: id });
 }
 
 /* ------------------------------------------------------------------ *

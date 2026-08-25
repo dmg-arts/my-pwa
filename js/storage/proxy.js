@@ -208,6 +208,63 @@ export async function fetchOverview(url, idToken) {
   return { org: result.org, stats: result.stats };
 }
 
+/* ---------------- cadre writes ---------------- */
+
+export async function saveFormViaProxy(url, idToken, form) {
+  return (await ask(url, idToken, { action: 'saveForm', form })).record;
+}
+
+export async function saveRequestViaProxy(url, idToken, request) {
+  return (await ask(url, idToken, { action: 'saveRequest', request })).record;
+}
+
+export async function deleteFormViaProxy(url, idToken, formId) {
+  await ask(url, idToken, { action: 'deleteForm', formId });
+}
+
+export async function deleteRequestViaProxy(url, idToken, requestId) {
+  await ask(url, idToken, { action: 'deleteRequest', requestId });
+}
+
+/**
+ * Deleting one response.
+ *
+ * A reason is required by the server, not merely requested by the UI — this is
+ * the operation the audit trail exists for.
+ */
+export async function deleteResponseViaProxy(url, idToken, requestId, responseId, reason) {
+  await ask(url, idToken, { action: 'deleteResponse', requestId, responseId, reason });
+}
+
+/* ---------------- the roster ---------------- */
+
+export async function createAccountViaProxy(url, idToken, account) {
+  return (await ask(url, idToken, { action: 'accountCreate', account })).account;
+}
+
+export async function updateAccountViaProxy(url, idToken, id, patch) {
+  return (await ask(url, idToken, { action: 'accountUpdate', id, patch })).account;
+}
+
+export async function deleteAccountViaProxy(url, idToken, id) {
+  await ask(url, idToken, { action: 'accountDelete', id });
+}
+
+export async function rolloverViaProxy(url, idToken, moves, deactivate) {
+  return (await ask(url, idToken, { action: 'rollover', moves, deactivate })).users;
+}
+
+/**
+ * Appends an audit entry.
+ *
+ * The actor is *not* sent: the server takes it from the verified token. A client
+ * that could name its own actor could write someone else's name against its own
+ * deletion, which would make the log worse than not having one.
+ */
+export async function recordAuditViaProxy(url, idToken, entry) {
+  await ask(url, idToken, { action: 'recordAudit', entry });
+}
+
 /**
  * Submits one response through the proxy.
  *

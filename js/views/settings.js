@@ -224,7 +224,7 @@ function proxySection(conn) {
 async function storageSection(conn) {
   const statusRow = el('div', { class: 'row row--wrap' }, spinner('Checking…'));
 
-  db.status().then((status) => {
+  connectionStatus().then((status) => {
     remount(statusRow, 
       el('span', { class: 'conn', dataset: { status: status.status } },
         el('span', { class: 'conn__dot' }),

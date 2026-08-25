@@ -18,11 +18,17 @@
  * worth. Short version: Drive sharing is the boundary that holds.
  */
 
-import { ROLES, LS, isDevMode } from './config.js';
+import { ROLES, isDevMode } from './config.js';
+import { startSession, currentUser, signOut } from './session.js';
 import { makeId, nowIso } from './util.js';
-import { forgetGoogleSession } from './google-identity.js';
-import { db } from './storage/index.js';
-import { record, AUDIT } from './audit.js';
+import { AUDIT } from './audit.js';
+import {
+  loadRoster, createAccountRecord, updateAccountRecord, deleteAccountRecord, writeAudit,
+} from './data-source.js';
+
+// Session handling lives in session.js so that data-source.js can reach the
+// ID token without this module and that one importing each other.
+export { startSession, currentUser, currentIdToken, signOut } from './session.js';
 
 /* ------------------------------------------------------------------ *
  * usernames
@@ -103,16 +109,15 @@ export function suggestUsername(name, taken = []) {
  */
 
 /**
- * The roster, read straight from Drive.
+ * The roster, from whichever source this detachment uses.
  *
- * Deliberately *not* routed through the proxy: data-source.js already imports
- * this module, so importing it back would be a cycle. Screens that need the
- * roster under either mode call `loadRoster()` from data-source instead; this
- * remains the direct-mode primitive the write paths use.
+ * Routed rather than read from Drive: in proxy mode there is no Drive access to
+ * read from. This used to be the direct-mode primitive because auth and
+ * data-source imported each other; session.js now sits underneath both, so the
+ * cycle is gone and this can simply ask for the roster.
  */
 export async function listAccounts() {
-  const doc = await db.getUsers();
-  return doc.users || [];
+  return loadRoster();
 }
 
 export async function findByUsername(username) {
@@ -174,15 +179,13 @@ export async function createAccount({ email, name, username = '', roles = [ROLES
     updatedAt: nowIso(),
   };
 
-  // Expressed as a change, not a precomputed list: if another admin saves while
-  // this runs, the append is replayed against their result rather than wiping it.
-  await db.updateUsers((users) => {
-    if (users.some((u) => normalizeEmail(u.email) === account.email)) {
-      throw new Error(`${account.email} is already on the roster.`);
-    }
-    return [...users, account];
-  });
-  await record(AUDIT.accountCreated, {
+  // Routed: through the proxy this runs inside a server-side lock, which is a
+  // stronger guarantee than the compare-and-retry the direct path uses. The
+  // duplicate-email check happens on whichever side actually performs the write,
+  // so two administrators adding the same address cannot both succeed.
+  await createAccountRecord(account);
+  await writeAudit({
+    action: AUDIT.accountCreated,
     summary: `Added ${account.email} (${account.roles.join(', ')})`,
     target: account.email,
   });
@@ -198,38 +201,39 @@ export async function updateAccount(id, patch) {
     const problem = validateUsername(patch.username);
     if (problem) throw new Error(problem);
   }
-  let result = null;
-  let emailChanged = false;
+  // Read first, so validation and the audit line have the same picture in both
+  // modes. In proxy mode the server re-checks all of this under its lock — the
+  // checks here are for a clear message, not for correctness.
+  const roster = await listAccounts();
+  const existing = roster.find((a) => a.id === id);
+  if (!existing) throw new Error('That account no longer exists.');
 
-  await db.updateUsers((users) => {
-    const existing = users.find((a) => a.id === id);
-    if (!existing) throw new Error('That account no longer exists.');
+  const wantedEmail = patch.email ? normalizeEmail(patch.email) : normalizeEmail(existing.email);
+  if (wantedEmail !== normalizeEmail(existing.email)
+      && roster.some((a) => a.id !== id && normalizeEmail(a.email) === wantedEmail)) {
+    throw new Error('That email is already on the roster.');
+  }
+  const wantedHandle = patch.username ? normalizeUsername(patch.username) : existing.username;
+  if (wantedHandle !== existing.username
+      && roster.some((a) => a.id !== id && normalizeUsername(a.username) === wantedHandle)) {
+    throw new Error('That handle is already in use.');
+  }
 
-    const wantedEmail = patch.email ? normalizeEmail(patch.email) : normalizeEmail(existing.email);
-    if (wantedEmail !== normalizeEmail(existing.email)
-        && users.some((a) => a.id !== id && normalizeEmail(a.email) === wantedEmail)) {
-      throw new Error('That email is already on the roster.');
-    }
-    const wantedHandle = patch.username ? normalizeUsername(patch.username) : existing.username;
-    if (wantedHandle !== existing.username
-        && users.some((a) => a.id !== id && normalizeUsername(a.username) === wantedHandle)) {
-      throw new Error('That handle is already in use.');
-    }
+  const emailChanged = wantedEmail !== normalizeEmail(existing.email);
+  const next = {
+    ...existing, ...patch,
+    email: wantedEmail, username: wantedHandle,
+    updatedAt: nowIso(),
+  };
+  // Nothing here stores credentials any more; drop any left by an old record.
+  delete next.password;
+  delete next.needsPassword;
 
-    emailChanged = wantedEmail !== normalizeEmail(existing.email);
-    const next = {
-      ...existing, ...patch,
-      email: wantedEmail, username: wantedHandle,
-      updatedAt: nowIso(),
-    };
-    // Nothing here stores credentials any more; drop any left by an old record.
-    delete next.password;
-    delete next.needsPassword;
-    result = next;
-    return users.map((a) => (a.id === id ? next : a));
-  });
+  const result = await updateAccountRecord(id, next, (users) =>
+    users.map((a) => (a.id === id ? next : a))) || next;
 
-  await record(AUDIT.accountUpdated, {
+  await writeAudit({
+    action: AUDIT.accountUpdated,
     summary: emailChanged
       ? `Changed the sign-in email for ${result.name} to ${result.email}`
       : `Updated ${result.email}`,
@@ -241,12 +245,11 @@ export async function updateAccount(id, patch) {
 
 export async function deleteAccount(id) {
   let removed = null;
-  await db.updateUsers((users) => {
-    removed = users.find((a) => a.id === id) || null;
-    return users.filter((a) => a.id !== id);
-  });
+  removed = (await listAccounts()).find((a) => a.id === id) || null;
+  await deleteAccountRecord(id);
   if (removed) {
-    await record(AUDIT.accountDeleted, {
+    await writeAudit({
+      action: AUDIT.accountDeleted,
       summary: `Removed ${removed.email || removed.username} (${removed.name})`,
       target: removed.email || removed.username,
       detail: { roles: removed.roles, asClass: removed.asClass },
@@ -263,7 +266,6 @@ export async function hasAdmin() {
  * sign in
  * ------------------------------------------------------------------ */
 
-const SESSION_MS = 8 * 60 * 60 * 1000;
 
 /**
  * Completes a Google sign-in.
@@ -346,65 +348,6 @@ const ROLE_ACCESS = {
 /** True once anyone at all is on the roster. Gates the bootstrap above. */
 export async function hasAnyAccount() {
   return (await listAccounts()).length > 0;
-}
-
-/**
- * @param {object} account
- * @param {{idToken?: string, idTokenExp?: number}} [credential]
- *   The raw Google ID token, kept only when there is a submission proxy to send
- *   it to. The proxy re-verifies it server-side — that is the whole point of it
- *   — so the browser has to hold the original string, not the decoded claims.
- *   It lives in sessionStorage beside the session it belongs to, and dies with
- *   the tab.
- */
-export function startSession(account, credential = {}) {
-  sessionStorage.setItem(LS.session, JSON.stringify({
-    id: account.id,
-    email: account.email,
-    username: account.username,
-    name: account.name,
-    roles: account.roles,
-    // Carried so the student view can match forms to their AS level without
-    // another read of the account database on every render.
-    asClass: account.asClass || '',
-    idToken: credential.idToken || null,
-    idTokenExp: credential.idTokenExp || null,
-    until: Date.now() + SESSION_MS,
-  }));
-}
-
-/**
- * The raw ID token, if one is held and still valid.
- *
- * Returns null once it expires rather than handing over something the proxy
- * will refuse — the caller can then send the cadet back through sign-in with an
- * honest reason instead of a server error.
- */
-export function currentIdToken() {
-  const session = currentUser();
-  if (!session?.idToken) return null;
-  if (session.idTokenExp && session.idTokenExp * 1000 < Date.now()) return null;
-  return session.idToken;
-}
-
-export function currentUser() {
-  try {
-    const raw = sessionStorage.getItem(LS.session);
-    if (!raw) return null;
-    const session = JSON.parse(raw);
-    if (Date.now() > session.until) {
-      signOut();
-      return null;
-    }
-    return session;
-  } catch {
-    return null;
-  }
-}
-
-export function signOut() {
-  sessionStorage.removeItem(LS.session);
-  forgetGoogleSession();
 }
 
 /**

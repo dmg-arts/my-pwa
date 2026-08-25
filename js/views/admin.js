@@ -25,7 +25,9 @@ import {
 } from '../auth.js';
 import { renderLogin } from './sign-in.js';
 import { buildJoinLink, joinMailto } from '../join.js';
-import { loadRoster, loadAudit } from '../data-source.js';
+import {
+  loadRoster, loadAudit, applyRollover, writeAudit, canDoMaintenance,
+} from '../data-source.js';
 import { connection } from '../state.js';
 import { db } from '../storage/index.js';
 import { navigate } from '../router.js';
@@ -336,9 +338,9 @@ async function renderConsole(root) {
     inviteCard(),
     rolloverCard(reload),
     await auditCard(),
-    await schemaCard(),
+    canDoMaintenance() ? await schemaCard() : null,
 
-    el('section', { class: 'card stack', style: { marginTop: 'var(--sp-5)' } },
+    canDoMaintenance() ? el('section', { class: 'card stack', style: { marginTop: 'var(--sp-5)' } },
       el('h2', { class: 'section-title' }, 'Database maintenance'),
       el('p', { class: 'muted' },
         'Roll-up indexes make the app fast by avoiding a read per response. '
@@ -350,7 +352,8 @@ async function renderConsole(root) {
             const busy = toast('Rebuilding indexes…', 'info', 30000);
             try {
               const result = await db.rebuildIndexes();
-              await record(AUDIT.indexesRebuilt, {
+              await writeAudit({
+                action: AUDIT.indexesRebuilt,
                 summary: `Rebuilt indexes for ${pluralize(result.requests, 'form')}`,
                 detail: { responses: result.responses },
               });
@@ -363,7 +366,7 @@ async function renderConsole(root) {
           },
         }, icon('refresh'), 'Rebuild indexes'),
         el('button', { type: 'button', class: 'btn', onclick: () => navigate('/instructor?tab=database') },
-          icon('database'), 'Backup and restore'))),
+          icon('database'), 'Backup and restore'))) : null,
   );
 
   paint();
@@ -563,17 +566,19 @@ function rolloverCard(reload) {
     let moved = 0;
     let retired = 0;
     try {
+      // One call rather than one per cadet: through the proxy that is fifty
+      // round trips saved, and the whole roster moves under a single lock
+      // instead of fifty chances to be interrupted half way.
+      const map = {};
       for (const move of moves) {
-        for (const student of move.people) {
-          if (move.to === null) {
-            if (deactivate) { await updateAccount(student.id, { active: false }); retired++; }
-          } else {
-            await updateAccount(student.id, { asClass: move.to });
-            moved++;
-          }
-        }
+        map[move.from] = move.to;
+        if (move.to === null) { if (deactivate) retired += move.people.length; }
+        else moved += move.people.length;
       }
-      await record(AUDIT.rolloverApplied, {
+      await applyRollover(map, deactivate);
+
+      await writeAudit({
+        action: AUDIT.rolloverApplied,
         summary: `Advanced ${pluralize(moved, 'cadet')}`
           + (retired ? `, deactivated ${pluralize(retired, 'graduating cadet')}` : ''),
         detail: { schoolYear: currentSchoolYear(), moved, retired },

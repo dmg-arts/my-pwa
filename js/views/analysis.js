@@ -18,6 +18,7 @@ import { AS_CLASSES, SEMESTERS, PRIVACY, ROLES, schoolYears, nearestAnchor } fro
 import { db } from '../storage/index.js';
 import {
   loadCatalog, loadAllResponses, loadResponsesFor, loadStudents,
+  deleteResponse as removeResponse, writeAudit,
 } from '../data-source.js';
 import { renderForm, formItems } from '../forms.js';
 import { navigate } from '../router.js';
@@ -956,8 +957,9 @@ export async function renderAnalysis(host) {
         return;
       }
 
-      await db.deleteResponse(response.requestId, response.id);
-      await record(AUDIT.responseDeleted, {
+      await removeResponse(response.requestId, response.id, reason.value.trim());
+      await writeAudit({
+        action: AUDIT.responseDeleted,
         summary: `Deleted FLAGGED feedback from "${request?.title || response.requestId}"`,
         target: request?.feedbackId || response.requestId,
         reason: reason.value.trim(),
@@ -968,12 +970,37 @@ export async function renderAnalysis(host) {
       return;
     }
 
-    if (!(await confirmDialog('Delete this response?', 'This cannot be undone.',
-      { confirmLabel: 'Delete', danger: true }))) return;
-    await db.deleteResponse(response.requestId, response.id);
-    await record(AUDIT.responseDeleted, {
+    // A reason is required for every deletion now, not only flagged ones: the
+    // server enforces it, and an unexplained gap in the record is the thing the
+    // audit trail exists to prevent.
+    const why = el('textarea', {
+      class: 'textarea', rows: '3',
+      placeholder: 'e.g. Duplicate submission from the same cadet.',
+    });
+    const go = await modal({
+      title: 'Delete this response?',
+      body: el('div', { class: 'stack' },
+        el('p', {}, 'This cannot be undone.'),
+        field('Why is it being deleted?', why, {
+          required: true,
+          hint: 'Recorded in the audit trail against your account.',
+        })),
+      actions: [
+        { label: 'Cancel', value: null },
+        { label: 'Delete and record', value: 'go', variant: 'danger' },
+      ],
+    });
+    if (go !== 'go') return;
+    if (why.value.trim().length < 4) {
+      toast('A reason is required to delete feedback.', 'warn', 6000);
+      return;
+    }
+    await removeResponse(response.requestId, response.id, why.value.trim());
+    await writeAudit({
+      action: AUDIT.responseDeleted,
       summary: `Deleted a response to "${request?.title || response.requestId}"`,
       target: request?.feedbackId || response.requestId,
+      reason: why.value.trim(),
       detail: { responseId: response.id },
     });
     toast('Response deleted.', 'ok');

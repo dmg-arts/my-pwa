@@ -21,7 +21,10 @@ import {
   AS_CLASSES, SEMESTERS, FORM_RULES, SCALE_ANCHORS, PRIVACY, makeFeedbackId, scaleValues,
   currentSchoolYear, currentSemester, schoolYears,
 } from '../config.js';
-import { db } from '../storage/index.js';
+import {
+  saveForm, saveRequest, deleteRequest, loadForms, loadRequests, getRequest, getForm,
+  writeAudit,
+} from '../data-source.js';
 import { listStudents } from '../auth.js';
 import { requireInstructor } from './instructor.js';
 import { record, AUDIT } from '../audit.js';
@@ -36,7 +39,7 @@ let draft = null;
 let reusable = [];
 
 async function loadReusable() {
-  const forms = await db.listForms();
+  const forms = await loadForms();
   return forms.sort((a, b) => {
     // Templates first, then the most recently touched forms.
     if (Boolean(a.isTemplate) !== Boolean(b.isTemplate)) return a.isTemplate ? -1 : 1;
@@ -65,7 +68,7 @@ async function drawCreator(root, params) {
     students = await listStudents();
     reusable = await loadReusable();
     if (editingId) {
-      existingRequest = await db.getRequest(editingId);
+      existingRequest = await getRequest(editingId);
       if (!existingRequest) throw new Error('That feedback request no longer exists.');
     }
   } catch (err) {
@@ -83,7 +86,7 @@ async function drawCreator(root, params) {
 
   async function buildDraft(requestId, request) {
     if (request) {
-      const form = await db.getForm(request.formId);
+      const form = await getForm(request.formId);
       return {
         requestId,
         formId: request.formId,
@@ -106,7 +109,7 @@ async function drawCreator(root, params) {
         questions: flattenQuestions(form),
       };
     }
-    const requests = await db.listRequests();
+    const requests = await loadRequests();
     return {
       requestId: null,
       formId: null,
@@ -486,8 +489,9 @@ async function drawCreator(root, params) {
           if (!(await confirmDialog('Delete this feedback request?',
             'Its responses are deleted with it. This cannot be undone.',
             { confirmLabel: 'Delete', danger: true }))) return;
-          await db.deleteRequest(editingId);
-          await record(AUDIT.requestDeleted, {
+          await deleteRequest(editingId);
+          await writeAudit({
+            action: AUDIT.requestDeleted,
             summary: `Deleted "${draft.eventName || editingId}" and its responses`,
             target: draft.feedbackId || editingId,
           });
@@ -531,7 +535,7 @@ async function drawCreator(root, params) {
 
     try {
       const record = toFormRecord();
-      await db.saveForm({
+      await saveForm({
         ...record,
         id: makeId('form'),
         name: nameInput.value.trim(),
@@ -598,9 +602,9 @@ async function drawCreator(root, params) {
     if (problem) return toast(problem, 'warn', 5000);
 
     try {
-      const form = await db.saveForm(toFormRecord(), { expectRev: draft.formRev });
+      const form = await saveForm(toFormRecord(), { expectRev: draft.formRev });
       draft.formRev = form.rev;
-      const request = await db.saveRequest({
+      const request = await saveRequest({
         id: draft.requestId || makeId('req'),
         feedbackId: draft.feedbackId,
         title: draft.eventName.trim(),
@@ -666,7 +670,7 @@ async function drawCreator(root, params) {
     if (choice === 'mine') {
       // Deliberate overwrite: re-read the current revisions and save over them.
       const [freshReq, freshForm] = await Promise.all([
-        db.getRequest(draft.requestId), db.getForm(draft.formId),
+        getRequest(draft.requestId), getForm(draft.formId),
       ]);
       draft.requestRev = Number(freshReq?.rev) || 0;
       draft.formRev = Number(freshForm?.rev) || 0;
