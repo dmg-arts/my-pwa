@@ -262,8 +262,12 @@ async function renderConsole(root) {
                 return toast('You cannot delete the only admin account.', 'warn', 6000);
               }
               if (!(await confirmDialog('Delete this account?',
-                `${account.name} (${account.email || account.username}) will be removed from the roster `
-                + 'and can no longer sign in. Their submitted feedback is kept.',
+                `${account.name} (${account.email || account.username}) will be removed from the `
+                + 'roster and can no longer sign in.\n\n'
+                + 'Their feedback is kept, but their name is permanently stripped from it — '
+                + 'every response they wrote becomes anonymous, and their submission receipts '
+                + 'stop identifying them. Completion counts still add up. This cannot be undone, '
+                + 'and it is not undone by restoring a backup taken afterwards.',
                 { confirmLabel: 'Delete', danger: true }))) return undefined;
               await deleteAccount(account.id);
               toast('Account deleted.', 'ok');

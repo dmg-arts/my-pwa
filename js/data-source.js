@@ -330,9 +330,58 @@ export async function updateAccountRecord(id, patch, mutate) {
   return result;
 }
 
+/**
+ * Removes someone and permanently anonymises what they left behind.
+ *
+ * Dropping the roster entry alone would leave their name on every attributed
+ * response and their username on every receipt, so "delete this person" would
+ * mean "stop them signing in" and nothing else — and a backup export would
+ * carry all of it out of the folder anyway.
+ *
+ * Responses keep their content and lose their respondent. Receipts keep their
+ * existence, because completion counts must still add up, and lose the name.
+ * Irreversible on purpose; that is what makes it worth anything.
+ */
 export async function deleteAccountRecord(id) {
   if (usingProxy()) return deleteAccountViaProxy(proxyUrl(), token(), id);
-  return db.updateUsers((users) => users.filter((a) => a.id !== id));
+
+  const roster = await db.getUsers();
+  const target = (roster.users || []).find((a) => a.id === id);
+  if (!target) throw new Error('That account no longer exists.');
+
+  const counts = await anonymiseInDrive(target.username);
+  await db.updateUsers((users) => users.filter((a) => a.id !== id));
+  return counts;
+}
+
+/**
+ * The direct-mode equivalent of the proxy's sweep.
+ *
+ * Slower, because it reads every response folder rather than doing it
+ * server-side, but deletion is rare and correctness matters more than speed.
+ */
+async function anonymiseInDrive(username) {
+  const at = new Date().toISOString();
+  const counts = { responses: 0, receipts: 0 };
+  const target = String(username || '').toLowerCase();
+
+  for (const request of await db.listRequests()) {
+    for (const response of await db.listResponses(request.id)) {
+      if (String(response.respondent?.username || '').toLowerCase() !== target) continue;
+      await db.saveResponse({
+        ...response,
+        respondent: null,
+        anonymous: true,      // it genuinely is now, and analysis must treat it so
+        anonymisedAt: at,
+      });
+      counts.responses++;
+    }
+    if (await db.hasSubmitted(request.id, target)) {
+      await db.anonymiseReceipt(request.id, target);
+      counts.receipts++;
+    }
+  }
+  return counts;
 }
 
 export async function applyRollover(moves, deactivate) {

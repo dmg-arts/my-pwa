@@ -320,9 +320,7 @@ function doPost(e) {
     if (body.action === 'accountUpdate') return withRoster(function (users) {
       return patchAccount(users, body.id, body.patch);
     });
-    if (body.action === 'accountDelete') return withRoster(function (users) {
-      return dropAccount(users, body.id);
-    });
+    if (body.action === 'accountDelete') return removeAccount(root, account, body.id);
     if (body.action === 'rollover') return withRoster(function (users) {
       return applyRollover(users, body.moves, body.deactivate);
     });
@@ -743,6 +741,138 @@ function dropAccount(users, id) {
   return {
     users: users.filter(function (user) { return user.id !== id; })
   };
+}
+
+/**
+ * Removes someone from the roster and permanently anonymises what they left.
+ *
+ * Deleting the roster entry alone would leave their name on every attributed
+ * response and their username on every receipt — so "delete this person" would
+ * mean "stop them signing in" and nothing more. Worse, a backup export would
+ * still carry all of it out of the folder on somebody's laptop.
+ *
+ * So the records stay and the person is removed *from* them. Responses lose
+ * their respondent and become genuinely anonymous. Receipts keep their existence
+ * — completion counts must still add up — but are renamed away from the
+ * username and emptied of it.
+ *
+ * This is irreversible on purpose. That is what makes it worth anything.
+ */
+function removeAccount(root, actor, id) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+  } catch (err) {
+    return fail('The roster is busy. Try again in a moment.');
+  }
+
+  try {
+    var users = readRoster(root);
+    var target = null;
+    for (var i = 0; i < users.length; i++) {
+      if (users[i].id === id) target = users[i];
+    }
+    if (!target) return fail('That account no longer exists.');
+
+    var scrubbed = anonymiseEverywhere(root, target.username);
+
+    writeJson(root, ['users'], 'users.json', {
+      schemaVersion: 4,
+      users: users.filter(function (user) { return user.id !== id; }),
+      updatedAt: new Date().toISOString()
+    });
+
+    appendAudit(root, {
+      action: 'account.deleted',
+      summary: 'Removed ' + (target.email || target.username)
+        + ' and permanently anonymised their records',
+      target: target.email || target.username,
+      detail: {
+        responsesAnonymised: scrubbed.responses,
+        receiptsAnonymised: scrubbed.receipts
+      },
+      severe: true
+    }, actor);
+
+    return json({ ok: true, anonymised: scrubbed });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Strips one username out of every response and receipt, in every space.
+ *
+ * Walks all spaces rather than only the ones the caller can read: a person's
+ * records must not survive in an area the administrator happens not to have
+ * access to.
+ */
+function anonymiseEverywhere(root, username) {
+  var spaces = Object.keys(SPACE_FOLDERS);
+  var counts = { responses: 0, receipts: 0 };
+  var at = new Date().toISOString();
+
+  for (var s = 0; s < spaces.length; s++) {
+    // --- responses: drop the respondent, and say so ---
+    var responsesRoot = findFolder(root, spacePath(spaces[s], 'responses'));
+    if (responsesRoot) {
+      var requestFolders = responsesRoot.getFolders();
+      while (requestFolders.hasNext()) {
+        var folder = requestFolders.next();
+        var files = folder.getFiles();
+        while (files.hasNext()) {
+          var file = files.next();
+          var record;
+          try {
+            record = JSON.parse(file.getBlob().getDataAsString('UTF-8'));
+          } catch (err) {
+            continue;
+          }
+          if (!record.respondent || record.respondent.username !== username) continue;
+
+          record.respondent = null;
+          // It really is anonymous now, and the analysis screens must treat it
+          // that way — including withholding it below the disclosure threshold.
+          record.anonymous = true;
+          record.anonymisedAt = at;
+          file.setContent(JSON.stringify(record, null, 2));
+          counts.responses++;
+        }
+      }
+    }
+
+    // --- receipts: keep the count, lose the name ---
+    var receiptsRoot = findFolder(root, spacePath(spaces[s], 'receipts'));
+    if (receiptsRoot) {
+      var receiptFolders = receiptsRoot.getFolders();
+      while (receiptFolders.hasNext()) {
+        var rFolder = receiptFolders.next();
+        var existing = rFolder.getFilesByName(username + '.json');
+        while (existing.hasNext()) {
+          var receipt = existing.next();
+          var parsed;
+          try {
+            parsed = JSON.parse(receipt.getBlob().getDataAsString('UTF-8'));
+          } catch (err) {
+            parsed = {};
+          }
+          // A new file under a name that identifies nobody; the old one goes.
+          var replacement = 'removed-' + Utilities.getUuid().replace(/-/g, '').slice(0, 12) + '.json';
+          rFolder.createFile(Utilities.newBlob(JSON.stringify({
+            schemaVersion: parsed.schemaVersion || 4,
+            requestId: parsed.requestId || null,
+            username: null,
+            removed: true,
+            submittedAt: parsed.submittedAt || null,
+            anonymisedAt: at
+          }, null, 2), 'application/json', replacement));
+          receipt.setTrashed(true);
+          counts.receipts++;
+        }
+      }
+    }
+  }
+  return counts;
 }
 
 function applyRollover(users, moves, deactivate) {

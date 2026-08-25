@@ -520,6 +520,31 @@ export const db = {
     return this.listReceipts(requestId);
   },
 
+  /**
+   * Replaces a receipt with one that identifies nobody.
+   *
+   * Deleting it outright would drop the completion count, which silently
+   * rewrites history about who took part. The submission still happened; it is
+   * only the name that goes.
+   */
+  async anonymiseReceipt(requestId, username) {
+    const target = String(username).trim().toLowerCase();
+    const existing = await readDoc(INDEXES.receiptFor(requestId, target));
+    await deleteDoc(INDEXES.receiptFor(requestId, target));
+    await writeDoc(
+      `${INDEXES.receiptsFolder(requestId)}/removed-${makeId('rcp')}.json`,
+      {
+        schemaVersion: APP.schemaVersion,
+        requestId,
+        username: null,
+        removed: true,
+        submittedAt: existing?.submittedAt || null,
+        anonymisedAt: nowIso(),
+      },
+    );
+    invalidate(INDEXES.receiptsFolder(requestId));
+  },
+
   async clearReceipt(requestId, username) {
     const target = String(username).trim().toLowerCase();
     await deleteDoc(INDEXES.receiptFor(requestId, target));

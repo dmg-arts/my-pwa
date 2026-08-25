@@ -54,6 +54,26 @@ with an already-decoded profile, exactly as the real callback does. The one thin
 neither can cover is a real click on Google's button; that has to be done by
 hand, once, against a real Client ID.
 
+## The proxy
+
+```bash
+npm run test:proxy
+```
+
+`tests/unit/proxy.test.mjs` reads the script and checks the *shape* of its access
+model. `tests/proxy/behaviour.test.mjs` **runs it** — the real `Code.gs`,
+unmodified, inside a simulated Apps Script environment with an in-memory Drive.
+
+The distinction is the point. Source checks catch a missing guard. They do not
+catch a wrong argument order, an id that escapes its folder, or a role that
+reaches a space through a path nobody thought about — and Apps Script has no
+type checking to catch them either.
+
+What it cannot check is the environment: real quotas, real lock contention
+across concurrent executions, or a deployment misconfigured in the console.
+**A real deployment still has to happen.** This means that deployment will be
+checking those things rather than discovering the logic was wrong.
+
 ## Memory
 
 ```bash

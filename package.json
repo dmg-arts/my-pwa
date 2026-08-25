@@ -1,17 +1,18 @@
 {
   "name": "top-feedback",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "private": true,
   "description": "Student and instructor feedback for AFROTC detachments. Runs from a folder of static files with no build step.",
   "type": "module",
   "scripts": {
     "start": "python3 serve.py",
-    "test": "npm run test:unit && npm run test:e2e",
+    "test": "npm run test:unit && npm run test:proxy && npm run test:e2e",
     "test:unit": "node tests/unit/analysis.test.mjs && node tests/unit/identity.test.mjs && node tests/unit/join.test.mjs && node tests/unit/qr.test.mjs && node tests/unit/proxy.test.mjs && node tests/unit/spaces.test.mjs",
     "test:e2e": "node tests/e2e/run.mjs",
     "icons": "python3 tools/make_icons.py",
     "test:memory": "node tests/memory/leaks.test.mjs",
-    "bench": "node tools/bench/profile.mjs"
+    "bench": "node tools/bench/profile.mjs",
+    "test:proxy": "node tests/proxy/behaviour.test.mjs"
   },
   "devDependencies": {
     "playwright": "^1.62.1"

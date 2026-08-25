@@ -743,14 +743,17 @@ Ranked by what would actually hurt, not by how alarming they sound.
    once against a real folder and watching it work is worth more than every other
    item here combined.
 
-2. **The backup export is where anonymity ends.** `exportBundle()` writes every
-   response *and* every receipt into one unencrypted JSON on somebody's laptop.
-   Receipts carry usernames and timestamps, responses carry timestamps; together
-   they are the correlation attack documented under Known limits, except now in a
-   single file that can be emailed, copied to a USB stick or synced to a personal
-   cloud. The proxy removed Drive access from everyone and this hands it back in
-   file form. Worth deciding whether it should exclude receipts, or refuse to
-   export anonymous responses at all.
+2. ~~**The backup export is where anonymity ends.**~~ **Partly addressed.**
+   Deleting an account now permanently anonymises everything that person left:
+   responses keep their content and lose their respondent, receipts keep their
+   existence — completion counts must still add up — and lose the name. So a
+   departed cadet leaves nothing identifying in a backup.
+
+   **The residual is people still on the roster.** An export still carries their
+   responses and receipts in one file, and receipt timestamps still correlate
+   with response timestamps. That is the same limit documented under Known
+   limits, now portable. Excluding receipts from the export would close it, at
+   the cost of a restore not knowing who had taken part.
 
 3. **One hosted copy is a supply-chain target.** With per-detachment deployments,
    compromising one account reached one detachment. With a single hosted copy and
