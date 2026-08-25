@@ -18,7 +18,7 @@
  *   - **Google Drive sharing.** Reading or writing the det's folder requires an
  *     OAuth token issued to an account that has been granted access. Google
  *     enforces that, not this file.
- *   - **The submission proxy** (still to come), which re-verifies the same token
+ *   - **The submission proxy**, which re-verifies the same token
  *     server-side before it writes anything.
  *
  * Which is a better position than the password scheme it replaces: those hashes

@@ -6,10 +6,14 @@ and no shared database, and writes only to storage the detachment controls.
 
 - **Student** — signs in with their Google account, then sees the feedback
   assigned to them, filtered by school year, semester, class and due date.
-- **Instructor Portal** — behind an instructor sign-in. **Create Feedback**
+- **Instructor Panel** — behind an instructor sign-in. **Create Feedback**
   builds a standardized form; **Feedback Response and Analysis** filters
   responses, runs statistics on the ratings, reads the written answers, and
   screens everything for safety concerns.
+- **Cadre Panel** — the same screen, pointed at the restricted folders. Cadre
+  see feedback instructors cannot; a commander also sees their own area inside
+  it. Not a filtered list: the folders are separate, and the detachment's own
+  server decides who may open which.
 - **Database Administration** — behind an admin sign-in. Keeps the roster of
   Google accounts that may use the app, and what each one is allowed to do.
 - **Settings** — where the database lives, plus light/dark, color-vision
@@ -23,8 +27,11 @@ Two documents live in `docs/`, generated from the real app:
 
 | File | For | Contents |
 |---|---|---|
-| `TOP-Feedback-Setup-Guide.pdf` | Whoever installs it | 16 pages: choosing storage, the Google Cloud setup, publishing, the wizard, accounts, installing on devices, a verification checklist, and troubleshooting. |
-| `TOP-Feedback-Introduction.pptx` | Briefing cadre or a commander | 17 slides with speaker notes: what it does, how each role uses it, and the anonymity and safety design. |
+| `TOP-Feedback-Setup-Guide.pdf` | Whoever installs it | 26 pages: creating the detachment's Google account, the Cloud setup, publishing, the wizard, the submission server, the roster, join links, a verification checklist, and troubleshooting. |
+| `TOP-Feedback-Introduction.pdf` | Briefing cadre or a commander | 21 slides with speaker notes: what it does, how each role uses it, and the anonymity and safety design. |
+
+`privacy.html` ships alongside the app and deploys to the same domain, which is
+where Google's OAuth verification requires it to be.
 
 Both are rebuilt by the scripts in `tools/docs/` — see the README there. Every
 screenshot in them is the live app with seeded data, nothing mocked up, so the
@@ -326,7 +333,7 @@ build refuses to load rather than being silently downgraded. Add one in
 - **Student identity is authenticated.** Cadets sign in, so a submission receipt
   records a verified person rather than a typed claim, and nobody can burn a
   classmate's single submission.
-- **Development mode** (Settings → Access) unlocks both portals on one device so
+- **Development mode** (Settings → Access) unlocks the panels on one device so
   the app can be built out before accounts exist. It is device-local, shown as a
   banner on every gated screen, and must be off before fielding.
 - Nothing is transmitted anywhere except the detachment's own Google Drive.
@@ -558,7 +565,12 @@ js/
   google-identity.js    Google Identity Services: the button and the token check
   join.js               join-link building and parsing; DOM-free, unit-tested
   qr.js                 QR encoder and SVG renderer, no dependencies
-  data-source.js       one place that decides: proxy bundle, or read Drive direct
+  data-source.js        one place that decides: proxy bundle, or read Drive direct
+  panels.js             the two panels, and which folders each one shows
+  spaces.js             how the restricted areas are described to people
+  session.js            the signed-in session and the token proving it
+  export-anon.js        the anonymised backup export
+  audit.js              the activity log, append-only from the app's side
   migrations.js         forward-only schema upgrades, one entry per version
   analysis/
     stats.js            descriptive stats, agreement, clustering, outliers
@@ -572,11 +584,15 @@ js/
     sign-in.js          the Google sign-in gate, shared by all three roles
     home.js             the three entry points + settings
     student.js          username filter, fill-out, one-submission guard
-    instructor.js       portal shell, feedback forms, students, database
+    instructor.js       panel shell (both panels), forms, students, database
     formCreator.js      the standardized form builder
     analysis.js         filtering, statistics, completion tracking
+    people.js           the commander's review, grouped by person
     admin.js            roster maintenance, invite links, audit, rollover
     settings.js         storage, appearance, accessibility, access, about
+privacy.html            the privacy policy, deployed with the app
+service-worker.js       offline shell; every module above is precached
+tools/proxy/Code.gs     the submission server each detachment deploys
 ```
 
 ---
@@ -647,10 +663,10 @@ Roughly in dependency order. The first item gates several of the others.
    this is the largest change the project has had, and it is deliberately its
    own release. Two roles above instructor:
 
-   - **Cadre** — everything the Instructor Portal does, plus a cadre-only area
+   - **Cadre** — everything the Instructor Panel does, plus a cadre-only area
      instructors cannot see. A superset of instructor. Not automatically a
      Database admin; the two are separate and may be held together.
-   - **Commander** — a superuser with no separate portal, but a locked space
+   - **Commander** — a superuser with no separate panel, but a locked space
      holding the feedback requests it creates and the responses to them, plus
      visibility into everything else. **Capped at two at any time**, so command
      transitions overlap. The space belongs to the detachment and the

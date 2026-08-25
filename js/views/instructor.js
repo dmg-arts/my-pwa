@@ -55,10 +55,6 @@ export async function requirePanel(root, panel, render) {
   return renderLogin(root, panel.role, panel.title, render);
 }
 
-/** Kept for callers that only ever meant the instructor one. */
-export const requireInstructor = (root, render) =>
-  requirePanel(root, PANELS.instructor, render);
-
 /* ------------------------------------------------------------------ *
  * Shell
  * ------------------------------------------------------------------ */

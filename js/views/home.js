@@ -11,7 +11,7 @@ import { APP, isDevMode } from '../config.js';
 import { currentUser, activeRoles } from '../auth.js';
 import { PANELS, canOpenPanel } from '../panels.js';
 
-/** Shows whether a portal will ask for credentials before it opens. */
+/** Shows whether a panel will ask for credentials before it opens. */
 function gateBadge() {
   if (isDevMode()) return badge('Unlocked — dev mode', 'warn', 'unlock');
   const session = currentUser();

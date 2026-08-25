@@ -122,6 +122,19 @@ function spaceOf(request) {
   return SPACE_FOLDERS[space] ? space : 'shared';
 }
 
+/** UTF-8 byte length of a string, without allocating a copy of it. */
+function byteLength(text) {
+  var bytes = 0;
+  for (var i = 0; i < text.length; i++) {
+    var code = text.charCodeAt(i);
+    if (code < 0x80) bytes += 1;
+    else if (code < 0x800) bytes += 2;
+    else if (code >= 0xD800 && code <= 0xDBFF) { bytes += 4; i++; }   // surrogate pair
+    else bytes += 3;
+  }
+  return bytes;
+}
+
 /** Ids come from the client, so they are pattern-checked before use in a path. */
 var ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -248,7 +261,13 @@ function doPost(e) {
     }
 
     if (!e || !e.postData || !e.postData.contents) return fail('Empty request.');
-    if (e.postData.contents.length > MAX_BODY_BYTES) return fail('That submission is too large.');
+    // Measured in bytes, not characters. `.length` counts UTF-16 units, so a
+    // body of accented or non-Latin text could be several times the intended
+    // ceiling and still pass — and free-text feedback is exactly where that
+    // shows up.
+    if (byteLength(e.postData.contents) > MAX_BODY_BYTES) {
+      return fail('That submission is too large.');
+    }
 
     var body;
     try {
@@ -935,13 +954,47 @@ function addAccount(users, account) {
   return { users: capped.users, account: account };
 }
 
+/**
+ * Fields a roster edit is allowed to touch.
+ *
+ * The client sends the whole merged account rather than a diff, so this is a
+ * filter rather than a schema. What it keeps out matters more than what it lets
+ * through: `id` is the record's identity, `createdAt` is history, and anything
+ * unrecognised is somebody putting fields into the roster that nothing reads.
+ *
+ * `username` is absent deliberately — see below.
+ */
+var PATCHABLE = ['name', 'email', 'roles', 'active', 'asClass', 'section'];
+
 function patchAccount(users, id, patch) {
+  if (!patch || typeof patch !== 'object') return { error: 'That change is missing.' };
+
+  // Receipts are filed as `receipts/<requestId>/<username>.json`, and the
+  // anonymisation that runs when somebody is removed finds their records the
+  // same way. Renaming a handle would orphan every receipt they hold: their
+  // submissions would stop counting, they could answer the same feedback twice,
+  // and a later deletion would leave their records behind. The app never asks
+  // for it, so it is refused here rather than half-supported.
+  var target = null;
+  for (var t = 0; t < users.length; t++) if (users[t].id === id) target = users[t];
+  if (!target) return { error: 'That account no longer exists.' };
+  if (patch.username !== undefined
+      && String(patch.username).toLowerCase() !== String(target.username || '').toLowerCase()) {
+    return {
+      error: 'A username cannot be changed once feedback has been filed under it. '
+        + 'Remove the account and add it again if it really has to change.'
+    };
+  }
+
   var found = null;
   var next = users.map(function (user) {
     if (user.id !== id) return user;
     found = {};
     for (var key in user) found[key] = user[key];
-    for (var k in patch) found[k] = patch[k];
+    for (var f = 0; f < PATCHABLE.length; f++) {
+      var field = PATCHABLE[f];
+      if (patch[field] !== undefined) found[field] = patch[field];
+    }
     if (patch.email) found.email = normaliseEmail(patch.email);
     found.updatedAt = new Date().toISOString();
     return found;

@@ -153,7 +153,46 @@ await signInAs('maria.reyes@det025.edu', 'instructor');
 await page.goto(`${BASE}#/instructor`, { waitUntil: 'networkidle' });
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForSelector('[role=tablist]', { timeout: 12000 });
-await shot('instructor-portal');
+await shot('instructor-panel');
+
+/* ---------- cadre panel ---------- */
+// The same screen pointed at the restricted folders. Captured as a commander so
+// the commander's own area appears alongside the cadre one, badged — which is
+// the whole point of the picture.
+await page.evaluate(async () => {
+  const m = await import('/js/storage/index.js');
+  const c = await import('/js/config.js');
+  const anchors = { ...c.SCALE_ANCHORS };
+  const form = await m.db.saveForm({
+    id: 'form_cadre', name: 'Cadre climate check', space: 'cadre',
+    sections: [{ title: 'Cadre climate check', items: [
+      { id: 'c1', type: 'scale', label: 'Workload is distributed fairly across cadre', required: true, min: 1, max: 9, anchors },
+    ] }],
+  });
+  for (const [id, title, space, fid] of [
+    ['req_cadre', 'Cadre climate check — Fall term', 'cadre', 'FB-2026-0014'],
+    ['req_cmdr', 'Commander\u2019s assessment — AS400 leadership', 'commander', 'FB-2026-0015'],
+  ]) {
+    await m.db.saveRequest({
+      id, feedbackId: fid, title, eventName: title, formId: form.id, space,
+      asClass: 'AS300', schoolYear: '2026-2027', semester: 'Fall',
+      anonymous: true, status: 'open', assignedUsernames: [],
+    });
+  }
+  const s = JSON.parse(sessionStorage.getItem('topfb.session.v1'));
+  s.roles = ['commander', 'instructor'];
+  sessionStorage.setItem('topfb.session.v1', JSON.stringify(s));
+});
+await page.goto(`${BASE}#/cadre`, { waitUntil: 'networkidle' });
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForSelector('[role=tablist]', { timeout: 12000 });
+await shot('cadre-panel');
+
+// Back to an ordinary instructor for everything that follows.
+await signInAs('maria.reyes@det025.edu', 'instructor');
+await page.goto(`${BASE}#/instructor`, { waitUntil: 'networkidle' });
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForSelector('[role=tablist]', { timeout: 12000 });
 
 await page.goto(`${BASE}#/instructor/create/new`, { waitUntil: 'networkidle' });
 await page.waitForSelector('.qrow', { timeout: 12000 });

@@ -9,7 +9,7 @@
 export const APP = {
   name: 'TOP-Feedback',
   shortName: 'TOP-FB',
-  version: '0.13.0',
+  version: '0.14.0',
   /**
    * Bump when the on-disk record shape changes, and add a matching entry to
    * MIGRATIONS in js/migrations.js. The runner upgrades a detachment's existing
@@ -77,11 +77,11 @@ export const MAX_COMMANDERS = 2;
  *
  * Cadre is a superset of instructor and commander a superset of cadre, so a
  * cadre member opens the Instructor Panel without also being listed as an
- * instructor. Without this a cadre-only account is locked out of the portal it
+ * instructor. Without this a cadre-only account is locked out of the panel it
  * is supposed to have more access to, not less.
  *
  * Deliberately not applied to `admin`: managing the roster and running the
- * portal are separate jobs that happen to be held together often.
+ * panel are separate jobs that happen to be held together often.
  */
 export const ROLE_IMPLIES = {
   [ROLES.cadre]: [ROLES.instructor],

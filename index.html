@@ -34,9 +34,29 @@
     page is pinned by hash. The app itself adds no inline styles: element styles
     go through the CSSOM, which this does not relax.
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'sha256-U9cAmcnerim/b6XbIYNU/FJeLhIyxo+Xlb3hj6aZ/Yo=' https://accounts.google.com https://apis.google.com; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://script.google.com https://script.googleusercontent.com; img-src 'self' data: https://*.googleusercontent.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; font-src 'self'; frame-src https://accounts.google.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'sha256-90VRZkxKmJQAgLPpmcpbxv3y7b4tkrsas7CK/G9pSsU=' https://accounts.google.com https://apis.google.com; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://script.google.com https://script.googleusercontent.com; img-src 'self' data: https://*.googleusercontent.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; font-src 'self'; frame-src https://accounts.google.com;">
 
   <script>
+    // Refuse to run inside someone else's frame.
+    //
+    // `frame-ancestors` is the right tool and it is ignored in a meta tag, which
+    // leaves this. A static host that can set real response headers would make
+    // it redundant — worth remembering when the app moves off GitHub Pages.
+    //
+    // Blanking the document rather than busting out of the frame: navigating the
+    // top window is itself an attack when the framer is innocent, and a sandboxed
+    // iframe blocks it anyway. Refusing to paint is what actually denies a
+    // clickjacker the thing they need, which is a real control under their overlay.
+    if (window.top !== window.self) {
+      document.documentElement.innerHTML =
+        '<body style="font:16px system-ui;padding:2rem;color:#14181f;background:#fff">'
+        + '<h1 style="font-size:1.2rem">TOP-Feedback cannot run here</h1>'
+        + '<p>This page was opened inside another site\u2019s frame, which it will not do.</p>'
+        + '<p><a href="' + window.location.href + '" target="_blank" rel="noopener">Open it directly</a></p>'
+        + '</body>';
+      throw new Error('framed');
+    }
+
     // Resolve the theme before first paint so the app never flashes white on a
     // dark device. Mirrors applySettings() in js/state.js.
     (function () {

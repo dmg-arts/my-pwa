@@ -185,7 +185,7 @@ async function ask(url, idToken, payload) {
   return result;
 }
 
-/** Forms and requests — what the portal lists on arrival. */
+/** Forms and requests — what a panel lists on arrival. */
 export async function fetchCatalog(url, idToken) {
   return (await ask(url, idToken, { action: 'catalog' })).catalog;
 }

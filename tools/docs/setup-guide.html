@@ -148,7 +148,7 @@
   </div>
   <h1>TOP-Feedback</h1>
   <p class="sub">Installation and Setup Guide</p>
-  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Alpha 0.12</p>
+  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Alpha 0.14</p>
   <div class="meta">
     <strong>Before you start</strong>
     Allow about 45 minutes for a first-time setup using Google Drive. You will need
@@ -534,9 +534,15 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 
   <div class="note note--warn">
     <strong class="title">Development mode</strong>
-    <p>This setting unlocks the Instructor Panel and admin console on one device without signing
-    in. It exists for building and demonstrating the app. It must be off before any cadet can reach
-    the device. The app shows a warning banner on every affected screen while it is on.</p>
+    <p>This setting unlocks the Instructor Panel, the Cadre Panel and the admin console on one
+    device without signing in. It exists for building and demonstrating the app. It must be off
+    before any cadet can reach the device, and the app shows a warning banner on every affected
+    screen while it is on.</p>
+    <p><strong>Once your detachment has an administrator account, it can no longer be switched
+    on by somebody who is not signed in as one.</strong> That is deliberate: Settings is reachable
+    without signing in, because display preferences belong to whoever is holding the device, and a
+    switch that turned off sign-in entirely did not belong beside them. Turning it <em>off</em> is
+    never restricted.</p>
   </div>
 </section>
 

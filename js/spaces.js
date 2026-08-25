@@ -3,7 +3,7 @@
  *
  * The server decides what an account may actually reach — this is only how the
  * choice is described to the person making it. Keeping the wording here rather
- * than in the form creator means the portal, the picker and the badges all
+ * than in the form creator means the panels, the picker and the badges all
  * describe the same thing the same way.
  */
 

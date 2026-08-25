@@ -353,7 +353,7 @@ export async function hasAnyAccount() {
 /**
  * Role check used by the route guards.
  *
- * In development mode this returns true so the portals can be built out before
+ * In development mode this returns true so the panels can be built out before
  * a Google Client ID exists. `isDevMode()` is device-local and surfaced as a
  * banner, and Settings refuses to leave it on quietly.
  */

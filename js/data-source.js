@@ -179,7 +179,7 @@ const token = () => {
 
 const proxyUrl = () => connection.get().proxyUrl;
 
-/** Forms and requests together, so the portal opens in one round trip. */
+/** Forms and requests together, so a panel opens in one round trip. */
 export async function loadCatalog() {
   if (usingProxy()) return fetchCatalog(proxyUrl(), token());
   const [forms, requests] = await Promise.all([db.listForms(), db.listRequests()]);

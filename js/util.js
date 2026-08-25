@@ -7,7 +7,6 @@
  * ------------------------------------------------------------------ */
 
 export const $ = (sel, root = document) => root.querySelector(sel);
-export const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
 /**
  * Creates an element. `attrs` keys map to attributes, except:
@@ -179,10 +178,6 @@ export function fromDateInput(value, endOfDay = false) {
 
 export function pluralize(n, one, many = `${one}s`) {
   return `${n} ${n === 1 ? one : many}`;
-}
-
-export function initials(name = '') {
-  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
 }
 
 /** Rounds to `places` and drops trailing zeros. */

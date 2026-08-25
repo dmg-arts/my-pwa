@@ -216,7 +216,15 @@ def picture(s, name, x, y, box_w, box_h, frame=True):
     s.shapes.add_picture(str(path), left, top, w, h)
 
 
-def page_no(s, n):
+def page_no(s):
+    """Numbers the slide by its actual position.
+
+    These used to be passed in by hand, and had already drifted — the deck
+    jumped from 11 to 13 — because inserting a slide means renumbering every
+    one after it and nobody ever does. Counting the slides that exist at the
+    moment this is called cannot drift.
+    """
+    n = len(prs.slides._sldIdLst)
     block(s, Inches(11.9), Inches(6.92), Inches(0.55), Inches(0.3),
           [(str(n), 11, False, FAINT, 0)], align=PP_ALIGN.RIGHT, shrink=False)
 
@@ -282,7 +290,7 @@ def s02_what():
     ]:
         card(s, x, Inches(3.3), w, Inches(2.75), head, body)
         x += w + gap
-    page_no(s, 2)
+    page_no(s)
     notes(s, "These three answer the questions always asked first: where does the data go, what do "
              "I need to run it, and what does it cost.")
 
@@ -306,7 +314,7 @@ def s03_problem():
             "reads the written answers, and flags anything a person needs to see today.",
             15, False, INK, 12),
            ("On a phone. Offline. At no cost.", 15, True, INK, 0)])
-    page_no(s, 3)
+    page_no(s)
     notes(s, "Frame the problem before the product. The last bullet is the one a commander cares "
              "about most.")
 
@@ -347,7 +355,7 @@ def s04_data():
         "Who can read the feedback is a Drive sharing setting.",
         "-Not a setting inside this app. That is the access control that actually matters.",
     ], size=16, gap=16)
-    page_no(s, 4)
+    page_no(s)
     notes(s, "This is the procurement answer: no lock-in, no data processor, no contract. Stress "
              "that folder sharing is the real access control.")
 
@@ -369,7 +377,7 @@ def s05_roles():
         "Database admin",
         "-Keeps the roster. A separate job, often held alongside.",
     ], size=15, gap=9)
-    page_no(s, 5)
+    page_no(s)
     notes(s, "The point of this slide is that access follows rank, and that it is enforced rather "
              "than assumed. Cadre and commander areas are separate folders on the detachment's "
              "Drive, not hidden screens — an instructor cannot reach commander feedback by opening "
@@ -383,7 +391,7 @@ def s06_student_list():
     title(s, "Only what is assigned to you",
           "Filtered by school year, semester, class and due date. Anything already submitted drops off the list.")
     picture(s, "student-list.png", M, Inches(2.75), Inches(11.5), Inches(3.85))
-    page_no(s, 6)
+    page_no(s)
     notes(s, "A cadet sees their own list, not everything the detachment ever issued. Scheduled "
              "forms stay hidden until they open; overdue ones close on their own.")
 
@@ -401,7 +409,7 @@ def s07_scale():
         "Written answers capped at 250 words",
         "-With a live counter as they type.",
     ], size=15, gap=11)
-    page_no(s, 7)
+    page_no(s)
     notes(s, "Neutral sits at 5, the true centre of a 1-9 scale. Instructors see the word and the "
              "number together; cadets only ever see the word.")
 
@@ -420,19 +428,35 @@ def s08_phone():
         "Nothing is lost to a dropped connection",
     ], size=17, gap=15)
     picture(s, "student-mobile.png", Inches(8.5), Inches(0.85), Inches(3.9), Inches(5.9), frame=True)
-    page_no(s, 8)
+    page_no(s)
     notes(s, "Classroom wifi is unreliable — that is the whole reason for the offline queue. "
              "Reading existing feedback still needs a connection.")
 
 
-def s09_portal():
+def s09_panel():
     s = slide()
     eyebrow(s, "For instructors")
     title(s, "Two things to do, both one click away")
-    picture(s, "instructor-portal.png", M, Inches(2.4), Inches(11.5), Inches(4.15))
-    page_no(s, 9)
+    picture(s, "instructor-panel.png", M, Inches(2.4), Inches(11.5), Inches(4.15))
+    page_no(s)
     notes(s, "Create Feedback and Feedback Response and Analysis are the headline actions. The "
              "tabs underneath hold forms, students and database tools.")
+
+
+def s09b_cadre():
+    s = slide()
+    eyebrow(s, "For cadre and the commander")
+    title(s, "The same screen, pointed at the locked folders",
+          "Cadre feedback instructors cannot see \u2014 and the commander's own area inside it.")
+    picture(s, "cadre-panel.png", M, Inches(2.55), Inches(11.5), Inches(4.0))
+    page_no(s)
+    notes(s, "Worth being precise here, because this is the feature senior people ask about. "
+             "It is not a hidden tab and not a permission flag on a record: the cadre and "
+             "commander areas are separate folders, and the detachment's own server is what "
+             "decides who may open which. An instructor does not see a filtered list \u2014 the "
+             "folder is never opened for them, and they cannot reach it through Drive either. "
+             "The badges mark which area each item belongs to. At most two commanders at a "
+             "time, so a change of command overlaps rather than cutting over.")
 
 
 def s10_create():
@@ -451,7 +475,7 @@ def s10_create():
         "Every form gets an ID",
         "-Such as FB-2026-0001, to quote in conversation.",
     ], size=14, gap=10)
-    page_no(s, 10)
+    page_no(s)
     notes(s, "The form is deliberately narrow. That constraint is exactly what makes results "
              "comparable between events, cohorts and terms.")
 
@@ -470,7 +494,7 @@ def s11_ratings():
         "Outliers, found robustly",
         "-Measured against the median, so one extreme rating cannot hide itself.",
     ], size=14, gap=11)
-    page_no(s, 11)
+    page_no(s)
     notes(s, "Point at the distribution in the screenshot. It is bimodal — the mean of 5.75 "
              "describes nobody who was actually in the room.")
 
@@ -509,7 +533,7 @@ def s13_written():
     block(s, Inches(7.05), Inches(6.3), Inches(5.4), Inches(0.5),
           [("Word cloud sized by how many people used a word, not how often it appears.",
             12, False, FAINT, 0)], shrink=False)
-    page_no(s, 13)
+    page_no(s)
     notes(s, "Be straight about the limits in the room: it reads words, not meaning. It decides "
              "what you read first; it does not read for you.")
 
@@ -527,7 +551,7 @@ def s14_safety():
         "-It cannot tell 'we discussed hazing prevention' from 'I was hazed'. A person reads it "
         "and decides.",
     ], size=14, gap=11)
-    page_no(s, 14)
+    page_no(s)
     notes(s, "Say the limits out loud: it matches words, not meaning, and a clear screen is not "
              "proof that nothing was reported. Follow detachment reporting procedures either way.")
 
@@ -561,7 +585,7 @@ def s15_anonymity():
           [("Safety flags are the deliberate exception: a disclosure cannot wait for a third "
             "response, so the app tells you one exists and warns that opening it may identify "
             "the author.", 15, False, INK, 0)])
-    page_no(s, 15)
+    page_no(s)
     notes(s, "Expect this question. The receipt-versus-response separation is the whole design, "
              "and the three-response threshold is the honest limit of the maths.")
 
@@ -572,7 +596,7 @@ def s16_admin():
     title(s, "A roster, not a password list",
           "Everyone signs in with the Google account you already mail them at. Add people by email, one at a time or a whole class by CSV.")
     picture(s, "admin.png", M, Inches(2.8), Inches(11.5), Inches(3.6))
-    page_no(s, 16)
+    page_no(s)
     notes(s, "Worth dwelling on for a cadre audience: there is nothing to distribute and nothing "
              "to reset. Cadets travel in from several schools, so there is no one campus login to "
              "key on, but they all already have a Google account because that is where we mail "
@@ -594,7 +618,7 @@ def s16b_invite():
         "-The account you already mail them at. That is the whole enrolment.",
     ], size=16, gap=12)
     picture(s, "qr-desktop.png", Inches(7.3), Inches(2.4), Inches(5.2), Inches(4.0))
-    page_no(s, 17)
+    page_no(s)
     notes(s, "This slide answers the objection that kills tools like this: 'my cadets will never "
              "set that up'. They do not have to. The link carries the configuration, so there is "
              "no Client ID or folder address in anybody's hands but yours. "
@@ -609,7 +633,7 @@ def s16c_commander():
     title(s, "How is this instructor doing?",
           "The same feedback, grouped by the person it reflects on.")
     picture(s, "people-list.png", M, Inches(2.5), Inches(11.5), Inches(3.9))
-    page_no(s, 18)
+    page_no(s)
     notes(s, "This is the capability a commander will care about most, and the one no general "
              "purpose survey tool offers. Every other screen answers 'how did the event go'. "
              "This answers 'how is this person doing', across a term, without anyone compiling "
@@ -682,7 +706,7 @@ def s17_start():
 
 
 for build in [s01_title, s02_what, s03_problem, s04_data, s05_roles, s06_student_list,
-              s07_scale, s08_phone, s09_portal, s10_create, s11_ratings, s12_split,
+              s07_scale, s08_phone, s09_panel, s09b_cadre, s10_create, s11_ratings, s12_split,
               s13_written, s14_safety, s15_anonymity, s16_admin, s16b_invite,
               s16c_commander, s16d_privacy, s17_start]:
     build()

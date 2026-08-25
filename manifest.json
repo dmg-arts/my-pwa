@@ -29,7 +29,7 @@
       "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Instructor Portal",
+      "name": "Instructor Panel",
       "short_name": "Instructor",
       "description": "Create feedback and read responses",
       "url": "./index.html#/instructor",
