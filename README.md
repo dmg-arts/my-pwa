@@ -733,6 +733,61 @@ the Drive adapter currently caches them, and the Drive adapter would survive onl
 for the self-hosted path. This supersedes the earlier split-client-ID idea rather
 than complementing it.
 
+### Known risks, reviewed 24 Aug 2026
+
+Ranked by what would actually hurt, not by how alarming they sound.
+
+1. **Nothing in the proxy has ever executed.** Role gating, space isolation, the
+   commander cap and the submission lock are all pinned as *source*, not
+   behaviour. Apps Script is a different runtime with no type checking. Deploying
+   once against a real folder and watching it work is worth more than every other
+   item here combined.
+
+2. **The backup export is where anonymity ends.** `exportBundle()` writes every
+   response *and* every receipt into one unencrypted JSON on somebody's laptop.
+   Receipts carry usernames and timestamps, responses carry timestamps; together
+   they are the correlation attack documented under Known limits, except now in a
+   single file that can be emailed, copied to a USB stick or synced to a personal
+   cloud. The proxy removed Drive access from everyone and this hands it back in
+   file form. Worth deciding whether it should exclude receipts, or refuse to
+   export anonymous responses at all.
+
+3. **One hosted copy is a supply-chain target.** With per-detachment deployments,
+   compromising one account reached one detachment. With a single hosted copy and
+   a single Client ID, compromising the hosting account — or a maintainer's
+   laptop — serves JavaScript to every cadet in the programme, in an app that
+   legitimately holds their Google ID token. This risk arrived *with* the
+   centralisation decision. Hardware-key 2FA, branch protection and never
+   deploying from an unattended machine are the controls that matter.
+
+4. **The legal question is unanswered, and is not a technical one.** FERPA
+   governs education records at US universities. Feedback by a student about an
+   instructor probably is not one, but the roster is personal data, this is a
+   federal programme, and Privacy Act or DoD considerations may apply. It needs
+   whoever advises AFROTC, and it needs settling before the beta rather than
+   after, because the answer could change retention or hosting.
+
+5. **There is no way to delete one person's data.** Removing an account drops the
+   roster entry; their responses remain. The privacy policy needs an answer, and
+   part of the honest answer is that anonymous responses cannot be deleted for
+   one person by design.
+
+6. **A rostered cadet can exhaust the detachment's Apps Script quota** by looping
+   the bundle call — roughly 90 minutes of runtime a day, shared by everyone.
+   No rate limiting and no detection. Trivial to do, unlikely to happen, cheap
+   to add later.
+
+7. **The audit trail protects against everyone except the folder owner**, who is
+   now the only account with Drive access. Always true; sharper now.
+
+8. **Sessions last eight hours.** They die with the tab, so a closed browser is
+   safe, but a tab left open in a shared office stays signed in all day.
+
+Checked and clean: the proxy logs no personal data, there are no runtime
+dependencies, hash fragments are not sent in `Referer` so join links do not leak
+through it, and the roll-up index files — which do duplicate response content —
+are filtered out of every proxy read.
+
 ### Open questions, awaiting decisions
 
 These are the ones actually blocking or shaping work, not idle curiosities.
