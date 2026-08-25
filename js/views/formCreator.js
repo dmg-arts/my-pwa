@@ -556,6 +556,7 @@ async function drawCreator(root, params, panel) {
         id: makeId('form'),
         name: nameInput.value.trim(),
         isTemplate: true,
+        space: draft.space || SPACES.shared,
       });
       reusable = await loadReusable();
       toast('Template saved. It will appear under "Start from".', 'ok', 5000);
@@ -595,6 +596,10 @@ async function drawCreator(root, params, panel) {
       description: draft.instructions.trim(),
       feedbackId: draft.feedbackId,
       standardized: true,
+      // The questions live in the same area as the request that asks them.
+      // They have to: the wording of a restricted question is the sensitive
+      // part, more so than the answers it collects.
+      space: draft.space || SPACES.shared,
       sections: [{
         title: draft.eventName.trim() || 'Feedback',
         items: draft.questions.map((q) => (q.type === 'scale'

@@ -15,23 +15,39 @@
  * The cadet taps it, approves Drive access once, and lands signed in. Nothing
  * is typed.
  *
- * WHAT A JOIN LINK IS NOT. It is not a credential, and it must not be treated
- * as one. Everything in it is already public or already an address:
+ * WHAT A JOIN LINK IS NOT. It is not a credential. The Client ID is designed to
+ * be public and ships in the page source of every app that uses one; the folder
+ * ID is an address rather than a key, and reaching the folder still needs Google
+ * to have granted that account access. Being able to connect grants nothing on
+ * its own — the roster decides who may sign in and as what.
  *
- *   - The **Client ID** is designed to be public. It ships in the page source of
- *     every app that uses one.
- *   - The **folder ID** is an address, not a key. Reaching the folder still
- *     requires Google to have granted that account access.
- *   - Being able to *connect* grants nothing on its own. The roster decides who
- *     may sign in and as what, and an unknown email is turned away.
+ * WHAT A JOIN LINK IS, THOUGH, AND THIS PART MATTERS
  *
- * So the link is safe to post in whatever the detachment already uses for
- * comms. It is a shortcut past typing, not past permission.
+ * The `p` parameter names the **submission server**: the address this device
+ * will send every answer to, along with the Google ID token proving who sent
+ * it. That is not an address in the harmless sense. A link carrying somebody
+ * else's `p` points a cadet's device at somebody else's server, which then holds
+ * a valid token for that cadet and can replay it against the real one.
+ *
+ * An earlier version of this comment said a join link was "safe to post
+ * anywhere". That was written before `p` existed and it was wrong afterwards.
+ * A join link should be treated the way a detachment treats any other
+ * instruction it issues: it is fine to send through the channels the det
+ * already uses, and it should not be followed from a source nobody recognises.
+ *
+ * So `p` is parsed strictly here — only an Apps Script deployment, never an
+ * arbitrary address — and `views/join.js` refuses to re-point a device that is
+ * already configured. Neither stops somebody who follows a crafted link on a
+ * fresh device, and nothing in the link can: it is unauthenticated data, and no
+ * check the client performs against an attacker's own endpoint can be trusted.
+ * What they do is remove the silent cases.
  *
  * This module is deliberately DOM-free so the link format is unit-testable, and
  * so a future QR renderer can consume `buildJoinLink()` without dragging a view
  * along with it.
  */
+
+import { isProxyUrl } from './storage/proxy.js';
 
 /** Every Google browser client ID ends this way, so it is not worth carrying. */
 const CLIENT_SUFFIX = '.apps.googleusercontent.com';
@@ -71,12 +87,19 @@ export function shortenProxyUrl(url) {
   return value;
 }
 
-/** Rebuilds the full URL from a deployment id. */
+/**
+ * Rebuilds the full URL from a deployment id.
+ *
+ * Returns `''` for anything that is not a bare deployment id or a real Apps
+ * Script web app address. It used to return any `https://` string unchanged,
+ * which meant a hand-written link could name any host at all as the place to
+ * send a cadet's answers and their sign-in token.
+ */
 export function expandProxyUrl(short) {
   const value = String(short || '').trim();
   if (!value) return '';
-  if (value.startsWith('https://')) return value;
-  return PROXY_PREFIX + value + PROXY_SUFFIX;
+  const full = ID_PATTERN.test(value) ? PROXY_PREFIX + value + PROXY_SUFFIX : value;
+  return isProxyUrl(full) ? full : '';
 }
 
 /**
@@ -134,12 +157,21 @@ export function parseJoinParams(query) {
   const client = expandClientId(query.get('c') || '');
   const folder = String(query.get('f') || '').trim();
   const orgName = String(query.get('n') || '').trim();
-  const proxyUrl = expandProxyUrl(query.get('p') || '');
+  const rawProxy = String(query.get('p') || '').trim();
+  const proxyUrl = expandProxyUrl(rawProxy);
 
   if (!client || !folder) return null;
   if (!ID_PATTERN.test(shortenClientId(client)) || !ID_PATTERN.test(folder)) return null;
 
-  return { clientId: client, folderId: folder, orgName, proxyUrl };
+  // A `p` that will not parse is refused outright rather than dropped. Dropping
+  // it would silently fall back to direct Drive mode, which asks the cadet for
+  // full access to their Google Drive — turning a malformed link into a much
+  // more alarming permission prompt than the one they were expecting.
+  if (rawProxy && !proxyUrl) {
+    return { clientId: client, folderId: folder, orgName, proxyUrl: '', proxyRejected: true };
+  }
+
+  return { clientId: client, folderId: folder, orgName, proxyUrl, proxyRejected: false };
 }
 
 /**

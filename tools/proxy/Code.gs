@@ -43,11 +43,16 @@
  * to render them, and which they have already done. No responses, not even
  * their own.
  *
- * WHAT IT DELIBERATELY DOES NOT DO
+ * IT SERVES CADRE TOO, NOW
  *
- * It serves cadets only. Cadre still reach Drive directly, because reading
- * responses to analyse them requires exactly the access this script removes from
- * cadets. Instructors remain inside the trust boundary.
+ * An earlier version of this comment said cadre still reached Drive directly.
+ * They no longer do. Role checks in a browser cannot lock anything when every
+ * cadre member holds Drive access to the same folder, so the cadre and commander
+ * areas are only genuinely separate because this script decides who may open
+ * which folder. `SPACE_ACCESS` is where that lives, and it is enforced by never
+ * opening the folder rather than by filtering what was read out of it.
+ *
+ * WHAT IT DELIBERATELY DOES NOT DO
  *
  * It does not re-validate answers against the form definition. The client does
  * that, and duplicating the form engine here would mean maintaining it twice.
@@ -56,7 +61,7 @@
  */
 
 /** Bump when the contract with the app changes. Reported by doGet. */
-var PROXY_VERSION = '1.0.0';
+var PROXY_VERSION = '1.1.0';
 
 /** Refuse anything larger; a submission is a few KB at most. */
 var MAX_BODY_BYTES = 96 * 1024;
@@ -72,9 +77,9 @@ var MAX_COMMANDERS = 2;
  * to move.
  */
 var SPACE_FOLDERS = {
-  shared: { requests: ['requests'], responses: ['responses'], receipts: ['receipts'] },
-  cadre: { requests: ['cadre', 'requests'], responses: ['cadre', 'responses'], receipts: ['cadre', 'receipts'] },
-  commander: { requests: ['commander', 'requests'], responses: ['commander', 'responses'], receipts: ['commander', 'receipts'] }
+  shared: { requests: ['requests'], responses: ['responses'], receipts: ['receipts'], forms: ['forms'] },
+  cadre: { requests: ['cadre', 'requests'], responses: ['cadre', 'responses'], receipts: ['cadre', 'receipts'], forms: ['cadre', 'forms'] },
+  commander: { requests: ['commander', 'requests'], responses: ['commander', 'responses'], receipts: ['commander', 'receipts'], forms: ['commander', 'forms'] }
 };
 
 /** Which spaces each role may reach. Students are handled separately. */
@@ -309,20 +314,27 @@ function doPost(e) {
     // document runs under the script lock, which is a stronger guarantee than
     // the client-side compare-and-retry it replaces: two administrators editing
     // the roster at once are serialised here rather than racing and retrying.
-    if (body.action === 'saveForm') return writeRecord(root, 'forms', body.form, 'form_');
+    if (body.action === 'saveForm') return saveFormInSpace(root, account, body.form);
     if (body.action === 'saveRequest') return saveRequestInSpace(root, account, body.request);
-    if (body.action === 'deleteForm') return removeRecord(root, ['forms'], body.formId);
+    if (body.action === 'deleteForm') return removeForm(root, account, body.formId);
     if (body.action === 'deleteRequest') return removeRequest(root, account, body.requestId);
     if (body.action === 'deleteResponse') return removeResponse(root, body, account);
     if (body.action === 'accountCreate') return withRoster(function (users) {
       return addAccount(users, body.account);
-    });
+    }, account, describeAccountChange);
     if (body.action === 'accountUpdate') return withRoster(function (users) {
       return patchAccount(users, body.id, body.patch);
-    });
+    }, account, describeAccountChange);
     if (body.action === 'accountDelete') return removeAccount(root, account, body.id);
     if (body.action === 'rollover') return withRoster(function (users) {
       return applyRollover(users, body.moves, body.deactivate);
+    }, account, function (before, result) {
+      return {
+        action: 'roster.rollover',
+        summary: 'Advanced the year for ' + result.users.length + ' accounts',
+        detail: { moves: body.moves || null, deactivate: body.deactivate !== false },
+        severe: true
+      };
     });
     if (body.action === 'recordAudit') return appendAudit(root, body.entry, account);
 
@@ -401,6 +413,48 @@ function verifyIdToken(token, expectedClientId) {
     return { ok: false, error: 'No sign-in was included with that submission.' };
   }
 
+  // --- 1. cheap local checks, before spending a network call -------------
+  //
+  // This endpoint is public and its URL travels in join links and QR codes, so
+  // anyone can post to it. Every post used to cost one UrlFetch to Google
+  // regardless of how obviously junk the token was, and Apps Script allows a
+  // fixed number of those per day — so a stranger could exhaust a detachment's
+  // quota and take the app down for everyone until midnight.
+  //
+  // These checks cost nothing and reject anything that could never verify. They
+  // are **not** a security boundary: the payload is decoded here without
+  // checking the signature, so a forged token passes this and is caught by the
+  // real check below. Everything asserted here is asserted again against
+  // Google's answer, which is the one that counts.
+  var local = readClaimsWithoutVerifying(token);
+  if (!local) return { ok: false, error: 'Your sign-in could not be read.' };
+  if (ISSUERS.indexOf(String(local.iss)) === -1) {
+    return { ok: false, error: 'That sign-in was not issued by Google.' };
+  }
+  if (local.aud !== expectedClientId) {
+    return { ok: false, error: 'That sign-in was for a different application.' };
+  }
+  if (Number(local.exp) * 1000 < Date.now()) {
+    return { ok: false, error: 'Your sign-in has expired. Sign in again and resubmit.' };
+  }
+
+  // --- 2. already verified this exact token recently? ---------------------
+  // A cadet opening the app makes several calls in a row with one token. The
+  // key is a digest of the whole token, so a hit cannot be forged without
+  // holding the token itself.
+  var cache = tokenCache();
+  var key = tokenCacheKey(token);
+  if (cache) {
+    var hit = cache.get(key);
+    if (hit) {
+      try {
+        var cached = JSON.parse(hit);
+        return { ok: true, email: cached.email, sub: cached.sub };
+      } catch (err) { /* unreadable cache entry; verify properly */ }
+    }
+  }
+
+  // --- 3. the check that actually decides --------------------------------
   var response;
   try {
     response = UrlFetchApp.fetch(
@@ -422,6 +476,7 @@ function verifyIdToken(token, expectedClientId) {
     return { ok: false, error: 'Your sign-in could not be read.' };
   }
 
+  // Re-checked against Google's answer rather than the local decode above.
   // tokeninfo returns every value as a string, including exp and
   // email_verified — comparing them as booleans or numbers silently passes.
   if (claims.aud !== expectedClientId) {
@@ -437,7 +492,62 @@ function verifyIdToken(token, expectedClientId) {
     return { ok: false, error: 'That Google account did not provide an email address.' };
   }
 
-  return { ok: true, email: String(claims.email).trim().toLowerCase(), sub: claims.sub };
+  var verified = {
+    email: String(claims.email).trim().toLowerCase(),
+    sub: claims.sub
+  };
+
+  if (cache) {
+    // Never cache past the token's own expiry, and never longer than Apps
+    // Script allows.
+    var seconds = Math.floor((Number(claims.exp) * 1000 - Date.now()) / 1000);
+    var ttl = Math.max(0, Math.min(seconds, 21600));
+    if (ttl > 30) {
+      try { cache.put(key, JSON.stringify(verified), ttl); } catch (err) { /* cache full */ }
+    }
+  }
+
+  return { ok: true, email: verified.email, sub: verified.sub };
+}
+
+/** Issuers Google mints ID tokens under. */
+var ISSUERS = ['https://accounts.google.com', 'accounts.google.com'];
+
+/**
+ * Decodes a JWT payload **without verifying the signature**.
+ *
+ * Only ever used to decide whether a token is worth spending a network call on.
+ * Nothing it returns is trusted.
+ */
+function readClaimsWithoutVerifying(token) {
+  var parts = String(token).split('.');
+  if (parts.length !== 3 || !parts[1]) return null;
+  try {
+    var bytes = Utilities.base64DecodeWebSafe(parts[1]);
+    return JSON.parse(Utilities.newBlob(bytes).getDataAsString('UTF-8'));
+  } catch (err) {
+    return null;
+  }
+}
+
+/** The script cache, or null where it is unavailable. */
+function tokenCache() {
+  try {
+    return CacheService.getScriptCache();
+  } catch (err) {
+    return null;
+  }
+}
+
+/** A digest of the whole token, so a cache hit needs the token itself. */
+function tokenCacheKey(token) {
+  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, token);
+  var hex = '';
+  for (var i = 0; i < bytes.length; i++) {
+    var b = (bytes[i] + 256) % 256;
+    hex += (b < 16 ? '0' : '') + b.toString(16);
+  }
+  return 'idt_' + hex;
 }
 
 /* ------------------------------------------------------------------ *
@@ -472,12 +582,14 @@ function buildBundle(root, account) {
     }
   }
 
+  // A cadet is answering requests from several spaces at once, so each form is
+  // fetched from wherever its own request lives rather than from one folder.
   var forms = {};
   var wanted = Object.keys(formIds);
   for (var i = 0; i < wanted.length; i++) {
     if (!ID_PATTERN.test(wanted[i])) continue;
-    var form = readJson(root, ['forms'], wanted[i] + '.json');
-    if (form) forms[wanted[i]] = form;
+    var located = locateForm(root, wanted[i]);
+    if (located) forms[wanted[i]] = located.form;
   }
 
   var submitted = [];
@@ -554,6 +666,45 @@ function removeRecord(root, segments, id) {
     while (files.hasNext()) files.next().setTrashed(true);
   }
   return json({ ok: true });
+}
+
+/**
+ * Files a form into a space this account is allowed to write to.
+ *
+ * Same rule as a request, for the same reason: the caller names the area, the
+ * server decides whether they may have it. A form cannot change space once it
+ * exists, because the requests pointing at it would then be reading their
+ * questions out of a folder their own readers cannot reach.
+ */
+function saveFormInSpace(root, account, form) {
+  if (!form || typeof form !== 'object') return fail('That form is missing.');
+
+  var space = spaceOf(form);
+  if (!mayReach(account, space)) {
+    return fail('This account cannot save a form in that area.');
+  }
+
+  var existing = form.id ? locateForm(root, String(form.id)) : null;
+  if (existing && existing.space !== space) {
+    return fail('A form cannot be moved between areas once it exists.');
+  }
+  if (existing && !mayReach(account, existing.space)) {
+    return fail('That form is not available to this account.');
+  }
+
+  form.space = space;
+  return writeRecordAt(root, spacePath(space, 'forms'), form, 'form_');
+}
+
+/** Deletes a form, if this account may reach the area it lives in. */
+function removeForm(root, account, formId) {
+  if (!ID_PATTERN.test(String(formId || ''))) return fail('That id is not valid.');
+  var located = locateForm(root, formId);
+  if (!located) return json({ ok: true });
+  if (!mayReach(account, located.space)) {
+    return fail('That form is not available to this account.');
+  }
+  return removeRecord(root, spacePath(located.space, 'forms'), formId);
 }
 
 /**
@@ -663,7 +814,21 @@ function removeResponse(root, body, account) {
  * administrators editing at once are serialised rather than racing.
  * ------------------------------------------------------------------ */
 
-function withRoster(mutate) {
+/**
+ * Runs a roster change under the lock, and records it.
+ *
+ * @param {function} mutate   users -> { users, account } or { error }
+ * @param {object} actor      the verified account making the change
+ * @param {function} describe (before, result) -> audit entry, or null for none
+ *
+ * The audit entry is written **here**, server-side, from the token's identity.
+ * It used to be written only by the client calling `recordAudit` afterwards,
+ * which meant the one operation worth logging above all others — granting
+ * somebody the commander role — left no trace at all if the caller simply did
+ * not make that second call. The proxy exists because the client is the thing
+ * being guarded against, so a log the client can decline to write is not a log.
+ */
+function withRoster(mutate, actor, describe) {
   var cfg = config();
   var lock = LockService.getScriptLock();
   try {
@@ -675,6 +840,7 @@ function withRoster(mutate) {
   try {
     var root = DriveApp.getFolderById(cfg.folderId);
     var users = readRoster(root);
+    var before = JSON.parse(JSON.stringify(users));
     var result = mutate(users);
     if (result && result.error) return fail(result.error);
 
@@ -683,10 +849,69 @@ function withRoster(mutate) {
       users: result.users,
       updatedAt: new Date().toISOString()
     });
+
+    if (actor && describe) {
+      var entry = describe(before, result);
+      if (entry) appendAudit(root, entry, actor);
+    }
     return json({ ok: true, users: result.users, account: result.account || null });
   } finally {
     lock.releaseLock();
   }
+}
+
+/** The roles an account holds, as a stable sorted string, for comparison. */
+function rolesOf(account) {
+  return ((account && account.roles) || []).slice().sort().join(',');
+}
+
+/**
+ * Describes a roster edit for the log, naming a role change explicitly.
+ *
+ * A change of roles is marked severe because it is the one edit that changes
+ * what somebody can *read* — including, at the top of the range, every
+ * restricted area in the detachment.
+ */
+function describeAccountChange(before, result) {
+  var account = result.account;
+  if (!account) return null;
+
+  var previous = null;
+  for (var i = 0; i < before.length; i++) {
+    if (before[i].id === account.id) previous = before[i];
+  }
+
+  var who = account.email || account.username || account.id;
+  if (!previous) {
+    return {
+      action: 'account.created',
+      summary: 'Added ' + who + ' as ' + (rolesOf(account) || 'no role'),
+      target: who,
+      detail: { roles: account.roles || [] },
+      severe: false
+    };
+  }
+
+  var wasRoles = rolesOf(previous);
+  var nowRoles = rolesOf(account);
+  if (wasRoles !== nowRoles) {
+    return {
+      action: 'account.roles.changed',
+      summary: 'Changed ' + who + ' from [' + (wasRoles || 'none') + '] to ['
+        + (nowRoles || 'none') + ']',
+      target: who,
+      detail: { from: previous.roles || [], to: account.roles || [] },
+      severe: true
+    };
+  }
+
+  return {
+    action: 'account.updated',
+    summary: 'Updated ' + who,
+    target: who,
+    detail: null,
+    severe: false
+  };
 }
 
 function normaliseEmail(value) {
@@ -989,14 +1214,22 @@ function readFolderDocs(root, segments) {
 function readCatalog(root, account) {
   var spaces = spacesFor(account);
   var requests = [];
+  var forms = [];
   for (var i = 0; i < spaces.length; i++) {
     var rows = readFolderDocs(root, spacePath(spaces[i], 'requests'));
     for (var j = 0; j < rows.length; j++) {
       rows[j].space = spaces[i];
       requests.push(rows[j]);
     }
+    // Forms are read per space too. A form in an area this account cannot
+    // reach is not filtered out of a larger list — its folder is never opened.
+    var formRows = readFolderDocs(root, spacePath(spaces[i], 'forms'));
+    for (var k = 0; k < formRows.length; k++) {
+      formRows[k].space = spaces[i];
+      forms.push(formRows[k]);
+    }
   }
-  return { forms: readFolderDocs(root, ['forms']), requests: requests };
+  return { forms: forms, requests: requests };
 }
 
 /**
@@ -1016,6 +1249,24 @@ function readResponses(root, account, requestId) {
 
 function mayReach(account, space) {
   return spacesFor(account).indexOf(space) !== -1;
+}
+
+/**
+ * Finds a form across every space, returning it with the space it was in.
+ *
+ * Forms used to live in one flat `forms/` folder while requests were already
+ * separated, which meant a commander-only request kept its *questions* in a
+ * folder every instructor could read — and the questions are where the
+ * sensitive wording lives. "Describe the complaint against Capt Reyes" is the
+ * disclosure, not the response to it.
+ */
+function locateForm(root, formId) {
+  var spaces = Object.keys(SPACE_FOLDERS);
+  for (var i = 0; i < spaces.length; i++) {
+    var doc = readJsonAt(root, spacePath(spaces[i], 'forms'), formId + '.json');
+    if (doc) return { form: doc, space: spaces[i] };
+  }
+  return null;
 }
 
 /** Finds a request across every space, returning it with the space it was in. */
@@ -1084,19 +1335,26 @@ function readAudit(root, months) {
   return out;
 }
 
-/** Counts only — enough for the portal's summary without shipping records. */
+/**
+ * Counts only — enough for a summary without shipping records.
+ *
+ * Counted across every space, because an overview that silently omits the
+ * restricted areas tells a commander their detachment is quieter than it is.
+ */
 function readStats(root) {
-  var requests = readFolderDocs(root, ['requests']);
+  var spaces = Object.keys(SPACE_FOLDERS);
+  var total = 0;
   var open = 0;
-  for (var i = 0; i < requests.length; i++) {
-    if (!requests[i].status || requests[i].status === 'open') open++;
+  var forms = 0;
+  for (var s = 0; s < spaces.length; s++) {
+    var requests = readFolderDocs(root, spacePath(spaces[s], 'requests'));
+    for (var i = 0; i < requests.length; i++) {
+      total++;
+      if (!requests[i].status || requests[i].status === 'open') open++;
+    }
+    forms += readFolderDocs(root, spacePath(spaces[s], 'forms')).length;
   }
-  return {
-    requests: requests.length,
-    openRequests: open,
-    forms: readFolderDocs(root, ['forms']).length,
-    accounts: readRoster(root).length
-  };
+  return { requests: total, openRequests: open, forms: forms, accounts: readRoster(root).length };
 }
 
 /* ------------------------------------------------------------------ *

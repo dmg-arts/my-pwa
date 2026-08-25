@@ -772,5 +772,144 @@ check('lock contention is reported, not swallowed', () => {
   if (!/busy/i.test(out.error)) throw new Error(out.error);
 });
 
+/* ---------- form questions are space-scoped ---------- */
+
+/**
+ * Forms lived in one flat folder while requests were already separated, so a
+ * commander-only request kept its *questions* somewhere every instructor could
+ * read. The questions are the sensitive part: "describe the complaint against
+ * Capt Reyes" is the disclosure, not the answer to it.
+ */
+
+check('an instructor cannot read a commander-only form', () => {
+  const proxy = detachment();
+  proxy.post({ action: 'saveForm', idToken: as('commander'), form: {
+    id: 'form_locked', name: 'Review', space: 'commander',
+    sections: [{ title: 't', items: [{ id: 'q1', type: 'text', label: 'SECRET-QUESTION' }] }] } });
+
+  const seen = proxy.post({ action: 'catalog', idToken: as('instructor') });
+  if (JSON.stringify(seen.catalog.forms).includes('SECRET-QUESTION')) {
+    throw new Error('the questions of a commander-only form reached an instructor');
+  }
+});
+
+check('an instructor cannot delete a form they cannot see', () => {
+  const proxy = detachment();
+  proxy.post({ action: 'saveForm', idToken: as('commander'), form: {
+    id: 'form_locked', name: 'Review', space: 'commander', sections: [] } });
+
+  const out = proxy.post({ action: 'deleteForm', idToken: as('instructor'), formId: 'form_locked' });
+  if (out.ok) throw new Error('an instructor deleted a commander-only form');
+
+  const still = proxy.post({ action: 'catalog', idToken: as('commander') });
+  if (!still.catalog.forms.some((f) => f.id === 'form_locked')) {
+    throw new Error('the form went anyway');
+  }
+});
+
+check('a form cannot be pulled out of its area by overwriting it', () => {
+  const proxy = detachment();
+  proxy.post({ action: 'saveForm', idToken: as('commander'), form: {
+    id: 'form_locked', name: 'Review', space: 'commander', sections: [] } });
+
+  const out = proxy.post({ action: 'saveForm', idToken: as('instructor'), form: {
+    id: 'form_locked', name: 'hijacked', space: 'shared', sections: [] } });
+  if (out.ok) throw new Error('a form was moved into the shared area by an instructor');
+});
+
+check('a cadet still gets the form for a request in any area', () => {
+  // The scoping must not break the one reader who legitimately spans spaces.
+  const proxy = detachment();
+  proxy.post({ action: 'saveForm', idToken: as('commander'), form: {
+    id: 'form_c', name: 'Commander form', space: 'commander',
+    sections: [{ title: 't', items: [{ id: 'q1', type: 'text', label: 'Q' }] }] } });
+  proxy.post({ action: 'saveRequest', idToken: as('commander'), request: {
+    id: 'req_c', title: 'Commander ask', space: 'commander', formId: 'form_c',
+    status: 'open', asClass: 'AS200' } });
+
+  const bundle = proxy.post({ action: 'bundle', idToken: as('cadet') }).bundle;
+  if (!bundle.requests.some((r) => r.id === 'req_c')) throw new Error('the request was not offered');
+  if (!bundle.forms.form_c) throw new Error('the cadet was offered a request with no form to answer');
+});
+
+/* ---------- roster changes record themselves ---------- */
+
+check('granting a role is recorded by the server, not by the client', () => {
+  // The client writes an audit entry too, but the client is the thing being
+  // guarded against — an attacker calling the API directly simply would not.
+  const proxy = detachment();
+  const admin = proxy.post({ action: 'roster', idToken: as('admin') })
+    .users.find((u) => u.username === 'admin');
+
+  proxy.post({ action: 'accountUpdate', idToken: as('admin'), id: admin.id,
+    patch: { roles: ['admin', 'commander'] } });
+
+  const entries = proxy.post({ action: 'audit', idToken: as('admin'), months: 2 }).entries;
+  const logged = entries.find((e) => e.action === 'account.roles.changed');
+  if (!logged) throw new Error('a role grant left no server-side trace');
+  if (!logged.severe) throw new Error('a role grant was not marked severe');
+  if (logged.actor.username !== 'admin') throw new Error('the actor was not taken from the token');
+  if (!/commander/.test(logged.summary)) throw new Error(logged.summary);
+});
+
+check('creating an account is recorded', () => {
+  const proxy = detachment();
+  proxy.post({ action: 'accountCreate', idToken: as('admin'),
+    account: { id: 'usr_new', username: 'new', email: 'new@det.edu', roles: ['student'] } });
+  const entries = proxy.post({ action: 'audit', idToken: as('admin'), months: 2 }).entries;
+  if (!entries.some((e) => e.action === 'account.created')) {
+    throw new Error('an account appeared on the roster with no record of who added it');
+  }
+});
+
+/* ---------- the endpoint is public, so junk must be cheap ---------- */
+
+check('a token that cannot be real costs no call to Google', () => {
+  // Every post used to spend one UrlFetch whatever it carried, and Apps Script
+  // allows a fixed number per day — so a stranger could take a detachment
+  // offline until midnight by posting nonsense at the public URL.
+  const proxy = detachment();
+  const before = proxy.fetches.length;
+  for (const junk of ['made-up', '', '...', 'a.b.c', 'x'.repeat(400)]) {
+    proxy.post({ action: 'catalog', idToken: junk });
+  }
+  if (proxy.fetches.length !== before) {
+    throw new Error(`${proxy.fetches.length - before} network call(s) spent on unusable tokens`);
+  }
+});
+
+check('a token for another application costs no call either', () => {
+  const proxy = createProxy({ tokens: { other: { ...validToken('x@x.edu'), aud: 'someone-else' } } });
+  seedRoster(proxy.root, [account('x', 'x@x.edu', ['instructor'])]);
+  const before = proxy.fetches.length;
+  const out = proxy.post({ action: 'catalog', idToken: 'other' });
+  if (out.ok) throw new Error('accepted a token minted for another client');
+  if (proxy.fetches.length !== before) throw new Error('spent a call on a token it could reject locally');
+});
+
+check('one token verified repeatedly is verified once', () => {
+  const proxy = detachment();
+  proxy.post({ action: 'catalog', idToken: as('instructor') });
+  const after = proxy.fetches.length;
+  for (let i = 0; i < 4; i++) proxy.post({ action: 'catalog', idToken: as('instructor') });
+  if (proxy.fetches.length !== after) {
+    throw new Error(`re-verified a cached token ${proxy.fetches.length - after} time(s)`);
+  }
+});
+
+check('the local pre-check never replaces the real one', () => {
+  // A token Google has never heard of is well-formed enough to pass every local
+  // check. It must still be refused.
+  const forged = { ...validToken('ghost@det.edu') };
+  const proxy = createProxy({ tokens: {} });   // UrlFetchApp knows no tokens
+  seedRoster(proxy.root, [account('ghost', 'ghost@det.edu', ['admin'])]);
+
+  const b64 = (v) => Buffer.from(JSON.stringify(v)).toString('base64url');
+  const jwt = `${b64({ alg: 'RS256' })}.${b64(forged)}.${Buffer.from('sig').toString('base64url')}`;
+
+  const out = proxy.post({ action: 'roster', idToken: jwt });
+  if (out.ok) throw new Error('a locally well-formed but unverified token was accepted');
+});
+
 console.log(failures ? `\n${failures} behaviour check(s) failed.` : '\nAll proxy behaviour checks passed.');
 process.exit(failures ? 1 : 0);

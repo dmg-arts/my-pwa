@@ -1,6 +1,6 @@
 {
   "name": "top-feedback",
-  "version": "0.12.2",
+  "version": "0.13.0",
   "private": true,
   "description": "Student and instructor feedback for AFROTC detachments. Runs from a folder of static files with no build step.",
   "type": "module",

@@ -8,9 +8,9 @@ import {
   el, icon, field, select, notice, toast, confirmDialog, spinner, badge,
   fmtDateTime, download, modal,
   mount, remount } from '../util.js';
-import { APP, BACKENDS, SEMESTERS, schoolYears, isDevMode, setDevMode } from '../config.js';
+import { APP, BACKENDS, ROLES, SEMESTERS, schoolYears, isDevMode, setDevMode } from '../config.js';
 import { settings, connection, applySettings, markSetupComplete } from '../state.js';
-import { hasAdmin, signOut } from '../auth.js';
+import { hasAdmin, signOut, currentUser } from '../auth.js';
 import { db, adapters, parseFolderId } from '../storage/index.js';
 import { checkProxy } from '../storage/proxy.js';
 import { connectionStatus } from '../data-source.js';
@@ -41,17 +41,44 @@ async function accessSection() {
   const adminExists = await hasAdmin().catch(() => false);
   const on = isDevMode();
 
+  /**
+   * Who may switch this on.
+   *
+   * Development mode makes every role check pass, and this page is deliberately
+   * reachable without signing in — display settings belong to whoever is
+   * holding the device. Together that meant anybody who picked up a detachment
+   * laptop could tick one box and open Database Administration. The proxy still
+   * refused them any actual data, because that needs a token they do not have,
+   * but "the server would have stopped them" is not a reason to leave the door
+   * unlatched.
+   *
+   * So: before a detachment has any administrator, the toggle is open — that is
+   * the state it exists for, building the thing before real accounts exist.
+   * Afterwards, turning it on requires being signed in as one.
+   *
+   * Turning it *off* is never gated. The safe direction should never need a
+   * credential, least of all one the person may not be able to produce.
+   */
+  const session = currentUser();
+  const isAdmin = (session?.roles || []).includes(ROLES.admin);
+  const mayEnable = !adminExists || isAdmin;
+
   const toggle = el('input', {
-    type: 'checkbox', checked: on,
+    type: 'checkbox', checked: on, disabled: !on && !mayEnable,
     onchange: async (e) => {
       if (!e.target.checked) {
         setDevMode(false);
-        toast('Development mode off — the portals now require sign-in.', 'ok');
+        toast('Development mode off — sign-in is required again.', 'ok');
         return navigate('/settings');
       }
+      if (!mayEnable) {
+        e.target.checked = false;
+        return toast('Sign in as a database administrator to turn this on.', 'warn', 6000);
+      }
       const confirmed = await confirmDialog('Turn on development mode?',
-        'The Instructor Panel and Database Administration will open on this device without a '
-        + 'sign-in. Use it only while building — never on a device students can reach.',
+        'The Instructor Panel, the Cadre Panel and Database Administration will open on this '
+        + 'device without a sign-in. Use it only while building — never on a device students '
+        + 'can reach.',
         { confirmLabel: 'Turn on', danger: true });
       if (!confirmed) { e.target.checked = false; return undefined; }
       setDevMode(true);
@@ -77,7 +104,11 @@ async function accessSection() {
       el('span', {},
         el('span', { class: 'check__text' }, 'Development mode (skip sign-in on this device)'),
         el('span', { class: 'check__desc', style: { display: 'block' } },
-          'Device-local. It does not change anyone else\'s access, and it never changes your data.'))),
+          !on && !mayEnable
+            ? 'Locked. This detachment has administrator accounts, so turning this on requires '
+              + 'signing in as one first. It can always be turned off.'
+            : 'Device-local. It does not change anyone else\'s access, and it never changes '
+              + 'your data.'))),
 
     el('p', { class: 'field__hint' },
       'The roster is managed in Database Administration. Everyone signs in with their Google '

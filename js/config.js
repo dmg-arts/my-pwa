@@ -9,7 +9,7 @@
 export const APP = {
   name: 'TOP-Feedback',
   shortName: 'TOP-FB',
-  version: '0.12.2',
+  version: '0.13.0',
   /**
    * Bump when the on-disk record shape changes, and add a matching entry to
    * MIGRATIONS in js/migrations.js. The runner upgrades a detachment's existing

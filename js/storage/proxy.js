@@ -35,6 +35,18 @@ const TIMEOUT_MS = 30000;
 const EXEC_PATTERN = /^https:\/\/script\.google\.com\/(a\/[^/]+\/)?macros\/s\/[A-Za-z0-9_-]+\/exec$/;
 
 /**
+ * True only for a deployed Apps Script web app URL.
+ *
+ * Exported so `js/join.js` can use the same definition rather than keeping a
+ * second copy of the pattern. A join link designates where a cadet's answers
+ * and their Google sign-in are sent, so two patterns that could drift apart is
+ * exactly the wrong shape for this check.
+ */
+export function isProxyUrl(url) {
+  return EXEC_PATTERN.test(String(url || '').trim());
+}
+
+/**
  * Checks the shape of a proxy URL before anyone relies on it.
  *
  * @returns {string|null} an error message, or null when it looks right.

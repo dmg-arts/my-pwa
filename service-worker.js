@@ -13,7 +13,7 @@
  * Bump CACHE_VERSION on release to roll users onto new assets.
  */
 
-const CACHE_VERSION = 'v21';
+const CACHE_VERSION = 'v22';
 const CACHE_NAME = `topfb-shell-${CACHE_VERSION}`;
 
 const SHELL = [

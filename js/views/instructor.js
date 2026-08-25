@@ -181,9 +181,10 @@ async function tabRequests(host, { panel, spaces } = {}) {
   // what is left to the area the person is actually looking at.
   const requests = catalog.requests.filter(inSpaces(shown));
   const { forms } = catalog;
-  // Templates are wording, not feedback — they carry no space and are shared by
-  // design, so that a question set written for cadre use can be reused openly.
-  const templates = forms.filter((f) => f.isTemplate);
+  // Templates carry a space like any other form. A question set written for the
+  // cadre area stays there: the wording is the part worth protecting, and a
+  // template is nothing but wording.
+  const templates = forms.filter((f) => f.isTemplate).filter(inSpaces(shown));
   const state = { status: '', schoolYear: '', semester: '', asClass: '', search: '' };
   const list = el('div', {});
 

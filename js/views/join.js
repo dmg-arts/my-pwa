@@ -39,6 +39,21 @@ export async function renderJoin(root, { query }) {
           icon('settings'), 'Set up manually'))));
   }
 
+  if (config.proxyRejected) {
+    return remount(root, el('div', { class: 'wizard stack' },
+      el('div', { class: 'page-head' },
+        el('h1', { class: 'page-title' }, 'That link is not safe to use')),
+      notice('danger', 'The submission server in this link is not a Google address',
+        el('p', {}, 'A join link tells this device where to send your feedback and your sign-in. '
+          + 'This one names somewhere that is not your detachment\'s Google server, so it has '
+          + 'not been used.'),
+        el('p', {}, 'If you were sent this link by your detachment, tell them — the link is '
+          + 'malformed. If you were not, delete it.')),
+      el('div', { class: 'row', style: { justifyContent: 'center' } },
+        el('button', { type: 'button', class: 'btn', onclick: () => navigate('/home') },
+          icon('arrowLeft'), 'Back to home'))));
+  }
+
   const current = connection.get();
   const alreadyHere = isConfigured()
     && current.backend === BACKENDS.drive
@@ -61,6 +76,42 @@ export async function renderJoin(root, { query }) {
 
   const viaProxy = Boolean(config.proxyUrl);
   const switching = isConfigured() && current.folderId && current.folderId !== config.folderId;
+
+  /**
+   * A link claiming this detachment but naming a different submission server.
+   *
+   * This is the shape the attack takes in practice: send the whole detachment a
+   * link that looks like theirs — right folder, right name — but points the
+   * filing at somewhere else. Every device that follows it keeps working, and
+   * hands a valid Google token to a stranger on each use.
+   *
+   * A genuine change of server does happen, when a detachment redeploys the
+   * script. It is rare, an administrator knows they did it, and re-running setup
+   * is the right way to apply it. Refusing here costs that administrator a
+   * couple of minutes and costs an attacker the whole approach.
+   */
+  const repointing = isConfigured()
+    && current.folderId === config.folderId
+    && Boolean(current.proxyUrl)
+    && current.proxyUrl !== config.proxyUrl;
+
+  if (repointing) {
+    return remount(root, el('div', { class: 'wizard stack' },
+      el('div', { class: 'page-head' },
+        el('h1', { class: 'page-title' }, 'This link does not match your setup')),
+      notice('danger', 'It names a different submission server',
+        el('p', {}, 'This device is already set up for '
+          + `${current.orgName || 'this detachment'}, and this link points the filing of your `
+          + 'feedback somewhere other than where it currently goes. It has not been used.'),
+        el('p', {}, 'If your detachment has just moved its server, an administrator should say '
+          + 'so and you can run setup again. If nobody has told you about a change, do not use '
+          + 'this link and tell your cadre where it came from.')),
+      el('div', { class: 'row', style: { justifyContent: 'center' } },
+        el('button', { type: 'button', class: 'btn', onclick: () => navigate('/student') },
+          icon('student'), 'Open my feedback'),
+        el('button', { type: 'button', class: 'btn btn--ghost', onclick: () => navigate('/home') },
+          'Home'))));
+  }
   const status = el('div', {});
   const joinBtn = el('button', {
     type: 'button', class: 'btn btn--primary btn--block btn--lg', onclick: () => join(),
@@ -162,6 +213,18 @@ export async function renderJoin(root, { query }) {
         viaProxy ? null : el('li', {},
           'Google will warn that this app has not been verified. That is expected. Choose ',
           el('strong', {}, 'Advanced'), ', then continue.')),
+
+      // Named before the button, not after it. This is the one thing in the
+      // link that decides where a cadet's answers and sign-in end up, and it
+      // arrived from whoever sent the link.
+      viaProxy ? el('div', { class: 'notice notice--info' },
+        el('div', {},
+          el('strong', { class: 'notice__title' }, 'Your feedback will be sent here'),
+          el('p', { class: 'mono', style: { wordBreak: 'break-all', margin: '0 0 var(--sp-2)' } },
+            config.proxyUrl),
+          el('p', { style: { margin: '0' } },
+            'This should be your own detachment\'s server. If you did not get this link '
+            + 'from your detachment, do not continue.'))) : null,
 
       joinBtn,
       status,

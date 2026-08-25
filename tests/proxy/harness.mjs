@@ -24,6 +24,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import vm from 'node:vm';
 
 /* ------------------------------------------------------------------ *
@@ -160,9 +161,34 @@ export function createProxy({
   configured = true,
 } = {}) {
   const root = new FakeFolder('TOP-Feedback');
+  const cache = new Map();
   let uuidCounter = 0;
   let lockHeld = false;
   const lockWaits = [];
+
+  /**
+   * The proxy now decodes the token locally before spending a network call, so
+   * a bare label like "tok-cadet" is rejected before it ever reaches the fake
+   * UrlFetchApp. Tests still address tokens by label; each is encoded into a
+   * real JWT here and swapped in by `post`, which means the local decode path
+   * is genuinely exercised rather than stepped around.
+   */
+  const b64url = (value) => Buffer.from(value).toString('base64url');
+  const encodeJwt = (claims) =>
+    `${b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))}.`
+    + `${b64url(JSON.stringify(claims))}.`
+    + b64url('signature-not-checked-here');
+
+  const jwtByLabel = new Map();
+  const byJwt = new Map();
+  for (const [label, claims] of Object.entries(tokens)) {
+    const jwt = encodeJwt(claims);
+    jwtByLabel.set(label, jwt);
+    byJwt.set(jwt, claims);
+  }
+
+  /** Every tokeninfo URL fetched, so a test can count network calls. */
+  const fetches = [];
 
   const properties = configured
     ? { FOLDER_ID: 'folder-1', CLIENT_ID: clientId }
@@ -186,13 +212,29 @@ export function createProxy({
     },
 
     Utilities: {
-      newBlob: (content, type, name) => ({ content, type, name }),
+      newBlob: (content, type, name) => ({
+        content, type, name,
+        // Real Blobs carry bytes; the proxy builds one from base64 output to
+        // read a JWT payload back as text.
+        getDataAsString: () => (typeof content === 'string' ? content : Buffer.from(content).toString('utf8')),
+      }),
+      base64DecodeWebSafe: (value) => [...Buffer.from(String(value), 'base64url')],
+      DigestAlgorithm: { SHA_256: 'SHA_256' },
+      computeDigest: (_algorithm, value) =>
+        [...createHash('sha256').update(String(value)).digest()].map((b) => (b > 127 ? b - 256 : b)),
       // Deterministic, so a test can predict the ids a run produces.
       getUuid: () => `00000000-0000-0000-0000-${String(uuidCounter++).padStart(12, '0')}`,
       formatDate: (date, _tz, format) => {
         const iso = date.toISOString();
         return format === 'yyyy-MM' ? iso.slice(0, 7) : iso;
       },
+    },
+
+    CacheService: {
+      getScriptCache: () => ({
+        get: (key) => (cache.has(key) ? cache.get(key) : null),
+        put: (key, value) => { cache.set(key, value); },
+      }),
     },
 
     LockService: {
@@ -208,8 +250,9 @@ export function createProxy({
 
     UrlFetchApp: {
       fetch(url) {
+        fetches.push(url);
         const token = decodeURIComponent(url.split('id_token=')[1] || '');
-        const claims = tokens[token];
+        const claims = byJwt.get(token);
         return {
           getResponseCode: () => (claims ? 200 : 400),
           getContentText: () => JSON.stringify(claims || { error: 'invalid_token' }),
@@ -231,7 +274,10 @@ export function createProxy({
 
   /** Calls doPost the way a browser would, and parses the answer. */
   const post = (body) => {
-    const output = sandbox.doPost({ postData: { contents: JSON.stringify(body) } });
+    const sent = jwtByLabel.has(body.idToken)
+      ? { ...body, idToken: jwtByLabel.get(body.idToken) }
+      : body;
+    const output = sandbox.doPost({ postData: { contents: JSON.stringify(sent) } });
     return JSON.parse(output.text);
   };
 
@@ -250,12 +296,19 @@ export function createProxy({
     holdLock: () => { lockHeld = true; },
     releaseLock: () => { lockHeld = false; },
     lockWaits,
+    /** tokeninfo calls made so far — the quota an attacker would burn. */
+    fetches,
+    /** The JWT a label encodes to, for tests that need the raw string. */
+    jwtFor: (label) => jwtByLabel.get(label),
   };
 }
 
 /** A token whose claims Google would accept. */
 export function validToken(email, clientId = 'test-client.apps.googleusercontent.com') {
   return {
+    // Real Google ID tokens carry an issuer, and the proxy checks it before
+    // spending a network call. Omitting it here made every token look forged.
+    iss: 'https://accounts.google.com',
     aud: clientId,
     email,
     email_verified: 'true',

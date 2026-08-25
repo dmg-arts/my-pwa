@@ -1802,6 +1802,64 @@ await step('mobile: anchored scale does not overflow', async () => {
 });
 if (shots) await page.screenshot({ path: `${shots}/m4-mobile.png`, fullPage: true });
 
+/* ---------- the development-mode escape hatch ---------- */
+
+/** The dev-mode checkbox specifically, not the first checkbox on the page. */
+const ACCESS_TOGGLE = 'section:has(> .section-title:text-is("Access")) input[type=checkbox]';
+
+await step('development mode cannot be switched on by a passer-by', async () => {
+  // Settings is reachable without signing in, by design — display preferences
+  // belong to whoever is holding the device. The toggle beside them made every
+  // role check pass, so anybody who picked up a detachment laptop could open
+  // Database Administration by ticking one box.
+  await page.evaluate(() => sessionStorage.clear());
+  await page.goto(`${BASE}#/settings`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.section-title:has-text("Access")', { timeout: 12000 });
+
+  // Scoped to the Access card: appearance and defaults render their own
+  // checkboxes above it, and the first on the page is reduce-motion.
+  const toggle = await page.$(`${ACCESS_TOGGLE}`);
+  if (!toggle) throw new Error('the access toggle is gone entirely');
+  if (!(await toggle.isDisabled())) {
+    throw new Error('a signed-out visitor can still enable development mode');
+  }
+
+  const text = await page.textContent('#view');
+  if (!/Locked/.test(text)) throw new Error('nothing explains why it cannot be enabled');
+});
+
+await step('an administrator can still turn it on, and anyone can turn it off', async () => {
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes');
+  await page.goto(`${BASE}#/settings`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.section-title:has-text("Access")', { timeout: 12000 });
+
+  const toggle = await page.$(`${ACCESS_TOGGLE}`);
+  if (await toggle.isDisabled()) throw new Error('an admin was locked out of their own toggle');
+
+  await toggle.click();
+  await page.waitForSelector('dialog.modal', { timeout: 8000 });
+  await page.click('dialog .btn--danger');
+  await page.waitForTimeout(900);
+  if (!(await page.evaluate(() => localStorage.getItem('topfb.devmode.v1') === '1'))) {
+    throw new Error('an admin could not enable development mode');
+  }
+
+  // Off is never gated: the safe direction should not need a credential.
+  await page.evaluate(() => sessionStorage.clear());
+  await page.goto(`${BASE}#/settings`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector(ACCESS_TOGGLE, { timeout: 12000 });
+  const off = await page.$(`${ACCESS_TOGGLE}`);
+  if (await off.isDisabled()) throw new Error('development mode could not be turned off');
+  await off.click();
+  await page.waitForTimeout(900);
+  if (await page.evaluate(() => localStorage.getItem('topfb.devmode.v1') === '1')) {
+    throw new Error('development mode survived being switched off');
+  }
+});
+
 /* ---------- every route renders ---------- */
 
 /**

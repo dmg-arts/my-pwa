@@ -221,5 +221,64 @@ check('the base url drops any route but keeps the subpath', () => {
   if (appBaseUrl(fake) !== BASE) throw new Error(appBaseUrl(fake));
 });
 
+/* ---------- the submission server named in a link ---------- */
+
+/**
+ * The `p` parameter says where a cadet's answers and their Google ID token get
+ * sent. It used to accept any `https://` address, so a hand-written link could
+ * name an attacker's server and every device that followed it would hand over a
+ * valid token on each use.
+ */
+
+check('a link cannot name an address outside Apps Script', () => {
+  for (const bad of [
+    'https://evil.example.com/collect',
+    'http://script.google.com/macros/s/AAA/exec',
+    'https://script.google.com.evil.example/macros/s/AAA/exec',
+    'https://script.google.com/macros/s/AAA/dev',
+    'javascript:alert(1)',
+  ]) {
+    const parsed = parseJoinParams(new URLSearchParams(`c=1-a&f=F&p=${encodeURIComponent(bad)}`));
+    if (parsed.proxyUrl) throw new Error(`accepted ${bad}`);
+    if (!parsed.proxyRejected) throw new Error(`silently dropped ${bad}`);
+  }
+});
+
+check('a rejected server is refused rather than dropped', () => {
+  // Dropping it would fall back to direct Drive, which asks the cadet for full
+  // access to their Google account — a worse outcome than refusing the link.
+  const parsed = parseJoinParams(new URLSearchParams('c=1-a&f=F&p=https://evil.example.com/x'));
+  if (parsed.proxyRejected !== true) throw new Error('a bad server did not raise the flag');
+});
+
+check('an ordinary deployment id still works', () => {
+  const parsed = parseJoinParams(new URLSearchParams('c=1-a&f=F&p=AKfycbwABC-123_x'));
+  if (parsed.proxyUrl !== 'https://script.google.com/macros/s/AKfycbwABC-123_x/exec') {
+    throw new Error(parsed.proxyUrl);
+  }
+  if (parsed.proxyRejected) throw new Error('refused a valid deployment');
+});
+
+check('a link with no server at all is still a valid link', () => {
+  const parsed = parseJoinParams(new URLSearchParams('c=1-a&f=F'));
+  if (parsed.proxyUrl !== '') throw new Error('invented a server');
+  if (parsed.proxyRejected) throw new Error('refused a link that never named one');
+});
+
+check('the builder and the parser agree about what is valid', () => {
+  // These disagreed: the builder refused an off-Google address while the parser
+  // accepted it, so the only thing enforcing the rule was the code an attacker
+  // was never going to run.
+  let builderRefused = false;
+  try {
+    buildJoinLink({ clientId: 'x-abc', folderId: 'y', proxyUrl: 'https://evil.example.com/x' });
+  } catch { builderRefused = true; }
+  const parserRefused = parseJoinParams(
+    new URLSearchParams('c=x-abc&f=y&p=https://evil.example.com/x')).proxyRejected;
+  if (builderRefused !== parserRefused) {
+    throw new Error(`builder refused: ${builderRefused}, parser refused: ${parserRefused}`);
+  }
+});
+
 console.log(failures ? `\n${failures} join check(s) failed.` : '\nAll join checks passed.');
 process.exit(failures ? 1 : 0);
