@@ -14,7 +14,7 @@ import { renderSetup } from './views/setup.js';
 import { renderJoin } from './views/join.js';
 import { renderInvite } from './views/invite.js';
 import { renderStudentList, renderStudentFill } from './views/student.js';
-import { renderInstructor } from './views/instructor.js';
+import { renderInstructor, renderCadre } from './views/instructor.js';
 import { renderFormCreator } from './views/formCreator.js';
 import { renderAdmin } from './views/admin.js';
 import { renderSettings } from './views/settings.js';
@@ -40,9 +40,13 @@ route('/student/fill/:id', ({ outlet, params }) => renderStudentFill(outlet, { p
   { guard: requireSetup, title: 'Feedback' });
 
 route('/instructor', ({ outlet, query }) => renderInstructor(outlet, { query }),
-  { guard: requireSetup, title: 'Instructor Portal' });
-route('/instructor/create/:id', ({ outlet, params }) => renderFormCreator(outlet, { params }),
+  { guard: requireSetup, title: 'Instructor Panel' });
+route('/instructor/create/:id', ({ outlet, params, query }) => renderFormCreator(outlet, { params, query }),
   { guard: requireSetup, title: 'Create Feedback' });
+
+// The same screen as /instructor, pointed at the cadre and commander folders.
+route('/cadre', ({ outlet, query }) => renderCadre(outlet, { query }),
+  { guard: requireSetup, title: 'Cadre Panel' });
 
 route('/admin/invite', ({ outlet }) => renderInvite(outlet),
   { guard: requireSetup, title: 'Invite' });
@@ -50,9 +54,6 @@ route('/admin', ({ outlet, query }) => renderAdmin(outlet, { query }),
   { guard: requireSetup, title: 'Database Administration' });
 
 route('/settings', ({ outlet }) => renderSettings(outlet), { title: 'Settings' });
-
-// The portal moved; keep old bookmarks and shortcuts working.
-route('/cadre', () => navigate('/instructor', { replace: true }));
 
 /* ------------------------------------------------------------------ *
  * app bar

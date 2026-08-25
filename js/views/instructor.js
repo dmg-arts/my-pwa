@@ -1,11 +1,17 @@
 /**
- * Instructor Portal. Everything behind an instructor sign-in: creating
- * feedback, reading responses, analysis, accounts, and database maintenance.
+ * The working panel: creating feedback, reading responses, analysis, students,
+ * and database maintenance.
+ *
+ * This file renders **both** the Instructor Panel and the Cadre Panel. They are
+ * the same screen pointed at different folders — see `js/panels.js` for why
+ * they are separate panels rather than one list with a lock badge. Everything
+ * below takes a `panel` and asks it which spaces to show; nothing branches on
+ * "is this the cadre one", because the moment it did the two would drift.
  *
  * Sign-in identifies who is at the keyboard on a shared device. It is not a
- * security boundary — anyone with access to the org's Drive folder can read the
- * JSON directly. Real access control is Google's folder sharing, which is
- * exactly the point of letting each detachment own its own Drive.
+ * security boundary — the proxy re-verifies the token server-side and decides
+ * what any account may actually read. Hiding a tab here is tidiness; the
+ * refusal that matters happens somewhere the browser cannot reach.
  */
 
 import {
@@ -16,12 +22,13 @@ import {
   SEMESTERS, AS_CLASSES, REQUEST_STATUS, ROLES, schoolYears, isDevMode,
 } from '../config.js';
 import { connection } from '../state.js';
-import { hasRole, currentUser, signOut, listStudents } from '../auth.js';
+import { hasRole, currentUser, activeRoles, signOut, listStudents } from '../auth.js';
 import { db } from '../storage/index.js';
 import { navigate } from '../router.js';
 import { renderAnalysis } from './analysis.js';
 import { renderLogin } from './sign-in.js';
 import { isRestricted, spaceShort } from '../spaces.js';
+import { PANELS, panelSpacesFor, canOpenPanel, inSpaces } from '../panels.js';
 import {
   loadCatalog, saveForm, saveRequest, deleteForm, deleteRequest, writeAudit,
   canDoMaintenance, connectionStatus, loadOverview,
@@ -42,54 +49,84 @@ const TABS = [
 /** The tabs this account may see, in order. */
 const tabsFor = () => TABS.filter((tab) => !tab.role || hasRole(tab.role));
 
-/** Wraps an instructor view in the sign-in gate. */
-export async function requireInstructor(root, render) {
-  if (hasRole(ROLES.instructor)) return render();
-  return renderLogin(root, ROLES.instructor, 'Instructor Portal', render);
+/** Wraps a panel in the sign-in gate. */
+export async function requirePanel(root, panel, render) {
+  if (hasRole(panel.role)) return render();
+  return renderLogin(root, panel.role, panel.title, render);
 }
+
+/** Kept for callers that only ever meant the instructor one. */
+export const requireInstructor = (root, render) =>
+  requirePanel(root, PANELS.instructor, render);
 
 /* ------------------------------------------------------------------ *
  * Shell
  * ------------------------------------------------------------------ */
 
-export async function renderInstructor(root, { query }) {
-  return requireInstructor(root, async () => {
+/**
+ * Renders one panel.
+ *
+ * @param {object} panel  One of `PANELS`. Decides the title, the sign-in gate,
+ *   and — through `panelSpacesFor` — which records every tab below can see.
+ */
+export async function renderPanel(root, { query }, panel) {
+  return requirePanel(root, panel, async () => {
     remount(root, );
     const activeTab = query.get('tab') || 'requests';
     const host = el('div', {}, spinner());
     const session = currentUser();
+    const spaces = panelSpacesFor(panel, activeRoles());
 
     const tabBar = el('div', { class: 'tabs', role: 'tablist' });
     for (const tab of tabsFor()) {
       mount(tabBar, el('button', {
         type: 'button', class: 'tab', role: 'tab',
         'aria-selected': String(tab.id === activeTab),
-        onclick: () => navigate(`/instructor?tab=${tab.id}`),
+        onclick: () => navigate(`${panel.path}?tab=${tab.id}`),
       }, tab.label));
     }
 
-    mount(root, 
+    // The other panel, for anyone who holds both. Cadre work in both places all
+    // day and should not have to go via home to change which one they are in.
+    const other = panel.id === PANELS.cadre.id ? PANELS.instructor : PANELS.cadre;
+    const canSwitch = canOpenPanel(other, activeRoles());
+
+    mount(root,
       el('div', { class: 'page-head row row--between row--wrap' },
         el('div', {},
-          el('h1', { class: 'page-title' }, 'Instructor Portal'),
+          el('h1', { class: 'page-title' }, panel.title),
           el('p', { class: 'page-sub' },
             session ? `${session.name} · ${connection.get().orgName || 'Detachment'}`
               : connection.get().orgName || 'Detachment')),
         el('div', { class: 'row row--wrap' },
+          canSwitch && el('button', {
+            type: 'button', class: 'btn btn--sm',
+            onclick: () => navigate(other.path),
+          }, icon(other.id === PANELS.cadre.id ? 'lock' : 'cadre'), other.title),
           session && el('button', {
             type: 'button', class: 'btn btn--sm',
             onclick: () => { signOut(); toast('Signed out.', 'ok'); navigate('/home'); },
           }, icon('lock'), 'Sign out'))),
 
       isDevMode() && notice('warn', 'Development mode is on',
-        el('p', {}, 'This portal is unlocked without a sign-in on this device. '
+        el('p', {}, 'This panel is unlocked without a sign-in on this device. '
           + 'Turn it off in Settings before fielding the app.')),
+
+      // What this panel holds, so nobody has to infer it from the title. The
+      // cadre one especially: knowing instructors cannot see this list is the
+      // difference between filing something here and filing it wrongly.
+      panel.id === PANELS.cadre.id && notice('info', 'Restricted area',
+        el('p', {}, spaces.length > 1
+          ? 'Feedback here is visible to cadre and the commander. The commander’s '
+            + 'own area is included below and marked. Instructors see none of it.'
+          : 'Feedback here is visible to cadre and the commander only. Instructors '
+            + 'cannot see it, and cannot reach it through Drive either.')),
 
       // The two primary actions, called out above the tabs.
       el('div', { class: 'role-grid', style: { marginBottom: 'var(--sp-5)' } },
         el('button', {
           type: 'button', class: 'role-card',
-          onclick: () => navigate('/instructor/create/new'),
+          onclick: () => navigate(`/instructor/create/new?panel=${panel.id}`),
         },
           el('span', { class: 'role-card__icon' }, icon('plus')),
           el('span', { class: 'role-card__title' }, 'Create Feedback'),
@@ -97,7 +134,7 @@ export async function renderInstructor(root, { query }) {
             'Build a standardized form, choose the class or event, and issue it to students.')),
         el('button', {
           type: 'button', class: 'role-card',
-          onclick: () => navigate('/instructor?tab=analysis'),
+          onclick: () => navigate(`${panel.path}?tab=analysis`),
         },
           el('span', { class: 'role-card__icon' }, icon('chart')),
           el('span', { class: 'role-card__title' }, 'Feedback Response and Analysis'),
@@ -107,10 +144,11 @@ export async function renderInstructor(root, { query }) {
       tabBar,
       host);
 
+    const context = { panel, spaces };
     const renderers = {
       requests: tabRequests,
-      analysis: (node) => renderAnalysis(node),
-      people: (node) => renderPeople(node),
+      analysis: (node) => renderAnalysis(node, { spaces }),
+      people: (node) => renderPeople(node, { spaces }),
       students: tabStudents,
       database: tabDatabase,
     };
@@ -118,20 +156,33 @@ export async function renderInstructor(root, { query }) {
       // A tab this account cannot see is not merely hidden from the bar — asking
       // for it by URL lands on the default rather than rendering it.
       const allowed = tabsFor().some((tab) => tab.id === activeTab);
-      await (allowed ? renderers[activeTab] || tabRequests : tabRequests)(host);
+      await (allowed ? renderers[activeTab] || tabRequests : tabRequests)(host, context);
     } catch (err) {
       remount(host, notice('danger', 'Could not load this tab', el('p', {}, err.message)));
     }
   });
 }
 
+export const renderInstructor = (root, options) =>
+  renderPanel(root, options, PANELS.instructor);
+
+export const renderCadre = (root, options) =>
+  renderPanel(root, options, PANELS.cadre);
+
 /* ------------------------------------------------------------------ *
  * Tab: requests
  * ------------------------------------------------------------------ */
 
-async function tabRequests(host) {
+async function tabRequests(host, { panel, spaces } = {}) {
+  const view = panel || PANELS.instructor;
+  const shown = spaces || view.spaces;
   const [catalog, counts] = await Promise.all([loadCatalog(), db.responseCounts()]);
-  const { requests, forms } = catalog;
+  // The proxy already refused anything this account cannot read. This narrows
+  // what is left to the area the person is actually looking at.
+  const requests = catalog.requests.filter(inSpaces(shown));
+  const { forms } = catalog;
+  // Templates are wording, not feedback — they carry no space and are shared by
+  // design, so that a question set written for cadre use can be reused openly.
   const templates = forms.filter((f) => f.isTemplate);
   const state = { status: '', schoolYear: '', semester: '', asClass: '', search: '' };
   const list = el('div', {});
@@ -153,7 +204,7 @@ async function tabRequests(host) {
         message: requests.length ? null : 'Create one to put a form in front of your students.',
         action: el('button', {
           type: 'button', class: 'btn btn--primary',
-          onclick: () => navigate('/instructor/create/new'),
+          onclick: () => navigate(`/instructor/create/new?panel=${view.id}`),
         }, icon('plus'), 'Create feedback'),
       }));
       return;
@@ -169,7 +220,7 @@ async function tabRequests(host) {
 
       mount(rows, el('button', {
         type: 'button', class: 'list__item',
-        onclick: () => navigate(`/instructor/create/${request.id}`),
+        onclick: () => navigate(`/instructor/create/${request.id}?panel=${view.id}`),
       },
         el('span', { class: 'list__main' },
           el('span', { class: 'list__title', style: { display: 'block' } },
@@ -200,7 +251,7 @@ async function tabRequests(host) {
       el('h2', { class: 'section-title', style: { margin: '0' } }, 'Feedback forms'),
       el('button', {
         type: 'button', class: 'btn btn--primary',
-        onclick: () => navigate('/instructor/create/new'),
+        onclick: () => navigate(`/instructor/create/new?panel=${view.id}`),
       }, icon('plus'), 'Create feedback')),
     el('div', { class: 'card', style: { padding: 'var(--sp-4)', marginBottom: 'var(--sp-4)' } },
       el('div', { class: 'filters' },
@@ -219,7 +270,7 @@ async function tabRequests(host) {
           oninput: (e) => { state.search = e.target.value; draw(); },
         })))),
     list,
-    templateLibrary(templates));
+    templateLibrary(templates, view));
   draw();
 }
 
@@ -228,7 +279,7 @@ async function tabRequests(host) {
  * feedback. Keeping the wording identical between terms is the whole reason
  * the results are comparable at all.
  */
-function templateLibrary(templates) {
+function templateLibrary(templates, view) {
   const section = el('section', { class: 'card stack', style: { marginTop: 'var(--sp-5)' } },
     el('h3', { class: 'section-title' }, `Question templates (${templates.length})`),
     el('p', { class: 'muted' },
@@ -252,7 +303,7 @@ function templateLibrary(templates) {
       el('span', { class: 'list__aside' },
         el('button', {
           type: 'button', class: 'btn btn--sm',
-          onclick: () => navigate('/instructor/create/new'),
+          onclick: () => navigate(`/instructor/create/new?panel=${view.id}`),
         }, icon('plus'), 'Use'),
         el('button', {
           type: 'button', class: 'btn btn--sm btn--ghost', title: 'Delete template',
@@ -262,7 +313,7 @@ function templateLibrary(templates) {
               + 'unaffected.', { confirmLabel: 'Delete', danger: true }))) return;
             await deleteForm(template.id);
             toast('Template deleted.', 'ok');
-            navigate('/instructor?tab=requests');
+            navigate(`${view.path}?tab=requests`);
           },
         }, icon('trash')))));
   }
@@ -339,7 +390,8 @@ async function tabStudents(host) {
  * Tab: database
  * ------------------------------------------------------------------ */
 
-async function tabDatabase(host) {
+async function tabDatabase(host, { panel } = {}) {
+  const view = panel || PANELS.instructor;
   const conn = connection.get();
   // In proxy mode there is no storage adapter on this device at all, so the
   // counts come from the server and maintenance is somebody else's job.
@@ -463,7 +515,7 @@ async function tabDatabase(host) {
         detail: counts,
       });
       toast(`Imported ${counts.requests} requests, ${counts.responses} responses, ${counts.forms} forms.`, 'ok', 6000);
-      navigate('/instructor?tab=database');
+      navigate(`${view.path}?tab=database`);
     } catch (err) {
       toast(`Import failed: ${err.message}`, 'danger', 8000);
     }
@@ -483,7 +535,7 @@ async function tabDatabase(host) {
       reason: 'Confirmed by typing DELETE',
     });
     toast('All records deleted.', 'ok');
-    return navigate('/instructor?tab=database');
+    return navigate(`${view.path}?tab=database`);
   }
 
   remount(host, 

@@ -25,8 +25,9 @@ import {
   writeAudit, loadRoster,
 } from '../data-source.js';
 import { spaceChoicesFor, spaceHint } from '../spaces.js';
+import { panelFor } from '../panels.js';
 import { listStudents, currentUser } from '../auth.js';
-import { requireInstructor } from './instructor.js';
+import { requirePanel } from './instructor.js';
 import { record, AUDIT } from '../audit.js';
 import { navigate } from '../router.js';
 import { renderForm } from '../forms.js';
@@ -51,13 +52,19 @@ export function resetFormDraft() {
   draft = null;
 }
 
-export async function renderFormCreator(root, { params = {} } = {}) {
+export async function renderFormCreator(root, { params = {}, query = null } = {}) {
+  // Which panel the creator was opened from. It decides the back link and the
+  // area a new form defaults into, so creating feedback from the Cadre Panel
+  // files it as cadre material without anyone having to remember to set it.
+  const panel = panelFor(query?.get('panel'));
+
   // Deep-linkable route, so it carries its own gate — reaching it directly
-  // must not skip the sign-in the portal shell enforces.
-  return requireInstructor(root, () => drawCreator(root, params));
+  // must not skip the sign-in the panel shell enforces. The gate is the panel's
+  // own: opening a cadre form by URL asks for cadre, not merely instructor.
+  return requirePanel(root, panel, () => drawCreator(root, params, panel));
 }
 
-async function drawCreator(root, params) {
+async function drawCreator(root, params, panel) {
   remount(root, spinner('Loading…'));
 
   const editingId = params.id && params.id !== 'new' ? params.id : null;
@@ -122,7 +129,7 @@ async function drawCreator(root, params) {
       feedbackId: makeFeedbackId(requests.map((r) => r.feedbackId)),
       eventName: '',
       asClass: '',
-      space: SPACES.shared,
+      space: panel.defaultSpace,
       subject: '',
       schoolYear: currentSchoolYear(),
       semester: currentSemester(),
@@ -144,8 +151,8 @@ async function drawCreator(root, params) {
     mount(root, 
       el('button', {
         type: 'button', class: 'btn btn--ghost btn--sm',
-        onclick: () => navigate('/instructor?tab=requests'),
-      }, icon('arrowLeft'), 'Instructor Portal'),
+        onclick: () => navigate(`${panel.path}?tab=requests`),
+      }, icon('arrowLeft'), panel.title),
 
       el('div', { class: 'page-head row row--between row--wrap' },
         el('div', {},
@@ -506,7 +513,7 @@ async function drawCreator(root, params) {
           });
           resetFormDraft();
           toast('Deleted.', 'ok');
-          navigate('/instructor?tab=requests');
+          navigate(`${panel.path}?tab=requests`);
         },
       }, icon('trash'), 'Delete'),
       el('span', { class: 'spacer' }),
@@ -637,7 +644,7 @@ async function drawCreator(root, params) {
       toast(status === 'open'
         ? `${request.feedbackId} issued to students.`
         : `${request.feedbackId} saved as a draft.`, 'ok');
-      return navigate('/instructor?tab=requests');
+      return navigate(`${panel.path}?tab=requests`);
     } catch (err) {
       if (err.conflict) return resolveConflict(err, status);
       return toast(`Could not save: ${err.message}`, 'danger', 8000);

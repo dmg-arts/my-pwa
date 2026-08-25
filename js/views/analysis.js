@@ -21,6 +21,7 @@ import {
   deleteResponse as removeResponse, writeAudit,
 } from '../data-source.js';
 import { isRestricted, spaceShort } from '../spaces.js';
+import { inSpaces } from '../panels.js';
 import { renderForm, formItems } from '../forms.js';
 import { navigate } from '../router.js';
 import { hasRole } from '../auth.js';
@@ -47,7 +48,7 @@ function anchorsInScope(rows, formsById) {
   return undefined;
 }
 
-export async function renderAnalysis(host) {
+export async function renderAnalysis(host, { spaces = null } = {}) {
   remount(host, spinner('Gathering feedback…'));
 
   let requests;
@@ -61,6 +62,14 @@ export async function renderAnalysis(host) {
     ({ requests, forms } = catalog);
     responses = allResponses;
     students = roster;
+    // Analysis is scoped to the panel it was opened from. Mixing a cadre-only
+    // form into the detachment averages would leak its existence through the
+    // numbers even though the responses themselves stayed hidden.
+    if (spaces) {
+      requests = requests.filter(inSpaces(spaces));
+      const inScope = new Set(requests.map((r) => r.id));
+      responses = responses.filter((r) => inScope.has(r.requestId));
+    }
   } catch (err) {
     remount(host, notice('danger', 'Could not load feedback', el('p', {}, err.message)));
     return;
@@ -924,7 +933,7 @@ export async function renderAnalysis(host) {
             notice('danger', 'It contains language flagged by the safety screen',
               el('p', {}, `Flagged for: ${categories}.`),
               el('p', {}, 'Feedback that may report hazing, harassment, discrimination or a '
-                + 'cadet in crisis cannot be removed from the Instructor Portal. If it needs to '
+                + 'cadet in crisis cannot be removed from the Instructor Panel. If it needs to '
                 + 'go, a database administrator can remove it and the deletion will be recorded '
                 + 'against their name.')),
             el('p', { class: 'field__hint' },

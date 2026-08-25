@@ -300,7 +300,7 @@ async function renderConsole(root) {
         }, icon('lock'), 'Sign out'))),
 
     isDevMode() && notice('warn', 'Development mode is on',
-      el('p', {}, 'The Instructor Portal and these admin screens are unlocked on this device. '
+      el('p', {}, 'The Instructor Panel and these admin screens are unlocked on this device. '
         + 'Turn it off in Settings before fielding the app.')),
 
     accounts.filter((a) => a.roles?.includes(ROLES.admin) && a.active !== false).length === 1
@@ -746,7 +746,7 @@ async function schemaCard() {
 
 const ROLE_HINTS = {
   student: 'Can be targeted by feedback forms, and submits them once.',
-  instructor: 'Opens the Instructor Portal to create feedback and read responses.',
+  instructor: 'Opens the Instructor Panel to create feedback and read responses.',
   cadre: 'Everything an instructor can do, plus a cadre-only area instructors cannot '
     + 'see — a separate folder, not a hidden screen.',
   commander: 'Sees every area including its own, which nobody else can read. '

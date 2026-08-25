@@ -211,7 +211,7 @@ await step('a feedback form is issued', async () => {
   await page.evaluate(() => sessionStorage.clear());
   await page.goto(`${BASE}#/instructor/create/new`, { waitUntil: 'networkidle' });
   await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForSelector('.page-title:has-text("Instructor Portal")', { timeout: 8000 });
+  await page.waitForSelector('.page-title:has-text("Instructor Panel")', { timeout: 8000 });
   if (await page.$('.qrow')) throw new Error('the form creator opened without a sign-in');
 
   await signInAs(ADMIN_EMAIL, 'Capt Reyes', 'instructor');
@@ -445,7 +445,7 @@ await step('home shows all three entries', async () => {
   await page.goto(`${BASE}#/home`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.role-grid', { timeout: 8000 });
   const text = await page.textContent('.role-grid');
-  for (const want of ['Student', 'Instructor Portal', 'Database Administration']) {
+  for (const want of ['Student', 'Instructor Panel', 'Database Administration']) {
     if (!text.includes(want)) throw new Error(`missing "${want}"`);
   }
 });
@@ -518,11 +518,98 @@ await step('analysis renders with completion tracking', async () => {
   if (!/submitted/.test(text)) throw new Error('no submission counts');
 });
 
-await step('old /cadre bookmark redirects to the portal', async () => {
+/* ---------- the cadre panel ---------- */
+
+/** Rewrites the signed-in session's roles, the way a differently-rostered account would arrive. */
+const setRoles = (roles) => page.evaluate((r) => {
+  const s = JSON.parse(sessionStorage.getItem('topfb.session.v1'));
+  s.roles = r;
+  sessionStorage.setItem('topfb.session.v1', JSON.stringify(s));
+}, roles);
+
+await step('an instructor cannot open the Cadre Panel', async () => {
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes', 'instructor');
+  await setRoles(['instructor']);
   await page.goto(`${BASE}#/cadre`, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(800);
-  const hash = await page.evaluate(() => location.hash);
-  if (!hash.startsWith('#/instructor')) throw new Error(`landed on ${hash}`);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(1000);
+  const text = await page.textContent('#view');
+  // The sign-in gate, not the panel.
+  if (/Restricted area/.test(text)) throw new Error('an instructor reached the cadre panel');
+});
+
+await step('the two panels show different feedback', async () => {
+  // One request in each area, same everything else.
+  await page.evaluate(async () => {
+    const m = await import('/js/storage/index.js');
+    for (const [id, title, space] of [
+      ['req_shared_x', 'DETACHMENT ITEM', 'shared'],
+      ['req_cadre_x', 'CADRE ITEM', 'cadre'],
+      ['req_cmdr_x', 'COMMANDER ITEM', 'commander'],
+    ]) {
+      await m.db.saveRequest({
+        id, title, space, status: 'open', formId: null,
+        asClass: 'AS200', schoolYear: '2026-2027', semester: 'Fall',
+        createdAt: new Date().toISOString(),
+      });
+    }
+  });
+
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes', 'instructor');
+  await setRoles(['cadre']);
+  await page.goto(`${BASE}#/instructor?tab=requests`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+  const instructorList = await page.textContent('#view');
+  if (!/DETACHMENT ITEM/.test(instructorList)) throw new Error('detachment item missing from Instructor Panel');
+  if (/CADRE ITEM/.test(instructorList)) {
+    throw new Error('cadre-only feedback is still listed in the Instructor Panel');
+  }
+
+  await page.goto(`${BASE}#/cadre?tab=requests`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+  const cadreList = await page.textContent('#view');
+  if (!/CADRE ITEM/.test(cadreList)) throw new Error('cadre item missing from Cadre Panel');
+  if (/DETACHMENT ITEM/.test(cadreList)) {
+    throw new Error('the Cadre Panel is showing detachment feedback');
+  }
+  // A cadre member is not a commander.
+  if (/COMMANDER ITEM/.test(cadreList)) {
+    throw new Error('a cadre member saw the commander area');
+  }
+});
+
+await step('a commander sees their own area inside the Cadre Panel', async () => {
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes', 'instructor');
+  await setRoles(['commander']);
+  await page.goto(`${BASE}#/cadre?tab=requests`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+  const text = await page.textContent('#view');
+  if (!/COMMANDER ITEM/.test(text)) throw new Error('the commander cannot see their own area');
+  if (!/CADRE ITEM/.test(text)) throw new Error('the commander lost sight of cadre material');
+  if (/DETACHMENT ITEM/.test(text)) throw new Error('detachment feedback leaked into the Cadre Panel');
+});
+
+await step('creating from the Cadre Panel files it as cadre', async () => {
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes', 'instructor');
+  await setRoles(['cadre']);
+  await page.goto(`${BASE}#/instructor/create/new?panel=cadre`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+  // The area picker should already be on the cadre option, not the default.
+  const chosen = await page.evaluate(() => {
+    const selects = [...document.querySelectorAll('select')];
+    const picker = selects.find((s) => [...s.options].some((o) => o.value === 'cadre'));
+    return picker ? picker.value : null;
+  });
+  if (chosen !== 'cadre') throw new Error(`new cadre form defaulted to "${chosen}"`);
+  // And the way back leads to the panel it came from.
+  const backLinks = await page.$$eval('button', (n) => n.map((b) => b.textContent.trim()));
+  if (!backLinks.some((t) => /^Cadre Panel$/.test(t))) {
+    throw new Error(`no back link to the Cadre Panel; buttons: ${backLinks.slice(0, 6).join(' | ')}`);
+  }
 });
 
 

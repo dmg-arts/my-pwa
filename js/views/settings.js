@@ -50,7 +50,7 @@ async function accessSection() {
         return navigate('/settings');
       }
       const confirmed = await confirmDialog('Turn on development mode?',
-        'The Instructor Portal and Database Administration will open on this device without a '
+        'The Instructor Panel and Database Administration will open on this device without a '
         + 'sign-in. Use it only while building — never on a device students can reach.',
         { confirmLabel: 'Turn on', danger: true });
       if (!confirmed) { e.target.checked = false; return undefined; }
@@ -65,11 +65,11 @@ async function accessSection() {
 
     on
       ? notice('warn', 'Development mode is on',
-        el('p', {}, 'Anyone using this device can open the Instructor Portal and Database '
+        el('p', {}, 'Anyone using this device can open the Instructor Panel and Database '
           + 'Administration without signing in. Turn this off before fielding the app.'))
       : notice('ok', 'Sign-in is enforced',
         el('p', {}, adminExists
-          ? 'The Instructor Portal and Database Administration require an account.'
+          ? 'The Instructor Panel and Database Administration require an account.'
           : 'No administrator account exists yet — the first person to open Database '
             + 'Administration will be asked to create one.')),
 

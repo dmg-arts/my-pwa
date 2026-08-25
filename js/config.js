@@ -9,7 +9,7 @@
 export const APP = {
   name: 'TOP-Feedback',
   shortName: 'TOP-FB',
-  version: '0.11.1',
+  version: '0.12.0',
   /**
    * Bump when the on-disk record shape changes, and add a matching entry to
    * MIGRATIONS in js/migrations.js. The runner upgrades a detachment's existing
@@ -76,7 +76,7 @@ export const MAX_COMMANDERS = 2;
  * Roles that carry another role's access.
  *
  * Cadre is a superset of instructor and commander a superset of cadre, so a
- * cadre member opens the Instructor Portal without also being listed as an
+ * cadre member opens the Instructor Panel without also being listed as an
  * instructor. Without this a cadre-only account is locked out of the portal it
  * is supposed to have more access to, not less.
  *
@@ -115,7 +115,7 @@ export const ROLE_LABELS = {
 };
 
 /**
- * Development mode leaves the Instructor Portal and Database Administration
+ * Development mode leaves the Instructor Panel and Database Administration
  * unlocked so the app can be built out before real accounts exist. It is
  * device-local, loudly indicated in the UI, and must be off before fielding.
  */

@@ -30,6 +30,7 @@ import {
   mount, remount } from '../util.js';
 import { PRIVACY, ROLES, ROLE_LABELS, nearestAnchor, scaleValues } from '../config.js';
 import { describe, histogram } from '../analysis/stats.js';
+import { inSpaces } from '../panels.js';
 import { loadCatalog, loadAllResponses, loadRoster } from '../data-source.js';
 import { spaceShort, isRestricted } from '../spaces.js';
 import { navigate } from '../router.js';
@@ -104,7 +105,7 @@ function staffFrom(roster) {
   return roster.filter((a) => (a.roles || []).some((r) => r !== ROLES.student));
 }
 
-export async function renderPeople(host) {
+export async function renderPeople(host, { spaces = null } = {}) {
   remount(host, spinner('Gathering feedback by person…'));
 
   let catalog;
@@ -118,10 +119,16 @@ export async function renderPeople(host) {
     return remount(host, notice('danger', 'Could not load feedback', el('p', {}, err.message)));
   }
 
+  // Scoped to the panel this was opened from, so a commander reviewing cadre
+  // material is not silently shown detachment feedback in the same totals.
+  const requests = spaces ? catalog.requests.filter(inSpaces(spaces)) : catalog.requests;
+  const inScope = new Set(requests.map((r) => r.id));
+  if (spaces) responses = responses.filter((r) => inScope.has(r.requestId));
+
   const formsById = new Map(catalog.forms.map((f) => [f.id, f]));
   const staff = staffFrom(roster);
   const staffByUsername = new Map(staff.map((a) => [a.username, a]));
-  const groups = groupByPerson(catalog.requests, responses, formsById, staffByUsername);
+  const groups = groupByPerson(requests, responses, formsById, staffByUsername);
 
   // Staff with no feedback at all still belong on the list: "nobody has asked
   // for feedback about this instructor" is itself worth a commander knowing.

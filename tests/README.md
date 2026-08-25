@@ -88,7 +88,7 @@ collection, or the number measures when the collector last ran rather than what
 is held.
 
 It matters more here than usual because a detachment office laptop sits open on
-the Instructor Portal all day while someone moves between screens dozens of
+the Instructor Panel all day while someone moves between screens dozens of
 times. A few hundred kilobytes leaked per navigation is invisible in a test and
 fatal by mid-afternoon.
 

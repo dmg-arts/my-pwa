@@ -148,7 +148,7 @@
   </div>
   <h1>TOP-Feedback</h1>
   <p class="sub">Installation and Setup Guide</p>
-  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Alpha 0.11</p>
+  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Alpha 0.12</p>
   <div class="meta">
     <strong>Before you start</strong>
     Allow about 45 minutes for a first-time setup using Google Drive. You will need
@@ -534,7 +534,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 
   <div class="note note--warn">
     <strong class="title">Development mode</strong>
-    <p>This setting unlocks the Instructor Portal and admin console on one device without signing
+    <p>This setting unlocks the Instructor Panel and admin console on one device without signing
     in. It exists for building and demonstrating the app. It must be off before any cadet can reach
     the device. The app shows a warning banner on every affected screen while it is on.</p>
   </div>
@@ -612,13 +612,21 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     <tr><th style="width:22%">Role</th><th>Can do</th></tr>
     <tr><td><strong>Student</strong></td><td>See feedback assigned to them and submit it once.</td></tr>
     <tr><td><strong>Instructor</strong></td><td>Create feedback, read responses, run analysis.</td></tr>
-    <tr><td><strong>Cadre</strong></td><td>Everything an instructor can, plus a <em>cadre-only area</em> instructors cannot see. Not a hidden screen &mdash; a separate folder they have no access to.</td></tr>
-    <tr><td><strong>Commander</strong></td><td>Sees every area including its own, which nobody else can read. Also gets <em>By instructor</em>, which groups feedback by the person it reflects on. <strong>At most two at a time</strong>, so a change of command overlaps.</td></tr>
+    <tr><td><strong>Cadre</strong></td><td>Everything an instructor can, plus the <em>Cadre Panel</em> &mdash; the same screen again, holding feedback instructors cannot see. Not a hidden tab: a separate folder they have no access to.</td></tr>
+    <tr><td><strong>Commander</strong></td><td>Sees every area including its own, which nobody else can read. Their own area appears inside the Cadre Panel, marked. Also gets <em>By instructor</em>, which groups feedback by the person it reflects on. <strong>At most two at a time</strong>, so a change of command overlaps.</td></tr>
     <tr><td><strong>Database admin</strong></td><td>Add and remove people, maintain the database, delete feedback &mdash; always with a recorded reason.</td></tr>
   </table>
 
   <div class="note">
-    <strong class="title">Cadre and Commander are about who can read what</strong>
+    <strong class="title">Two panels, not one list</strong>
+    <p>The <strong>Instructor Panel</strong> holds the detachment's ordinary feedback. The
+    <strong>Cadre Panel</strong> is the same screen &mdash; same tabs, same filters, same form
+    creator &mdash; pointed at the restricted folders. Anyone holding cadre can move between them
+    with a button in the top corner, and feedback created from a panel is filed into that panel's
+    area automatically.</p>
+    <p>They are separate rather than one list with a lock icon for a practical reason: the
+    detachment list can then be read on a shared screen without checking who is standing behind
+    you.</p>
     <p>When someone creates feedback they choose which area it belongs to. Detachment feedback is
     visible to every instructor; cadre-only feedback is not; commander-only feedback is visible to
     the commander alone. These are separate folders on Drive, enforced by the submission server,
@@ -762,15 +770,15 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     <li><strong>The Drive folder contains the app's folders</strong> — open it in Drive and confirm you can see <code>config</code>, <code>users</code>, <code>forms</code> and the rest.</li>
     <li><strong>A test cadet can sign in with their own Google account</strong> and see feedback assigned to them &mdash; on their own phone, not yours, reached by tapping a join link.</li>
     <li><strong>That cadet was never asked for access to their Google Drive.</strong> If they were, the submission server is not configured on their device — re-send the join link.</li>
-    <li><strong>A test submission appears</strong> in the Instructor Portal under Responses &amp; Analysis.</li>
-    <li><strong>You have exported a backup</strong> from Instructor Portal → Database → Export backup.</li>
+    <li><strong>A test submission appears</strong> in the Instructor Panel under Responses &amp; Analysis.</li>
+    <li><strong>You have exported a backup</strong> from Instructor Panel → Database → Export backup.</li>
     <li><strong>You have taken one anonymised export</strong> and looked at it, so you know what leaves the detachment when you share one.</li>
   </ul>
 
   <h3>Moving trial data into Drive</h3>
   <p>If you evaluated using <em>This device only</em>:</p>
   <ol class="steps">
-    <li>On the trial device, go to <em>Instructor Portal → Database → Export backup</em> and save the JSON file.</li>
+    <li>On the trial device, go to <em>Instructor Panel → Database → Export backup</em> and save the JSON file.</li>
     <li>Go to <em>Settings → Re-run setup</em> and connect to Google Drive as in Part 4.</li>
     <li>Return to <em>Database → Import backup</em>, choose the file, and select <em>Merge</em>.</li>
   </ol>
@@ -778,7 +786,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
   <h3>Routine maintenance</h3>
   <table>
     <tr><th style="width:26%">Task</th><th style="width:20%">How often</th><th>Where</th></tr>
-    <tr><td>Export a backup</td><td>End of each term</td><td>Instructor Portal → Database</td></tr>
+    <tr><td>Export a backup</td><td>End of each term</td><td>Instructor Panel → Database</td></tr>
     <tr><td>Review accounts, deactivate leavers</td><td>Start of each term</td><td>Database Administration</td></tr>
     <tr><td>Rebuild indexes (only if counts look wrong)</td><td>Rarely</td><td>Database Administration</td></tr>
   </table>

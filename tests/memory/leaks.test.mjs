@@ -9,7 +9,7 @@
  * gone**, and **things that grow without a ceiling**.
  *
  * Both matter more than usual for this app. A detachment office laptop is left
- * open on the Instructor Portal for a working day, and a cadre member moves
+ * open on the Instructor Panel for a working day, and a cadre member moves
  * between forms, analysis, the roster and back dozens of times. A leak of a few
  * hundred kilobytes per navigation is invisible in a test and fatal by
  * mid-afternoon.

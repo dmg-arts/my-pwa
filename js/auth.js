@@ -362,3 +362,17 @@ export function hasRole(role) {
   return effectiveRoles(currentUser()?.roles || []).includes(role);
 }
 
+/**
+ * The roles to treat this session as holding, implications included.
+ *
+ * Anything asking "which areas may I show?" must use this rather than reading
+ * `currentUser().roles` directly, so it agrees with `hasRole` about development
+ * mode. In dev mode there is usually no session at all, so a panel that read
+ * the session would be let through the gate and then render empty — a gate
+ * saying yes and the content saying no.
+ */
+export function activeRoles() {
+  if (isDevMode()) return Object.values(ROLES);
+  return effectiveRoles(currentUser()?.roles || []);
+}
+
