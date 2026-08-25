@@ -395,7 +395,7 @@ def s07_scale():
     picture(s, "student-form.png", M, Inches(2.35), Inches(7.1), Inches(4.3))
     points(s, Inches(8.4), Inches(2.5), Inches(4.1), Inches(4.0), [
         "Nine ratings, every one named",
-        "-Detrimental, Significant, Unfavorable, Minor, Neutral, Slight, Favorable, Major, Outstanding.",
+        "-Detrimental, Alarming, Unfavorable, Minor, Neutral, Slight, Favorable, Major, Outstanding.",
         "No numbers on screen",
         "-A visible number invites people to average it in their head while answering.",
         "Written answers capped at 250 words",

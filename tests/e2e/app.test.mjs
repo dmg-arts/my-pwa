@@ -262,7 +262,7 @@ await step('students choose words, never numbers', async () => {
   const labels = await page.$$eval(
     '.q[data-qtype=scale] .scale--words .scale__opt span',
     (n) => n.map((x) => x.textContent.trim()));
-  const expected = ['Detrimental', 'Significant', 'Unfavorable', 'Minor', 'Neutral',
+  const expected = ['Detrimental', 'Alarming', 'Unfavorable', 'Minor', 'Neutral',
     'Slight', 'Favorable', 'Major', 'Outstanding'];
   const firstNine = labels.slice(0, 9);
   if (JSON.stringify(firstNine) !== JSON.stringify(expected)) {

@@ -10,7 +10,7 @@
  *      minimum it needs and returns null rather than guessing.
  *
  *   2. **Ordinal data.** A 1–9 rating scale is ordered, but the gap between
- *      Detrimental and Significant is not provably the same as the gap between
+ *      Detrimental and Alarming is not provably the same as the gap between
  *      Favorable and Major. Means are still the most legible summary and cadre
  *      expect them, so they are reported — alongside median and a proper
  *      ordinal agreement measure, which does not assume equal spacing.

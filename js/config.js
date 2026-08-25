@@ -9,7 +9,7 @@
 export const APP = {
   name: 'TOP-Feedback',
   shortName: 'TOP-FB',
-  version: '0.12.0',
+  version: '0.12.1',
   /**
    * Bump when the on-disk record shape changes, and add a matching entry to
    * MIGRATIONS in js/migrations.js. The runner upgrades a detachment's existing
@@ -240,10 +240,17 @@ export const FORM_RULES = {
  *
  * The vocabulary alternates by design. Odd points carry the direction —
  * Detrimental, Unfavorable, Neutral, Favorable, Outstanding — and even points
- * carry the magnitude of the step either side of centre, paired symmetrically:
- * Significant (2) mirrors Major (8), Minor (4) mirrors Slight (6). Position in
- * the row supplies the direction for the magnitude words, which is why the
- * options are always rendered in numeric order and never re-sorted.
+ * carry the magnitude of the step either side of centre: Minor (4) mirrors
+ * Slight (6), and Major (8) is the strong step on the favourable side.
+ * Position in the row supplies the direction for the magnitude words, which is
+ * why the options are always rendered in numeric order and never re-sorted.
+ *
+ * Point 2 deliberately breaks that symmetry. It was "Significant", the mirror
+ * of Major (8), and out of context that word reads as neutral or even positive
+ * — a cadet scanning the row had only the position to tell them it was the
+ * second-worst option available. "Alarming" carries its own direction, so the
+ * harshest end of the scale cannot be picked by mistake. Losing the 2/8 pairing
+ * is the price, and it is worth paying at the end where a misread matters most.
  *
  * This object drives the UI directly: one option is rendered per entry, so
  * changing the vocabulary or the number of points needs no code change.
@@ -254,7 +261,7 @@ export const FORM_RULES = {
  */
 export const SCALE_ANCHORS = {
   1: 'Detrimental',
-  2: 'Significant',
+  2: 'Alarming',
   3: 'Unfavorable',
   4: 'Minor',
   5: 'Neutral',

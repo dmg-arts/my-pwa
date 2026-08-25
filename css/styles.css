@@ -54,7 +54,8 @@ button { background: none; border: 0; cursor: pointer; }
 
   --text:          #14181f;
   --text-muted:    #5a6572;
-  --text-faint:    #8a939f;
+  --text-faint:    #626b78;  /* AA on every light surface: 5.4:1 on white,
+                                5.0:1 on the page, 4.6:1 on the elevated tint */
   --text-on-accent:#ffffff;
 
   --accent:        #1c4f8b;
@@ -83,8 +84,13 @@ button { background: none; border: 0; cursor: pointer; }
 
   --text:          #e8edf4;
   --text-muted:    #9aa6b4;
-  --text-faint:    #6d7885;
-  --text-on-accent:#ffffff;
+  --text-faint:    #808b99;  /* 4.9:1 on the dark ground; #6d7885 was 3.8:1 */
+  /* Dark text on the accent, not white. The dark theme's accent is a bright
+     blue so that it still reads as a link and an active tab against a dark
+     ground — and white on that blue is only 3.2:1. Flipping the text instead
+     of dulling the accent keeps both jobs legible: 5.7:1 here, and the accent
+     stays bright enough to use as text elsewhere. */
+  --text-on-accent:#0c1219;
 
   --accent:        #4d94e0;
   --accent-hover:  #6aa8e8;
@@ -222,6 +228,12 @@ h1[tabindex="-1"]:focus { outline: none; }
   width: 100%; max-width: var(--content-max);
   margin: 0 auto;
   padding: var(--sp-5) var(--sp-4) var(--sp-7);
+  /* `.app` is a grid, so this is a grid item, and grid items default to
+     `min-width: auto` — they refuse to shrink below their min-content width.
+     One `white-space: nowrap` tab bar inside is then enough to push the whole
+     page wider than a phone, which is exactly what happened: 390px viewport,
+     570px page, every screen with tabs scrolling sideways. */
+  min-width: 0;
 }
 
 .appfoot {
@@ -375,7 +387,12 @@ h1[tabindex="-1"]:focus { outline: none; }
   border-color: var(--danger);
 }
 
-.check { display: flex; align-items: flex-start; gap: var(--sp-3); cursor: pointer; }
+.check {
+  display: flex; align-items: flex-start; gap: var(--sp-3); cursor: pointer;
+  /* The label is the tap target, not the 17px box it contains. A single-line
+     row came out a shade under the WCAG 2.5.8 minimum of 24px. */
+  min-height: 1.5rem;
+}
 .check input { margin-top: 0.25rem; width: 1.05rem; height: 1.05rem; flex: none; accent-color: var(--accent); }
 .check__text { font-size: var(--step-0); }
 .check__desc { font-size: var(--step--1); color: var(--text-muted); }
@@ -439,6 +456,17 @@ button.list__item:hover { background: var(--surface-hover); }
 .list__meta { font-size: var(--step--1); color: var(--text-muted); margin-top: 2px; }
 .list__aside { flex: none; display: flex; align-items: center; gap: var(--sp-2); }
 .list__chev { color: var(--text-faint); width: 1.1rem; height: 1.1rem; flex: none; }
+
+/* On a phone the aside never yields — `flex: none` is what keeps the badges
+   readable on a desktop — so the title is squeezed into whatever is left,
+   which is about a hundred pixels. "Cadre climate check — Fall term" then
+   wraps over five lines beside two badges sitting in open space. Below this
+   width the row stacks and the title gets the full measure. */
+@media (max-width: 34rem) {
+  .list__item { flex-direction: column; align-items: stretch; gap: var(--sp-2); }
+  .list__aside { width: 100%; }
+  .list__chev { margin-left: auto; }
+}
 
 /* ---------- badges / pills ---------- */
 .badge {
@@ -802,6 +830,24 @@ dialog.modal::backdrop { background: rgb(0 0 0 / 0.5); }
   color: var(--text-muted);
   overflow-wrap: anywhere;
   hyphens: auto;
+}
+
+/* Nine anchor words across a phone gives each column about 38px, which turns
+   "Detrimental" into "Detri-mental" and "Unfavourable" into three stacked
+   fragments. The anchors are the point of the scale, so keep the words whole
+   and let the chart scroll — the same move the tab bar already makes.
+
+   The padding is load-bearing: `.hist__count` sits at `top: -1.25rem`, and a
+   scroll container clips on both axes, so without room above it the counts
+   would vanish the moment this became scrollable. */
+@media (max-width: 34rem) {
+  .hist {
+    overflow-x: auto;
+    grid-auto-columns: minmax(4rem, 1fr);
+    padding-top: 1.5rem;
+  }
+  /* Whole words, and enough air that neighbouring anchors do not read as one. */
+  .hist__label { overflow-wrap: normal; hyphens: manual; padding: 0 0.2rem; }
 }
 
 /* ---------- word cloud ---------- */
