@@ -18,7 +18,7 @@ import {
 } from '../util.js';
 import { APP, BACKENDS } from '../config.js';
 import { connection, markSetupComplete, isConfigured } from '../state.js';
-import { db, adapters } from '../storage/index.js';
+import { db, adapters, clearCache } from '../storage/index.js';
 import { parseJoinParams } from '../join.js';
 import { navigate } from '../router.js';
 
@@ -86,6 +86,8 @@ export async function renderJoin(root, { query }) {
         connectedAt: new Date().toISOString(),
       });
       markSetupComplete(true);
+      // A different folder means every cached record belongs to somewhere else.
+      clearCache();
       toast('Ready. Sign in to see your feedback.', 'ok');
       return navigate('/student');
     }
@@ -119,6 +121,7 @@ export async function renderJoin(root, { query }) {
         connectedAt: new Date().toISOString(),
       });
       markSetupComplete(true);
+      clearCache();
 
       toast(`Connected to ${org.orgName || 'the detachment'}.`, 'ok');
       navigate('/student');

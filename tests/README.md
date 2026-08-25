@@ -54,6 +54,40 @@ with an already-decoded profile, exactly as the real callback does. The one thin
 neither can cover is a real click on Google's button; that has to be done by
 hand, once, against a real Client ID.
 
+## Memory
+
+```bash
+python3 serve.py --port 8123 --no-open &
+npm run test:memory
+```
+
+JavaScript has no manual memory management, so this checks the two failure modes
+that do exist: **retention past the point something should be gone**, and
+**growth without a ceiling**. Every heap reading is taken after a forced
+collection, or the number measures when the collector last ran rather than what
+is held.
+
+It matters more here than usual because a detachment office laptop sits open on
+the Instructor Portal all day while someone moves between screens dozens of
+times. A few hundred kilobytes leaked per navigation is invisible in a test and
+fatal by mid-afternoon.
+
+The most valuable check is not a leak at all. **A cache that survives a sign-out
+serves the previous person's records to the next one**, and shared laptops make
+that the ordinary case rather than an edge one. That test exists because the bug
+did: the cadet bundle outlived `sessionStorage`, so signing out and back in as
+someone else showed the first person's feedback.
+
+## Performance
+
+```bash
+npm run bench
+```
+
+Reports payload, cold start, heap, and how analysis scales with volume — under
+normal CPU and throttled to stand in for a cheap Android. Absolute numbers are
+one machine's; the shape is the point.
+
 ## When you change something
 
 - Touched `js/analysis/` → run the unit file first, it is instant.

@@ -27,7 +27,7 @@ import {
   deleteResponseViaProxy, createAccountViaProxy, updateAccountViaProxy,
   deleteAccountViaProxy, rolloverViaProxy, recordAuditViaProxy,
 } from './storage/proxy.js';
-import { currentIdToken } from './session.js';
+import { currentIdToken, IDENTITY_CHANGED } from './session.js';
 import { recent as recentAudit, record as recordAuditDirect } from './audit.js';
 
 /** True when this detachment routes people through the submission proxy. */
@@ -77,6 +77,13 @@ let cached = null;
 
 export function invalidateStudentData() {
   cached = null;
+}
+
+// The bundle belongs to one person. A shared office laptop signs one cadre
+// member out and the next one in without ever reloading the page, so holding it
+// past a sign-in would show them somebody else's feedback.
+if (typeof window !== 'undefined') {
+  window.addEventListener(IDENTITY_CHANGED, () => { cached = null; });
 }
 
 async function loadBundle() {

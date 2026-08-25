@@ -15,6 +15,7 @@
  */
 
 import { APP, BACKENDS, DB_LAYOUT, DOCS, INDEXES } from '../config.js';
+import { IDENTITY_CHANGED } from '../session.js';
 import { makeId, nowIso } from '../util.js';
 import { connection } from '../state.js';
 import { localAdapter } from './local.js';
@@ -57,6 +58,29 @@ let active = null;
 const cache = new Map();
 const CACHE_MS = 20_000;
 
+/**
+ * A ceiling on the cache, not just an expiry.
+ *
+ * Entries were only ever dropped when read again or explicitly invalidated, so
+ * a document written once and never re-read stayed for the life of the page.
+ * That is bounded by how many documents a detachment has rather than by how
+ * long it runs — fine in year one, less so in year four. Insertion order gives
+ * a serviceable eviction order for free.
+ */
+const CACHE_MAX = 400;
+
+/** Drops anything past its lifetime, and the oldest entries if still over. */
+function sweepCache() {
+  const now = Date.now();
+  for (const [key, hit] of cache) {
+    if (now - hit.at > CACHE_MS) cache.delete(key);
+  }
+  while (cache.size > CACHE_MAX) {
+    // Map iteration is insertion-ordered, so this is the oldest survivor.
+    cache.delete(cache.keys().next().value);
+  }
+}
+
 function cacheGet(key) {
   const hit = cache.get(key);
   if (!hit) return undefined;
@@ -68,8 +92,25 @@ function cacheGet(key) {
 }
 
 function cacheSet(key, value) {
+  if (cache.size >= CACHE_MAX) sweepCache();
+  // Re-inserting moves the key to the end, which keeps the eviction order
+  // meaningful rather than evicting whatever happened to be written first.
+  cache.delete(key);
   cache.set(key, { value, at: Date.now() });
   return value;
+}
+
+/**
+ * Everything cached belongs to one detachment and one signed-in person.
+ * Switching either without a page reload — a shared laptop, or a join link for
+ * a different folder — must not serve the previous one's records.
+ */
+export function clearCache() {
+  cache.clear();
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener(IDENTITY_CHANGED, clearCache);
 }
 
 /** Drops cache entries whose key starts with any given prefix. */

@@ -38,6 +38,7 @@ export function startSession(account, credential = {}) {
     idTokenExp: credential.idTokenExp || null,
     until: Date.now() + SESSION_MS,
   }));
+  announceIdentityChange();
 }
 
 export function currentUser() {
@@ -69,7 +70,25 @@ export function currentIdToken() {
   return session.idToken;
 }
 
+/**
+ * Broadcast whenever the signed-in person changes, so caches can be dropped.
+ *
+ * An event rather than a direct call because the modules holding those caches
+ * import this one, and importing them back would be a cycle. Anything holding
+ * data belonging to a person must listen.
+ */
+export const IDENTITY_CHANGED = 'topfb:identity-changed';
+
+function announceIdentityChange() {
+  try {
+    window.dispatchEvent(new CustomEvent(IDENTITY_CHANGED));
+  } catch { /* no window: nothing is cached either */ }
+}
+
 export function signOut() {
   sessionStorage.removeItem(LS.session);
   forgetGoogleSession();
+  // Caches outlive sessionStorage, so without this the next person to sign in
+  // on a shared device is served the previous person's data.
+  announceIdentityChange();
 }
