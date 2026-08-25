@@ -371,10 +371,18 @@ async function editDriveTarget(conn) {
   const folderInput = el('input', { class: 'input', type: 'text', value: conn.folderUrl || conn.folderId || '', spellcheck: 'false' });
 
   const result = await modal({
-    title: 'Change Drive target',
+    title: 'Reconnect to a folder',
     body: el('div', {},
       field('OAuth Client ID', clientInput),
-      field('Folder link or ID', folderInput),
+      field('Folder link or ID', folderInput, {
+        hint: 'The folder this app created for this Google account — its address is in the '
+          + 'app bar under Storage, and in Drive.',
+      }),
+      notice('info', 'Only folders this app created',
+        el('p', {}, 'This app can reach files it made itself and nothing else in your Drive. '
+          + 'So this reconnects to a folder it already created for this Google account — '
+          + 'after clearing site data, say. It cannot adopt a folder made by hand, and it '
+          + 'cannot open another detachment\'s folder.')),
       notice('warn', 'Records do not move',
         el('p', {}, 'Pointing at a different folder shows whatever is already in that folder. '
           + 'Export a backup first if you mean to migrate.'))),
@@ -394,7 +402,14 @@ async function editDriveTarget(conn) {
     await db.initialize({ seed: false });
     toast(`Now using "${connected.folderName}".`, 'ok');
   } catch (err) {
-    toast(err.message, 'danger', 8000);
+    // "Not found" here almost always means the folder is real but was not made
+    // by this app for this account — which is invisible under `drive.file` and
+    // reads like a broken ID unless it is spelled out.
+    const notFound = /404|not found/i.test(err.message);
+    toast(notFound
+      ? 'Google cannot see that folder for this account. It exists only if this app created '
+        + 'it while signed in as you — a folder made by hand in Drive cannot be used.'
+      : err.message, 'danger', 10000);
   }
   return navigate('/settings');
 }

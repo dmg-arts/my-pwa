@@ -509,11 +509,13 @@ and an iPhone, in August 2026. These are the limits that test confirmed or found
   submit can also read every response in it. Deploying the proxy
   (`tools/proxy/`) removes that entirely. **Until a detachment deploys it, do
   not tell cadets their responses are private from each other.**
-- **Google caps the app at 100 users.** `auth/drive` is a *restricted* scope, so
-  production use needs Google verification plus a paid annual security
-  assessment. Staying in Testing avoids that but caps the test-user list and
-  shows every user an unverified-app screen. Switching to `drive.file` plus the
-  Google Picker would remove all three.
+- ~~**Google caps the app at 100 users.**~~ **Resolved.** The app used to request
+  `auth/drive` — full access to the whole account, which Google classes as
+  *restricted*: verification plus a paid annual security assessment. It now asks
+  for `drive.file`, access to files it created itself, which is the narrowest
+  Drive permission there is. The cost of that narrowing is that setup **creates**
+  the folder rather than accepting a link to one, because a folder made by hand
+  is invisible under this scope.
 - **Some Google accounts cannot be added as test users.** Cause unknown and
   Google-side; those people need a different Google account.
 - **Receipt timing can correlate.** For anonymous feedback, a receipt and a
@@ -725,8 +727,10 @@ cannot be handed a product that requires every detachment to be a developer.
 
 What follows from one Client ID:
 
-- ~145 detachments x ~50 users pools well past the cap, forcing Production, which
-  forces verification, which with `auth/drive` forces an annual CASA assessment.
+- ~145 detachments x ~50 users pools well past the cap, forcing Production. With
+  the old `auth/drive` scope that forced verification and an annual CASA
+  assessment; on `drive.file` the review is free at worst, and may not be
+  required at all.
 - **The data posture is unaffected.** A Client ID identifies the *app*, not a
   grant of data. Tokens are issued in each user's browser and reach only that
   user's own Drive; the maintainer never receives one. What changes is
@@ -739,12 +743,14 @@ limitation, not a misconfiguration, and it is why verification is not merely
 cosmetic: without it a fraction of cadets cannot use the app at all, and there is
 no way to know which in advance.
 
-### The option that could remove verification entirely
+### Removing the verification burden — done
 
-Decide this **before** the rename, because it determines what the new project's
-consent screen has to request.
+**Decided and implemented.** Both halves of this shipped: all cadre and cadet
+Drive access moved behind the proxy, and the scope narrowed to `drive.file`.
+What follows is the reasoning, kept because it explains why setup creates the
+folder.
 
-The submission proxy already proves the pattern: Apps Script runs as the folder's
+The submission proxy already proved the pattern: Apps Script runs as the folder's
 owner, so cadets need no Drive access — only `openid email profile`, which is
 non-sensitive. **If cadre reads and writes also went through the proxy, nobody
 would need Drive OAuth at all**, and the app would request non-sensitive scopes
@@ -848,11 +854,14 @@ These are the ones actually blocking or shaping work, not idle curiosities.
 - ~~**Why Google refuses to add some accounts as test users.**~~ **Answered:**
   some Google accounts do not permit unverified apps at all. A standing
   limitation, not a fault to chase.
-- **Whether all Drive access moves behind the proxy**, removing the need for
-  verification entirely. Decide before the rename.
-- **Whether `drive.file` is classified non-sensitive or sensitive.** Two sources
-  disagree. It decides between "no verification, ever" and "free verification
-  after weeks of review". Settle it against Google's own scope list.
+- ~~**Whether all Drive access moves behind the proxy.**~~ **Done.** Cadre and
+  cadets reach nothing in Drive; only the folder's owner holds a token, and only
+  for files this app created.
+- ~~**Whether `drive.file` is non-sensitive or sensitive.**~~ **No longer
+  blocking.** The two answers differ only in whether a free review is required.
+  Free verification is acceptable for a product nobody is selling, so the scope
+  narrowed without waiting on the classification. Worth confirming before the
+  submission, but it changes paperwork rather than design.
 
 Not yet built:
 
@@ -881,19 +890,25 @@ that decision first.
 never see it.** `SCALE_ANCHORS` in `js/config.js` defines both at once:
 
 ```
-1 Detrimental   2 Significant   3 Unfavorable   4 Minor        5 Neutral
+1 Detrimental   2 Alarming      3 Unfavorable   4 Minor        5 Neutral
 6 Slight        7 Favorable     8 Major         9 Outstanding
 ```
 
 All nine points are named, so the full 1-9 resolution is actually reachable.
 The vocabulary alternates by design: **odd points carry the direction**
 (Detrimental -> Unfavorable -> Neutral -> Favorable -> Outstanding) and **even
-points carry the magnitude** of the step either side of centre, paired
-symmetrically - Significant (2) mirrors Major (8), Minor (4) mirrors Slight (6).
+points carry the magnitude** of the step either side of centre: Minor (4)
+mirrors Slight (6), and Major (8) is the strong step on the favourable side.
 
-Position in the row is what supplies direction for the magnitude words: "Major"
-between Favorable and Outstanding reads as a large positive; "Significant"
-between Detrimental and Unfavorable reads as a large negative. The options are
+Point 2 deliberately breaks that symmetry. It was "Significant", the mirror of
+Major (8), and out of context that word reads as neutral or even positive - a
+cadet scanning the row had only the position to tell them it was the
+second-worst option available. **"Alarming" carries its own direction**, so the
+harshest end of the scale cannot be picked by mistake. Losing the 2/8 pairing is
+the price, and it is worth paying at the end where a misread matters most.
+
+Position in the row supplies direction for the remaining magnitude words: "Major"
+between Favorable and Outstanding reads as a large positive. The options are
 therefore always rendered in numeric order and never re-sorted, and on a narrow
 screen they stack in a single column rather than a grid, so "the next step up"
 stays unambiguous.
@@ -913,3 +928,19 @@ render as numbers.
 `nearestAnchor()` maps a computed score back to a word for reporting. Ties round
 **down**, so a mean is never described more favourably than it earned: a mean of
 6.5 reads as "Slight", not "Favorable".
+
+---
+
+## Licence
+
+Apache License 2.0 - see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+Permissive, with an explicit patent grant. A detachment may deploy it, modify
+it, and keep running its own copy indefinitely with no obligation back. That is
+the point: the software exists to fix a specific problem for AFROTC units, not
+to be sold, and a unit should never be in a position where its feedback records
+depend on the goodwill of whoever maintains this.
+
+There are no runtime dependencies to license around - no libraries, no
+frameworks, no CDN. The only external code loaded at runtime is Google Identity
+Services, which is not distributed here.

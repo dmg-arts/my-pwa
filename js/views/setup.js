@@ -6,7 +6,7 @@
 import { BACKENDS, DB_LAYOUT, FOLDER_TREE_PREVIEW, APP } from '../config.js';
 import { el, icon, field, notice, toast, spinner, clear, mount, remount } from '../util.js';
 import { connection, markSetupComplete } from '../state.js';
-import { db, adapters, parseFolderId } from '../storage/index.js';
+import { db, adapters } from '../storage/index.js';
 import { navigate } from '../router.js';
 
 const STEPS = ['Organization', 'Storage', 'Connect', 'Finish'];
@@ -195,6 +195,22 @@ function stepConnect(body, root) {
   return connectLocal(body, root);
 }
 
+/**
+ * The Drive step: sign in, and let the app make its own folder.
+ *
+ * This used to ask for a link to a folder created by hand in Drive. It cannot
+ * any more, and the reason is worth knowing before anyone tries to put the field
+ * back: the app asks Google only for `drive.file`, which grants access to files
+ * **this app created** and nothing else. A folder made by hand is invisible
+ * under that scope — Google returns "not found" for it, however obviously it
+ * exists in the browser tab next door.
+ *
+ * The alternative was `auth/drive`, full access to everything in the account,
+ * which Google classes as restricted: verification plus an annual paid security
+ * assessment, for a free tool that only ever touches one folder. Creating the
+ * folder is the cheaper half of that trade and the more honest permission to ask
+ * a detachment for.
+ */
 function connectDrive(body, root) {
   const status = el('div');
 
@@ -202,23 +218,11 @@ function connectDrive(body, root) {
     class: 'input mono', type: 'text', value: draft.clientId,
     placeholder: '000000000000-abc123.apps.googleusercontent.com',
     spellcheck: 'false', autocapitalize: 'off',
-    oninput: (e) => { draft.clientId = e.target.value.trim(); refresh(); },
+    oninput: (e) => { draft.clientId = e.target.value.trim(); draft.connected = false; refresh(); },
   });
 
-  const folderField = el('input', {
-    class: 'input', type: 'text', value: draft.folderInput,
-    placeholder: 'https://drive.google.com/drive/folders/…',
-    spellcheck: 'false', autocapitalize: 'off',
-    oninput: (e) => {
-      draft.folderInput = e.target.value;
-      draft.folderId = parseFolderId(e.target.value);
-      draft.connected = false;
-      refresh();
-    },
-  });
-
-  const connectBtn = el('button', { type: 'button', class: 'btn btn--primary', onclick: doConnect },
-    icon('cloud'), 'Sign in and connect');
+  const createBtn = el('button', { type: 'button', class: 'btn btn--primary', onclick: doCreate },
+    icon('cloud'), 'Sign in and create the folder');
 
   const nextBtn = el('button', {
     type: 'button', class: 'btn btn--primary', disabled: !draft.connected,
@@ -226,42 +230,53 @@ function connectDrive(body, root) {
   }, 'Continue');
 
   function refresh() {
-    const ready = Boolean(draft.clientId && draft.folderId);
-    connectBtn.disabled = !ready;
+    createBtn.disabled = !draft.clientId || draft.connected;
     nextBtn.disabled = !draft.connected;
     clear(status);
-    if (draft.folderInput && !draft.folderId) {
-      mount(status, notice('warn', 'That does not look like a folder link',
-        el('p', {}, 'Open the folder in Drive and copy the address bar URL, or paste the folder ID on its own.')));
-    } else if (draft.connected) {
-      mount(status, notice('ok', `Connected to "${draft.folderName}"`,
-        el('p', {}, 'This device can read and write in that folder.')));
+    if (draft.connected) {
+      mount(status, notice('ok', `Created "${draft.folderName}" in your Drive`,
+        el('p', {}, 'Every record lives here. Its address is below — you will need it in a '
+          + 'moment for the submission server, and it is worth keeping somewhere.'),
+        el('p', { class: 'mono', style: { wordBreak: 'break-all' } }, draft.folderId),
+        el('div', { class: 'row row--wrap' },
+          el('a', {
+            class: 'btn btn--sm', target: '_blank', rel: 'noopener',
+            href: `https://drive.google.com/drive/folders/${draft.folderId}`,
+          }, icon('external'), 'Open it in Drive'),
+          el('button', {
+            type: 'button', class: 'btn btn--sm',
+            onclick: () => {
+              navigator.clipboard?.writeText(draft.folderId);
+              toast('Folder ID copied.', 'ok');
+            },
+          }, icon('copy'), 'Copy the folder ID'))));
     }
   }
 
-  async function doConnect() {
-    connectBtn.disabled = true;
-    const busy = spinner('Talking to Google…');
-    remount(status, busy);
+  async function doCreate() {
+    createBtn.disabled = true;
+    remount(status, spinner('Talking to Google…'));
     try {
+      db.use(BACKENDS.drive, { clientId: draft.clientId, folderId: '' });
+      const result = await adapters.drive.createRoot(DB_LAYOUT.root);
+      if (!result.ok) throw new Error(describeConnectFailure(result.reason));
+      draft.folderId = result.folderId;
+      draft.folderName = result.folderName || DB_LAYOUT.root;
+      draft.folderInput = draft.folderId;
       db.use(BACKENDS.drive, { clientId: draft.clientId, folderId: draft.folderId });
-      const result = await adapters.drive.connect({ interactive: true });
-      if (!result.ok) throw new Error(result.detail || describeConnectFailure(result.reason));
-      draft.folderName = result.folderName || 'Drive folder';
       draft.connected = true;
-      toast('Connected to Google Drive.', 'ok');
+      toast('Folder created in your Drive.', 'ok');
     } catch (err) {
       draft.connected = false;
-      remount(status, notice('danger', 'Could not connect', el('p', {}, err.message)));
-      connectBtn.disabled = false;
+      remount(status, notice('danger', 'Could not create the folder', el('p', {}, err.message)));
+      createBtn.disabled = false;
       nextBtn.disabled = true;
       return;
     }
     refresh();
-    connectBtn.disabled = false;
   }
 
-  mount(body, 
+  mount(body,
     el('h2', { class: 'section-title' }, 'Connect your detachment\'s Google Drive'),
     notice('info', 'One-time Google setup',
       el('ol', { style: { margin: '0', paddingLeft: '1.1rem' } },
@@ -269,18 +284,16 @@ function connectDrive(body, root) {
         el('li', {}, 'In Google Cloud Console, create a project and enable the ', el('strong', {}, 'Google Drive API'), '.'),
         el('li', {}, 'Create an ', el('strong', {}, 'OAuth client ID'), ' of type Web application, '
           + 'and add this site\'s address as an authorised JavaScript origin: ',
-          el('code', { class: 'mono' }, location.origin), '.'),
-        el('li', {}, 'In Drive, create a folder named ', el('strong', {}, DB_LAYOUT.root),
-          ' and share it with the cadre who need access.'))),
+          el('code', { class: 'mono' }, location.origin), '.'))),
     field('OAuth Client ID', clientInput, {
       required: true,
       hint: 'From Google Cloud Console → Credentials. Safe to store on the device: a browser client ID is an identifier, not a password.',
     }),
-    field('Drive folder link or ID', folderField, {
-      required: true,
-      hint: 'Open the folder in Drive and copy the URL. All app folders are created inside it.',
-    }),
-    el('div', { class: 'row row--wrap' }, connectBtn),
+    notice('info', 'The app makes its own folder',
+      el('p', {}, 'You do not need to create anything in Drive first. This app can only see '
+        + 'files it made itself — it has no access to the rest of your Drive and cannot ask '
+        + 'for any — so it creates its own folder and works inside that.')),
+    el('div', { class: 'row row--wrap' }, createBtn),
     status,
     el('div', { class: 'row row--end', style: { marginTop: 'var(--sp-5)' } },
       el('button', { type: 'button', class: 'btn', onclick: () => { draft.step = 1; draw(root); } }, 'Back'),

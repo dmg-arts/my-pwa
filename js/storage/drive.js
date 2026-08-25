@@ -19,7 +19,21 @@
  */
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
-const SCOPE = 'https://www.googleapis.com/auth/drive';
+/**
+ * The narrowest scope that does the job.
+ *
+ * `drive.file` grants access to files this app created, and nothing else. It
+ * cannot see the rest of somebody's Drive, which is both the honest permission
+ * to ask for and the one that keeps this app out of Google's restricted tier —
+ * `auth/drive` is restricted, and restricted means verification plus an annual
+ * third-party security assessment for a free tool nobody is selling.
+ *
+ * The consequence is the reason setup creates the folder rather than asking for
+ * a link to one: a folder made by hand in Drive is invisible under this scope,
+ * because the app did not create it. The grant is recorded per user, per app,
+ * per file on Google's side, so the same account keeps access from any device.
+ */
+const SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const API = 'https://www.googleapis.com/drive/v3';
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
@@ -100,6 +114,28 @@ export const driveAdapter = {
       return { ok: false, reason: 'read-only', detail: `You have read-only access to "${meta.name}".` };
     }
     return { ok: true, detail: meta.name, folderName: meta.name };
+  },
+
+  /**
+   * Creates the detachment's root folder and returns its id.
+   *
+   * Under `drive.file` this is the only way to get a folder the app can reach —
+   * which is why the wizard calls it instead of accepting a pasted link. It is
+   * `files.create` with a folder mime type, the same call `ensureFolder` below
+   * already made for every subfolder; the only thing that was ever missing was
+   * doing it for the top one.
+   */
+  async createRoot(name) {
+    const token = await this.authorize({ interactive: true });
+    if (!token) return { ok: false, reason: 'auth' };
+    const created = await api('/files?fields=id,name&supportsAllDrives=true', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, mimeType: FOLDER_MIME }),
+    });
+    config.rootId = created.id;
+    idCache.clear();
+    return { ok: true, folderId: created.id, folderName: created.name };
   },
 
   async ensureLayout(folders) {

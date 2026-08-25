@@ -14,11 +14,11 @@
  */
 
 import {
-  el, icon, notice, toast, spinner, remount, mount,
+  el, icon, notice, toast, remount, mount,
 } from '../util.js';
 import { APP, BACKENDS } from '../config.js';
 import { connection, markSetupComplete, isConfigured } from '../state.js';
-import { db, adapters, clearCache } from '../storage/index.js';
+import { clearCache } from '../storage/index.js';
 import { parseJoinParams } from '../join.js';
 import { navigate } from '../router.js';
 
@@ -143,43 +143,25 @@ export async function renderJoin(root, { query }) {
       return navigate('/student');
     }
 
-    remount(status, spinner('Connecting to Google Drive…'));
-    try {
-      db.use(BACKENDS.drive, { clientId: config.clientId, folderId: config.folderId });
-      const result = await adapters.drive.connect({ interactive: true });
-      if (!result.ok) {
-        throw new Error(result.detail || 'Google would not grant access to that folder.');
-      }
-
-      // The folder is the source of truth for the detachment's name — the link
-      // only carries one so the screen can say who is inviting you before you
-      // approve anything.
-      const org = await db.getOrg();
-      if (!org) {
-        throw new Error(
-          'That folder exists, but no detachment has been set up in it yet. '
-          + 'An administrator needs to run setup before anyone can join.');
-      }
-
-      connection.set({
-        backend: BACKENDS.drive,
-        orgName: org.orgName || config.orgName || 'Detachment',
-        folderId: config.folderId,
-        folderName: result.folderName || 'Drive folder',
-        folderUrl: `https://drive.google.com/drive/folders/${config.folderId}`,
-        clientId: config.clientId,
-        proxyUrl: '',
-        connectedAt: new Date().toISOString(),
-      });
-      markSetupComplete(true);
-      clearCache();
-
-      toast(`Connected to ${org.orgName || 'the detachment'}.`, 'ok');
-      navigate('/student');
-    } catch (err) {
-      remount(status, notice('danger', 'Could not join', el('p', {}, err.message)));
-      joinBtn.disabled = false;
-    }
+    // Without a proxy there is nothing this device can legitimately reach.
+    //
+    // The app holds `drive.file`, which grants access to files it created
+    // itself. The detachment's folder was created by the administrator's
+    // browser, not by this one, so Google will not open it here however
+    // correctly the link is formed. Before the proxy existed this screen asked
+    // Google for full Drive access instead, which worked and was the reason
+    // every cadet could read every response in the folder.
+    //
+    // So this is refused rather than attempted: a failure here would surface as
+    // "folder not found", which reads like a broken link and is not.
+    remount(status, notice('danger', 'This detachment has no submission server yet',
+      el('p', {}, 'A join link can only set up this device once the detachment has deployed '
+        + 'its submission server. Without one there is nothing for a cadet\'s device to '
+        + 'connect to — and it would need permission over the whole of your Google Drive '
+        + 'to try, which this app does not ask for.'),
+      el('p', {}, 'Tell whoever sent you this link that Part 6 of the setup guide is '
+        + 'outstanding. It takes about fifteen minutes at their end and nothing at yours.')));
+    joinBtn.disabled = false;
   }
 
   remount(root, el('div', { class: 'wizard stack' },

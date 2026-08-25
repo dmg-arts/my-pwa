@@ -148,7 +148,7 @@
   </div>
   <h1>TOP-Feedback</h1>
   <p class="sub">Installation and Setup Guide</p>
-  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Alpha 0.14</p>
+  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Alpha 0.15</p>
   <div class="meta">
     <strong>Before you start</strong>
     Allow about 45 minutes for a first-time setup using Google Drive. You will need
@@ -188,6 +188,7 @@
     <tr><th style="width:34%">Item</th><th>Why</th></tr>
     <tr><td>A new Google account, created for the detachment</td><td>Holds every record. Create a fresh one — Part 2a explains why a school or university account is the wrong choice here.</td></tr>
     <tr><td>Permission to create a Google Cloud project</td><td>Required once, to let the app talk to that account's Drive. A new personal Google account can always do this.</td></tr>
+    <tr><td>About 45 minutes, once</td><td>Most of it is the Google Cloud console in Part 2 and the submission server in Part 6. The app itself takes a few minutes.</td></tr>
     <tr><td>Somewhere to publish the app</td><td>Any static web host. Several free options are listed in Part 3.</td></tr>
     <tr><td>A current browser</td><td>Chrome, Edge, Safari or Firefox, on any device.</td></tr>
   </table>
@@ -279,22 +280,28 @@
       This account owns every record. Losing it means losing the folder, and the recovery options on
       a brand-new account are thin. Set up recovery details on a unit phone number or address, not a
       departing cadet's.</li>
-    <li><strong>Sign in to that account and open Google Drive.</strong></li>
-    <li><strong>Create a folder named <code>TOP-Feedback</code>.</strong>
-      The name is a convention, not a requirement, but it makes the folder obvious later.</li>
-    <li><strong>Do not share the folder with anyone.</strong>
-      Once the submission server is deployed in Part 6, this account is the only one that
-      needs access to the folder &mdash; cadre, cadets and the commander all reach their data
-      through the server instead.
-      <ul>
-        <li>Anyone with access to this folder can read every record directly, including the raw
-        feedback. Share it only with people entitled to see all of it.</li>
-      </ul>
-    </li>
-    <li><strong>Copy the folder's web address.</strong>
-      With the folder open, copy the URL from the browser address bar. It looks like
-      <code>https://drive.google.com/drive/folders/1A2b3C…</code> — you will paste this in Part 4.</li>
   </ol>
+
+  <div class="note note--ok">
+    <strong class="title">You do not create a folder yourself</strong>
+    <p>
+      Earlier versions of this guide asked you to make a <code>TOP-Feedback</code> folder in Drive
+      and paste its address into the app. <strong>Do not do that.</strong> The app creates its own
+      folder during setup in Part 4, and a folder you make by hand cannot be used.
+    </p>
+    <p>
+      The reason is the permission the app asks for. It requests access to <em>files it creates
+      itself</em> and nothing else &mdash; it cannot see the rest of your Drive and has no way to
+      ask. A folder made by hand was not created by the app, so Google does not show it to the app
+      at all. Creating its own folder is precisely what lets the app avoid asking for access to
+      your entire Google Drive.
+    </p>
+    <p>
+      Nothing else changes. The folder appears in your Drive, belongs to you, and you can open,
+      move or delete it like any other. You will need its address in Part 6, and the app shows it
+      to you the moment it is created.
+    </p>
+  </div>
 
   <h3>2b. Allow the app to reach that Drive</h3>
   <p>Google requires any app that touches a Drive account to be registered with that account. This
@@ -472,9 +479,11 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     <li><strong>Choose your storage option</strong> from Part 1.</li>
     <li><strong>Connect.</strong>
       <ul>
-        <li><strong>Google Drive:</strong> paste the Client ID from Part 2b and the folder link from
-        Part 2a, then click <em>Sign in and connect</em>. A Google window opens; sign in as the
-        detachment account and grant access. The wizard confirms the folder name when it succeeds.</li>
+        <li><strong>Google Drive:</strong> paste the Client ID from Part 2b, then click
+        <em>Sign in and create the folder</em>. A Google window opens; sign in as the detachment
+        account and grant access. The app creates its <code>TOP-Feedback</code> folder and shows
+        you its address &mdash; <strong>copy that address now</strong>, you need it in Part 6.
+        There is no folder link to paste: see Part 2a for why.</li>
         <li><strong>Synced folder:</strong> click <em>Select folder…</em> and choose the
         TOP-Feedback folder inside your Google Drive for Desktop directory.</li>
         <li><strong>This device only:</strong> nothing to connect.</li>
@@ -549,6 +558,20 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 <!-- ============================= PART 6 ============================= -->
 <section>
   <h2><span class="num">6</span>Deploy the submission server</h2>
+
+  <div class="note note--danger">
+    <strong class="title">This part is no longer optional</strong>
+    <p>
+      The app asks Google only for access to files it created itself, which means a cadet's phone
+      has no way to reach your detachment's folder &mdash; it did not create it. The submission
+      server is what files their feedback for them. <strong>Without it, join links cannot set up
+      anyone else's device.</strong>
+    </p>
+    <p>
+      Earlier versions could fall back to giving every cadet access to the whole folder. That was
+      the arrangement where any cadet could open Drive and read every response, and it is gone.
+    </p>
+  </div>
 
   <p class="lead">Fifteen minutes, and it changes what everything else costs. A small script
   running inside your own Google account files everyone's feedback for them, so nobody but you
@@ -841,7 +864,9 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     </tr>
     <tr>
       <td>"The folder or file was not found"</td>
-      <td>The folder link is wrong, or the signed-in account does not have access to it. Re-copy the link and confirm sharing.</td>
+      <td>Almost always a folder created by hand rather than by the app. The app can only reach
+      files it made itself, so a folder you made in Drive is invisible to it however correct the
+      address looks. Run the wizard and let it create one.</td>
     </tr>
     <tr>
       <td>Header shows "offline" with a pending count</td>

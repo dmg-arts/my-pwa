@@ -97,7 +97,7 @@
 <header class="masthead">
   <h1>TOP-Feedback Privacy Policy</h1>
   <p class="sub">How this application handles your information.</p>
-  <p class="updated">Last updated: <!--DATE-->25 August 2026<!--/DATE--> &middot; Applies to: TOP-Feedback</p>
+  <p class="updated">Last updated: <!--DATE-->26 August 2026<!--/DATE--> &middot; Applies to: TOP-Feedback</p>
 </header>
 
 <div class="callout callout--ok">
@@ -156,9 +156,14 @@
 <h3>Google Drive content</h3>
 <p>
   The app reads and writes files inside <strong>one folder</strong> in your organisation's Google
-  Drive — the folder your organisation created for it. This is where feedback forms, responses,
-  the roster, and the activity log live. Every one of those files belongs to your organisation's
-  Google account, not to us.
+  Drive — a folder <strong>the app created</strong> during setup. This is where feedback forms,
+  responses, the roster, and the activity log live. Every one of those files belongs to your
+  organisation's Google account, not to us.
+</p>
+<p>
+  The app cannot see anything else in that Drive. Its permission covers files it created itself,
+  so the rest of the account is not merely off-limits by policy — it was never granted, and the
+  app has no way to request it.
 </p>
 
 <h3>The feedback itself</h3>
@@ -211,10 +216,10 @@ submission server. TOP-Feedback sets <strong>no cookies</strong>.</p>
     name in the app. Nothing else.</td>
   </tr>
   <tr>
-    <td><!--SCOPE--><code>https://www.googleapis.com/auth/drive</code><!--/SCOPE--></td>
-    <td>Reading and writing the feedback records inside your organisation's TOP-Feedback folder.
-    This is the only thing the app does with Drive: it creates its own folder structure and reads
-    and writes files within it.</td>
+    <td><!--SCOPE--><code>https://www.googleapis.com/auth/drive.file</code><!--/SCOPE--></td>
+    <td>Reading and writing the feedback records inside the folder <strong>this app created</strong>
+    in your organisation's Drive. This permission covers only files the app made itself. It gives
+    the app no access to anything else in your Google Drive, and no way to ask for any.</td>
   </tr>
 </table>
 </div>
@@ -341,6 +346,9 @@ submission server. TOP-Feedback sets <strong>no cookies</strong>.</p>
   <li>Destructive actions are recorded in an activity log with the reason and who performed them.</li>
   <li>The app has <strong>no third-party code</strong> — no libraries, no frameworks, no CDNs —
   other than Google's own sign-in script.</li>
+  <li>The app asks Google for <strong>the narrowest Drive permission that exists</strong>: access
+  to files it created itself. Even if it were compromised entirely, it could not reach anything
+  else in your Google Drive, because it was never granted that.</li>
 </ul>
 <p>
   No system is perfectly secure. If you believe you have found a security problem, please tell us at
