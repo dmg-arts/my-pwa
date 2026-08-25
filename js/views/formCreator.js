@@ -19,10 +19,10 @@ import {
   mount, remount } from '../util.js';
 import {
   AS_CLASSES, SEMESTERS, FORM_RULES, SCALE_ANCHORS, PRIVACY, makeFeedbackId, scaleValues,
-  currentSchoolYear, currentSemester, schoolYears, SPACES } from '../config.js';
+  currentSchoolYear, currentSemester, schoolYears, SPACES, ROLES } from '../config.js';
 import {
   saveForm, saveRequest, deleteRequest, loadForms, loadRequests, getRequest, getForm,
-  writeAudit,
+  writeAudit, loadRoster,
 } from '../data-source.js';
 import { spaceChoicesFor, spaceHint } from '../spaces.js';
 import { listStudents, currentUser } from '../auth.js';
@@ -62,10 +62,12 @@ async function drawCreator(root, params) {
 
   const editingId = params.id && params.id !== 'new' ? params.id : null;
   let students = [];
+  let staff = [];
   let existingRequest = null;
 
   try {
     students = await listStudents();
+    staff = await loadStaff();
     reusable = await loadReusable();
     if (editingId) {
       existingRequest = await getRequest(editingId);
@@ -99,6 +101,7 @@ async function drawCreator(root, params) {
         eventName: request.eventName || request.title || '',
         asClass: request.asClass || '',
         space: request.space || SPACES.shared,
+        subject: request.subject || request.createdBy || '',
         schoolYear: request.schoolYear || currentSchoolYear(),
         semester: request.semester || currentSemester(),
         dueAt: request.dueAt || null,
@@ -120,6 +123,7 @@ async function drawCreator(root, params) {
       eventName: '',
       asClass: '',
       space: SPACES.shared,
+      subject: '',
       schoolYear: currentSchoolYear(),
       semester: currentSemester(),
       dueAt: null,
@@ -219,6 +223,7 @@ async function drawCreator(root, params) {
         { required: true, hint: 'What students will see at the top of their list.' }),
 
       spacePicker(draft),
+      subjectPicker(draft, staff),
 
       el('div', { class: 'filters' },
         field('AS level',
@@ -622,6 +627,7 @@ async function drawCreator(root, params) {
         instructions: draft.instructions.trim(),
         anonymous: draft.anonymous,
         space: draft.space || SPACES.shared,
+        subject: draft.subject || currentUser()?.username || null,
         assignedUsernames: draft.audience === 'some' ? draft.assignedUsernames : [],
         audience: draft.audience,
         status,
@@ -683,6 +689,50 @@ async function drawCreator(root, params) {
     }
     return undefined;
   }
+}
+
+/**
+ * Everyone this feedback could be *about*.
+ *
+ * Cadre and commanders as well as instructors, because they run events too. A
+ * departed member is still listed while they hold a roster entry, so editing an
+ * old request does not silently reassign it to whoever is editing.
+ */
+async function loadStaff() {
+  const roster = await loadRoster();
+  return roster
+    .filter((a) => (a.roles || []).some((r) => r !== ROLES.student))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Who the feedback reflects on.
+ *
+ * Pre-filled with the person issuing it, because in practice cadre issue
+ * feedback for the labs they run. It is changeable because that is not always
+ * true — an administrator issuing forms on somebody else's behalf would
+ * otherwise file the results against themselves, and a commander reviewing by
+ * person would read the wrong picture.
+ */
+function subjectPicker(draft, staff) {
+  const me = currentUser();
+  if (!staff.length) return null;
+
+  const options = staff.map((person) => ({
+    value: person.username,
+    label: person.username === me?.username ? `${person.name} (you)` : person.name,
+  }));
+  if (!draft.subject) draft.subject = me?.username || options[0].value;
+
+  return field('Who is this feedback about?',
+    select(options, {
+      value: draft.subject,
+      onchange: (e) => { draft.subject = e.target.value; },
+    }),
+    {
+      hint: 'Results are grouped by this person when a commander reviews feedback. '
+        + 'Change it if somebody else ran the event.',
+    });
 }
 
 /**

@@ -581,6 +581,25 @@ function saveRequestInSpace(root, account, request) {
     return fail('That feedback is not available to this account.');
   }
 
+  // Who issued it comes from the verified token, never from the body — the same
+  // rule as the audit actor. A client that could name its own creator could file
+  // feedback under another instructor's name, and this record is used to review
+  // that instructor.
+  request.createdBy = existing ? existing.request.createdBy || account.username : account.username;
+
+  // Who it is *about* is a deliberate choice, so it is taken from the caller —
+  // but it must name somebody real, or a commander reviewing by person would
+  // find feedback filed against nobody.
+  var subject = String(request.subject || '').trim().toLowerCase();
+  if (subject) {
+    if (!findByUsername(root, subject)) {
+      return fail('That feedback names somebody who is not on the roster.');
+    }
+    request.subject = subject;
+  } else {
+    request.subject = request.createdBy;
+  }
+
   request.space = space;
   return writeRecordAt(root, spacePath(space, 'requests'), request, 'req_');
 }
@@ -1083,6 +1102,14 @@ function readStats(root) {
 /* ------------------------------------------------------------------ *
  * roster and addressing
  * ------------------------------------------------------------------ */
+
+function findByUsername(root, username) {
+  var users = readRoster(root);
+  for (var i = 0; i < users.length; i++) {
+    if (String(users[i].username || '').toLowerCase() === username) return users[i];
+  }
+  return null;
+}
 
 function findAccount(root, email) {
   var doc = readJson(root, ['users'], 'users.json');

@@ -13,7 +13,7 @@
  * Bump CACHE_VERSION on release to roll users onto new assets.
  */
 
-const CACHE_VERSION = 'v16';
+const CACHE_VERSION = 'v17';
 const CACHE_NAME = `topfb-shell-${CACHE_VERSION}`;
 
 const SHELL = [
@@ -53,6 +53,7 @@ const SHELL = [
   './js/views/formCreator.js',
   './js/views/home.js',
   './js/views/instructor.js',
+  './js/views/people.js',
   './js/views/invite.js',
   './js/views/join.js',
   './js/views/settings.js',

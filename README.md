@@ -659,6 +659,18 @@ Roughly in dependency order. The first item gates several of the others.
    Database admins grant both. Cadre cannot see commander requests; commanders
    see everything; audit log and roster go to Database admins and commanders.
 
+   Commanders also get a **By instructor** tab: the same records, grouped by the
+   person they reflect on. Feedback carries `createdBy`, stamped from the
+   verified token so nobody can file results under another instructor's name,
+   and `subject` — who it is *about* — which defaults to the issuer and can be
+   changed when somebody else ran the event.
+
+   The disclosure threshold applies to **each person's total**, not only to each
+   form: an instructor with two anonymous responses across two forms has two
+   identifiable cadets, and an average would expose them as surely as the
+   responses would. An individual form stays withheld below the threshold even
+   when the person's total clears it.
+
    **Enforcement is server-side, through the proxy.** App-level role checks were
    rejected outright: every cadre member needs Drive access today, so anything
    the UI hides is readable by opening Drive — worthless for commander feedback

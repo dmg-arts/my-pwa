@@ -27,7 +27,7 @@ import {
   deleteResponseViaProxy, createAccountViaProxy, updateAccountViaProxy,
   deleteAccountViaProxy, rolloverViaProxy, recordAuditViaProxy,
 } from './storage/proxy.js';
-import { currentIdToken, IDENTITY_CHANGED } from './session.js';
+import { currentIdToken, currentUser, IDENTITY_CHANGED } from './session.js';
 import { recent as recentAudit, record as recordAuditDirect } from './audit.js';
 
 /** True when this detachment routes people through the submission proxy. */
@@ -278,9 +278,24 @@ export async function saveForm(form) {
   return db.saveForm(form);
 }
 
+/**
+ * Files a feedback request.
+ *
+ * `createdBy` is stamped from the signed-in account rather than accepted from
+ * the caller — in proxy mode the server does it from the verified token, and
+ * this keeps direct mode consistent. The commander reviews instructors by this
+ * field, so it has to mean something.
+ */
 export async function saveRequest(request) {
   if (usingProxy()) return saveRequestViaProxy(proxyUrl(), token(), request);
-  return db.saveRequest(request);
+
+  const me = currentUser();
+  const existing = request.id ? await db.getRequest(request.id) : null;
+  return db.saveRequest({
+    ...request,
+    createdBy: existing?.createdBy || me?.username || null,
+    subject: request.subject || existing?.subject || me?.username || null,
+  });
 }
 
 export async function deleteForm(formId) {

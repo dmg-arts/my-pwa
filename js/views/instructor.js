@@ -27,14 +27,20 @@ import {
   canDoMaintenance, connectionStatus, loadOverview,
 } from '../data-source.js';
 import { buildAnonymisedExport, summariseAnonymisedExport } from '../export-anon.js';
+import { renderPeople } from './people.js';
 import { record, AUDIT } from '../audit.js';
 
 const TABS = [
   { id: 'requests', label: 'Feedback forms', iconName: 'send' },
   { id: 'analysis', label: 'Responses & analysis', iconName: 'chart' },
+  // Commanders only: the same records, grouped by the person they reflect on.
+  { id: 'people', label: 'By instructor', iconName: 'clipboard', role: ROLES.commander },
   { id: 'students', label: 'Students', iconName: 'users' },
   { id: 'database', label: 'Database', iconName: 'database' },
 ];
+
+/** The tabs this account may see, in order. */
+const tabsFor = () => TABS.filter((tab) => !tab.role || hasRole(tab.role));
 
 /** Wraps an instructor view in the sign-in gate. */
 export async function requireInstructor(root, render) {
@@ -54,7 +60,7 @@ export async function renderInstructor(root, { query }) {
     const session = currentUser();
 
     const tabBar = el('div', { class: 'tabs', role: 'tablist' });
-    for (const tab of TABS) {
+    for (const tab of tabsFor()) {
       mount(tabBar, el('button', {
         type: 'button', class: 'tab', role: 'tab',
         'aria-selected': String(tab.id === activeTab),
@@ -104,11 +110,15 @@ export async function renderInstructor(root, { query }) {
     const renderers = {
       requests: tabRequests,
       analysis: (node) => renderAnalysis(node),
+      people: (node) => renderPeople(node),
       students: tabStudents,
       database: tabDatabase,
     };
     try {
-      await (renderers[activeTab] || tabRequests)(host);
+      // A tab this account cannot see is not merely hidden from the bar — asking
+      // for it by URL lands on the default rather than rendering it.
+      const allowed = tabsFor().some((tab) => tab.id === activeTab);
+      await (allowed ? renderers[activeTab] || tabRequests : tabRequests)(host);
     } catch (err) {
       remount(host, notice('danger', 'Could not load this tab', el('p', {}, err.message)));
     }

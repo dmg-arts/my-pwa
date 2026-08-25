@@ -756,6 +756,135 @@ await step('cadre reads go to the proxy when one is configured, with the right a
   if (named.length) throw new Error('a read named a path instead of an action');
 });
 
+/* ---------- the commander's by-instructor review ---------- */
+
+await step('the By instructor tab is offered to commanders only', async () => {
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes', 'instructor');
+  await page.goto(`${BASE}#/instructor`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[role=tablist]', { timeout: 12000 });
+
+  const asInstructor = await page.$$eval('[role=tab]', (n) => n.map((t) => t.textContent));
+  if (asInstructor.some((t) => /By instructor/.test(t))) {
+    throw new Error('an instructor was offered the commander tab');
+  }
+
+  await page.evaluate(() => {
+    const s = JSON.parse(sessionStorage.getItem('topfb.session.v1'));
+    s.roles = ['commander'];
+    sessionStorage.setItem('topfb.session.v1', JSON.stringify(s));
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[role=tablist]', { timeout: 12000 });
+  const asCommander = await page.$$eval('[role=tab]', (n) => n.map((t) => t.textContent));
+  if (!asCommander.some((t) => /By instructor/.test(t))) {
+    throw new Error('a commander was not offered the tab');
+  }
+});
+
+await step('asking for the tab by URL without the role lands elsewhere', async () => {
+  // Hiding it from the bar is not the same as refusing it.
+  await signInAs(ADMIN_EMAIL, 'Capt Reyes', 'instructor');
+  await page.goto(`${BASE}#/instructor?tab=people`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+  const text = await page.textContent('#view');
+  if (/By instructor|grouped by the person/.test(text)) {
+    throw new Error('an instructor reached the commander view by URL');
+  }
+});
+
+await step('a person under the threshold is withheld, counting their total', async () => {
+  await page.evaluate(async () => {
+    const m = await import('/js/storage/index.js');
+    const a = await import('/js/auth.js');
+    try {
+      await a.createAccount({ email: 'quiet@det025.edu', name: 'Quiet, Instructor',
+        roles: ['instructor'] });
+    } catch { /* already there */ }
+
+    await m.db.saveForm({ id: 'form_quiet', name: 'Q', sections: [
+      { title: 'Q', items: [{ id: 'q1', type: 'scale', label: 'Rate it', min: 1, max: 9 }] },
+    ] });
+    // Two responses, spread across two separate forms — the case a per-form
+    // threshold alone would let through.
+    for (const n of [1, 2]) {
+      await m.db.saveRequest({
+        id: `req_quiet_${n}`, formId: 'form_quiet', title: `Quiet ${n}`,
+        status: 'open', asClass: 'AS200', anonymous: true, space: 'shared',
+        subject: 'quiet.instructor', createdBy: 'quiet.instructor',
+      });
+      await m.db.saveResponse({
+        requestId: `req_quiet_${n}`, formId: 'form_quiet', anonymous: true,
+        answers: { q1: 8 },
+      });
+    }
+    const s = JSON.parse(sessionStorage.getItem('topfb.session.v1'));
+    s.roles = ['commander'];
+    sessionStorage.setItem('topfb.session.v1', JSON.stringify(s));
+  });
+
+  await page.goto(`${BASE}#/instructor?tab=people`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('table.table', { timeout: 15000 });
+
+  const row = await page.evaluate(() => {
+    const tr = [...document.querySelectorAll('tbody tr')]
+      .find((r) => /Quiet/.test(r.textContent));
+    return tr ? tr.textContent : null;
+  });
+  if (!row) throw new Error('the instructor is not listed');
+  if (!/Withheld/.test(row)) throw new Error(`two responses were summarised: ${row}`);
+});
+
+await step('opening a withheld person shows no average and no answers', async () => {
+  await page.evaluate(() => {
+    const tr = [...document.querySelectorAll('tbody tr')].find((r) => /Quiet/.test(r.textContent));
+    tr.click();
+  });
+  await page.waitForTimeout(700);
+  const text = await page.textContent('#view');
+  if (!/fewer than 3 responses/i.test(text)) throw new Error('no withholding notice shown');
+  if (/Outstanding|Favorable|Major\b/.test(text.split('Withheld')[1] || '')) {
+    throw new Error('a rating word leaked into the withheld view');
+  }
+});
+
+await step('a person over the threshold is summarised', async () => {
+  await page.evaluate(async () => {
+    const m = await import('/js/storage/index.js');
+    for (let i = 0; i < 4; i++) {
+      await m.db.saveResponse({
+        requestId: 'req_quiet_1', formId: 'form_quiet', anonymous: true,
+        answers: { q1: 7 + (i % 2) },
+      });
+    }
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('table.table', { timeout: 15000 });
+  const row = await page.evaluate(() => {
+    const tr = [...document.querySelectorAll('tbody tr')].find((r) => /Quiet/.test(r.textContent));
+    return tr ? tr.textContent : null;
+  });
+  if (/Withheld/.test(row)) throw new Error('six responses were still withheld');
+  if (!/Favorable|Major|Outstanding/.test(row)) throw new Error(`no rating word shown: ${row}`);
+});
+
+await step('the by-instructor fixtures are removed again', async () => {
+  // Left in place they would show as legitimately withheld on the analysis
+  // screen, and a later test asserts no withheld notice appears there at all.
+  await page.evaluate(async () => {
+    const m = await import('/js/storage/index.js');
+    for (const id of ['req_quiet_1', 'req_quiet_2']) await m.db.deleteRequest(id);
+    await m.db.deleteForm('form_quiet');
+  });
+  const left = await page.evaluate(async () => {
+    const m = await import('/js/storage/index.js');
+    return (await m.db.listRequests()).filter((r) => r.id.startsWith('req_quiet')).length;
+  });
+  if (left) throw new Error(`${left} fixture requests survived`);
+});
+
 /* ---------- anonymised export ---------- */
 
 await step('an anonymised export carries no name, address or username', async () => {

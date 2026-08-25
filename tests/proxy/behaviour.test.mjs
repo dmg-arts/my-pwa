@@ -445,6 +445,75 @@ check('deleting a request takes its responses and receipts with it', () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * who feedback is about
+ *
+ * A commander reviews instructors by this attribution, so it has to mean
+ * something. Who *issued* it comes from the verified token; who it is *about* is
+ * a deliberate choice, but must name somebody real.
+ * ------------------------------------------------------------------ */
+
+check('the creator is taken from the token, not the request body', () => {
+  const proxy = detachment();
+  proxy.post({
+    action: 'saveRequest', idToken: as('instructor'),
+    request: { id: 'req_who', formId: 'form_1', createdBy: 'commander' },
+  });
+  const stored = proxy.root.read(['requests'], 'req_who.json');
+  if (stored.createdBy !== 'instructor') {
+    throw new Error(`createdBy recorded as ${stored.createdBy}`);
+  }
+});
+
+check('the subject defaults to whoever issued it', () => {
+  const proxy = detachment();
+  proxy.post({
+    action: 'saveRequest', idToken: as('cadre'),
+    request: { id: 'req_default', formId: 'form_1' },
+  });
+  const stored = proxy.root.read(['requests'], 'req_default.json');
+  if (stored.subject !== 'cadre') throw new Error(`subject is ${stored.subject}`);
+});
+
+check('the subject can name somebody else on the roster', () => {
+  // An administrator issuing forms for an event somebody else ran.
+  const proxy = detachment();
+  proxy.post({
+    action: 'saveRequest', idToken: as('admin'),
+    request: { id: 'req_behalf', formId: 'form_1', subject: 'instructor' },
+  });
+  const stored = proxy.root.read(['requests'], 'req_behalf.json');
+  if (stored.subject !== 'instructor') throw new Error(`subject is ${stored.subject}`);
+  if (stored.createdBy !== 'admin') throw new Error('the issuer was not kept separately');
+});
+
+check('a subject who is not on the roster is refused', () => {
+  const proxy = detachment();
+  const out = proxy.post({
+    action: 'saveRequest', idToken: as('admin'),
+    request: { id: 'req_ghost', formId: 'form_1', subject: 'nobody-at-all' },
+  });
+  if (out.ok) throw new Error('accepted feedback about somebody who does not exist');
+  if (proxy.root.read(['requests'], 'req_ghost.json')) throw new Error('it was written anyway');
+});
+
+check('editing a request does not reassign who issued it', () => {
+  // Otherwise the last person to touch a form would inherit its results.
+  const proxy = detachment();
+  proxy.post({
+    action: 'saveRequest', idToken: as('instructor'),
+    request: { id: 'req_edit', formId: 'form_1' },
+  });
+  proxy.post({
+    action: 'saveRequest', idToken: as('admin'),
+    request: { id: 'req_edit', formId: 'form_1', title: 'renamed' },
+  });
+  const stored = proxy.root.read(['requests'], 'req_edit.json');
+  if (stored.createdBy !== 'instructor') {
+    throw new Error(`createdBy became ${stored.createdBy} after an edit by somebody else`);
+  }
+});
+
+/* ------------------------------------------------------------------ *
  * the roster
  * ------------------------------------------------------------------ */
 
