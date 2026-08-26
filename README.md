@@ -719,8 +719,6 @@ Roughly in dependency order. The first item gates several of the others.
 
 5. **Trends and per-instructor baselines**, described below.
 
-6. **Closing the loop**, deferred by decision — see below.
-
 ### Verification, and the single Client ID
 
 **Today** each detachment creates its own Cloud project and its own Client ID, so
@@ -880,18 +878,29 @@ Not yet built:
 - **Per-instructor baselines.** Comparing a score against that instructor's own
   history, rather than against the flight, needs the trend work first.
 
-### Deliberately deferred: closing the loop
+### Where the loop closes, and why it is not a feature
 
-Nothing currently tells a cadet that their feedback led to a change. Response
-rates in a second term depend almost entirely on whether cadets believe the
-first term mattered, so this is the highest-value thing the app does not do.
+Response rates in a second term depend on whether cadets believe the first term
+mattered. It would be easy to read that as a missing feature — a "you said, we
+did" screen — and to log it as the highest-value thing the app does not do.
 
-It is **deferred by decision, not oversight**: this capability belongs to a
-separate learning system being developed in parallel, which TOP-Feedback is
-intended to complement rather than duplicate. The integration is scheduled after
-the technical and functional work here is complete. Anyone picking this up
-should not build a "you said, we did" feature into this app without checking
-that decision first.
+**That reading is wrong, and this section exists to stop it being reintroduced.**
+
+A cadet learns their feedback was used by watching the instructor teach
+differently. The brief is tighter, the drill sequence changed, the thing that was
+confusing last block is explained first this time. That is the loop closing, and
+it closes in the room, in front of them, without software involved. No
+notification asserting that a change was made carries the same weight as
+observing one — and an app that claimed credit for a change it cannot verify
+would be worse than silent.
+
+So this is **out of scope by nature rather than deferred by schedule**. The app's
+job is to collect feedback honestly, analyse it usefully, and put it in front of
+the person who can act on it, to the standard academic feedback practice expects.
+It does that. What happens next is instruction, not technology, and the
+detachment already has the people for it.
+
+Anyone picking this up should not build a "you said, we did" feature here.
 
 ### The rating scale
 
