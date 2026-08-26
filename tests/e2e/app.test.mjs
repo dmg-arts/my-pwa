@@ -881,6 +881,73 @@ await step('asking for the tab by URL without the role lands elsewhere', async (
   }
 });
 
+await step('by-instructor covers cadre and commanders, not only instructors', async () => {
+  // The view is called "By instructor" but its subject is anyone feedback can
+  // be about. A detachment reviewing only the instructors would miss exactly
+  // the people a commander most needs a picture of.
+  await page.evaluate(async () => {
+    const m = await import('/js/storage/index.js');
+    const a = await import('/js/auth.js');
+    for (const [email, name, roles] of [
+      ['cadre.subject@det025.edu', 'Subject, Cadre', ['cadre']],
+      ['cmdr.subject@det025.edu', 'Subject, Commander', ['commander']],
+      ['admin.subject@det025.edu', 'Subject, Admin', ['admin']],
+      ['cadet.subject@gmail.com', 'Subject, Cadet', ['student']],
+    ]) {
+      try { await a.createAccount({ email, name, roles, asClass: 'AS200' }); }
+      catch { /* already there */ }
+    }
+
+    await m.db.saveForm({ id: 'form_sub', name: 'S', sections: [
+      { title: 'S', items: [{ id: 'q1', type: 'scale', label: 'Rate it', min: 1, max: 9 }] },
+    ] });
+    // Enough responses about the cadre member to clear the disclosure
+    // threshold, so a real average appears rather than "Withheld".
+    await m.db.saveRequest({
+      id: 'req_sub_cadre', formId: 'form_sub', title: 'About the cadre member',
+      status: 'open', asClass: 'AS200', anonymous: true, space: 'shared',
+      subject: 'subject.cadre', createdBy: 'subject.cadre',
+    });
+    for (const v of [8, 7, 9, 8]) {
+      await m.db.saveResponse({
+        requestId: 'req_sub_cadre', formId: 'form_sub', anonymous: true, answers: { q1: v },
+      });
+    }
+
+    const s = JSON.parse(sessionStorage.getItem('topfb.session.v1'));
+    s.roles = ['commander'];
+    sessionStorage.setItem('topfb.session.v1', JSON.stringify(s));
+  });
+
+  await page.goto(`${BASE}#/instructor?tab=people`, { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('table.table', { timeout: 15000 });
+
+  // Cell by cell: the row's textContent concatenates them, so "1 request, 4
+  // responses" reads as "14" and any digit assertion on it is a coin toss.
+  const rows = await page.$$eval('tbody tr', (trs) => trs.map((t) => ({
+    text: t.textContent,
+    cells: [...t.querySelectorAll('td')].map((c) => c.textContent.trim()),
+  })));
+  const find = (who) => rows.find((r) => r.text.includes(who));
+
+  // Every non-student role is a possible subject and is listed, with or
+  // without feedback — "nobody has asked about this person" is worth knowing.
+  for (const who of ['Subject, Cadre', 'Subject, Commander', 'Subject, Admin']) {
+    if (!find(who)) throw new Error(`${who} is missing from the by-instructor list`);
+  }
+  // Cadets are not subjects of instructional feedback and must not appear.
+  if (find('Subject, Cadet')) throw new Error('a cadet was listed as a subject of feedback');
+
+  const cadre = find('Subject, Cadre');
+  if (!/Cadre/.test(cadre.text)) throw new Error(`the role is not shown: ${cadre.text}`);
+  if (/Withheld/.test(cadre.text)) throw new Error('four responses were withheld');
+  // Columns are: person, requests, responses, average.
+  if (cadre.cells[2] !== '4') {
+    throw new Error(`responses column reads "${cadre.cells[2]}", expected 4`);
+  }
+});
+
 await step('a person under the threshold is withheld, counting their total', async () => {
   await page.evaluate(async () => {
     const m = await import('/js/storage/index.js');
@@ -930,10 +997,24 @@ await step('opening a withheld person shows no average and no answers', async ()
     tr.click();
   });
   await page.waitForTimeout(700);
-  const text = await page.textContent('#view');
-  if (!/fewer than 3 responses/i.test(text)) throw new Error('no withholding notice shown');
-  if (/Outstanding|Favorable|Major\b/.test(text.split('Withheld')[1] || '')) {
-    throw new Error('a rating word leaked into the withheld view');
+
+  // Scoped to the detail panel, not the whole page. Reading `#view` and
+  // splitting on the first "Withheld" passed for years because nothing else on
+  // screen happened to contain a rating word — until another person on the
+  // table below had a real average, and then it failed without anything being
+  // wrong. A test that depends on unrelated rows is not testing this.
+  const panel = await page.evaluate(() => {
+    const section = [...document.querySelectorAll('#view section.card')]
+      .find((el) => /fewer than \d+ responses/i.test(el.textContent));
+    return section ? section.textContent : null;
+  });
+  if (!panel) throw new Error('no withholding notice shown');
+  if (/Outstanding|Favorable|Major\b|Slight\b|Neutral\b/.test(panel)) {
+    throw new Error(`a rating word leaked into the withheld view: ${panel.slice(0, 160)}`);
+  }
+  // The written answers are the other half of what must not appear.
+  if (/answers?\b/i.test(panel) && /"/.test(panel)) {
+    throw new Error('a written answer leaked into the withheld view');
   }
 });
 

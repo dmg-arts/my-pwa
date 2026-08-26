@@ -100,7 +100,18 @@ function groupByPerson(requests, responses, formsById, staffByUsername) {
   });
 }
 
-/** Everyone who could be the subject of feedback, whether or not they have any. */
+/**
+ * Everyone who could be the subject of feedback, whether or not they have any.
+ *
+ * Any role but student: instructors, **cadre**, commanders and database
+ * administrators alike. The tab is called "By instructor" after the job most
+ * feedback is about, not after the only role it covers — a detachment reviewing
+ * only the people labelled instructor would miss the cadre running the labs,
+ * which is much of what a commander needs a picture of.
+ *
+ * Cadets are excluded because this is feedback *about* instruction. Their own
+ * submissions are the input to it.
+ */
 function staffFrom(roster) {
   return roster.filter((a) => (a.roles || []).some((r) => r !== ROLES.student));
 }
