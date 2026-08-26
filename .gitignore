@@ -6,3 +6,7 @@ node_modules/
 shots/
 batches/
 *.jsonl
+
+# Screens by perspective: a few dozen images, regenerated on demand and stale
+# the moment a view changes. The two PDFs in docs/ are committed; these are not.
+docs/screens/

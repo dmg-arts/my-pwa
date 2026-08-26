@@ -25,6 +25,31 @@ For the sign-in screenshot it temporarily sets a Client ID so Google's own butto
 renders — these captures run on the local backend, which has none — and clears it
 straight afterwards. Everything else is real behaviour with seeded data.
 
+## 1b. Every screen, from every role's point of view
+
+```bash
+python3 serve.py --port 8123 --no-open &
+node tools/docs/capture-perspectives.mjs docs/screens
+```
+
+48 images into `docs/screens/`, which is **gitignored** — regenerate rather than
+trusting a copy. Six folders: signed out, then one per role.
+
+Each also visits the screens its role should *not* reach, kept under `refused/`,
+and **the run fails if one of them opens**. That makes the folder a check rather
+than a gallery: a screenshot of the Cadre Panel proves cadre can open it and
+says nothing about whether an instructor can, which is the half worth knowing.
+
+Two traps, both already hit:
+
+- The first account to sign in claims an empty roster and is handed
+  `[admin, instructor]` whatever roles were requested. Seeding a "commander"
+  first therefore produced an administrator, and her By-instructor screenshot
+  was the fallback tab. Roles are corrected after everyone is created.
+- A refused *tab* is not a refused *panel*. Asking for `?tab=people` without the
+  role lands on the panel's default tab, which is correct and shows ordinary
+  panel content, so those entries name their own tell in `REFUSAL_TELL`.
+
 ## 2. The setup guide (PDF)
 
 `setup-guide.html` is written print-first — page breaks, running footer,
