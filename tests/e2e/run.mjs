@@ -46,10 +46,21 @@ if (!(await ready())) {
   process.exit(1);
 }
 
-const suite = spawn(process.execPath, [resolve(HERE, 'app.test.mjs')], {
-  cwd: ROOT,
-  stdio: 'inherit',
-  env: { ...process.env, BASE_URL: BASE },
+/** Runs one suite against the server already up, resolving to its exit code. */
+const run = (file) => new Promise((done) => {
+  const suite = spawn(process.execPath, [resolve(HERE, file)], {
+    cwd: ROOT,
+    stdio: 'inherit',
+    env: { ...process.env, BASE_URL: BASE },
+  });
+  suite.on('exit', (code) => done(code ?? 1));
 });
 
-suite.on('exit', (code) => { shutdown(); process.exit(code ?? 1); });
+// Both share one server. The Drive suite intercepts googleapis.com in the
+// browser rather than reaching Google, so it needs nothing else.
+let failed = 0;
+for (const file of ['app.test.mjs', 'drive.test.mjs']) {
+  failed += (await run(file)) === 0 ? 0 : 1;
+}
+shutdown();
+process.exit(failed ? 1 : 0);

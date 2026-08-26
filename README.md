@@ -502,22 +502,28 @@ choice. The trade is accuracy, and every output is labelled accordingly.
 ## Known limits
 
 Alpha 0.4 was installed and run end to end against real Google Drive, on a Mac
-and an iPhone, in August 2026. These are the limits that test confirmed or found.
+and an iPhone, in August 2026. **That test predates the `drive.file` change in
+0.15**, which replaced the folder step entirely — the live install pasted a
+folder link, and the app now creates the folder itself. Treat the Drive setup
+path as re-tested only once somebody runs it again.
 
-- **Without the submission proxy, everyone who submits needs Editor access to
-  the Drive folder** — and Drive grants no write-without-read, so anyone who can
-  submit can also read every response in it. Deploying the proxy
-  (`tools/proxy/`) removes that entirely. **Until a detachment deploys it, do
-  not tell cadets their responses are private from each other.**
-- ~~**Google caps the app at 100 users.**~~ **Resolved.** The app used to request
-  `auth/drive` — full access to the whole account, which Google classes as
-  *restricted*: verification plus a paid annual security assessment. It now asks
-  for `drive.file`, access to files it created itself, which is the narrowest
-  Drive permission there is. The cost of that narrowing is that setup **creates**
-  the folder rather than accepting a link to one, because a folder made by hand
-  is invisible under this scope.
-- **Some Google accounts cannot be added as test users.** Cause unknown and
-  Google-side; those people need a different Google account.
+- **The submission server is required for anyone but the folder's owner.** The
+  app holds `drive.file`, so a device can only reach files *it* created. The
+  owner's browser created the folder; nobody else's did. Without the server
+  deployed, join links cannot set up a cadet's device at all — the join screen
+  says so rather than failing obscurely. Earlier versions fell back to giving
+  every cadet Editor access to the whole folder, which is how a cadet could read
+  every response; that fallback is gone.
+- **The app is still in Testing, so Google caps it at 100 accounts** and every
+  user meets an unverified-app screen. This is *publishing status*, not scope —
+  narrowing to `drive.file` removed the reason the app could not be published
+  (`auth/drive` is restricted: verification plus a paid annual security
+  assessment), but nothing is published until somebody presses the button.
+  Doing so needs the homepage, verified domain and branding that the rename will
+  provide.
+- **Some Google accounts refuse unverified apps outright.** Settled, not a
+  mystery: it is a standing Google behaviour, those people need a different
+  Google account, and it stops mattering once the app is published.
 - **Receipt timing can correlate.** For anonymous feedback, a receipt and a
   response are written seconds apart, the response ID encodes its creation time,
   and both index arrays are in submission order — so someone reading the **raw

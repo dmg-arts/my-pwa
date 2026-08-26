@@ -12,13 +12,32 @@ npm install                           # once, for the browser suite
 npm test                              # both
 ```
 
-`npm run test:e2e` starts its own server on port 8123 and shuts it down
-afterwards. When iterating it is faster to leave one running:
+`npm run test:e2e` starts its own server on port 8123, runs **both** browser
+suites against it, and shuts it down afterwards. When iterating it is faster to
+leave one running:
 
 ```bash
 python3 serve.py --port 8123 --no-open &
-node tests/e2e/app.test.mjs
+node tests/e2e/app.test.mjs      # the app, on the local backend
+node tests/e2e/drive.test.mjs    # the Google Drive path, against a fake Drive
 ```
+
+### The Drive suite
+
+Every other suite runs on the `local` backend, which left the entire Drive path
+untested — it needs an OAuth token, and Google will not issue one to an
+automated browser.
+
+`tests/e2e/drive.test.mjs` simulates Google instead, at two narrow seams: the
+GIS token client is stubbed before the app loads, and `googleapis.com` is served
+by an in-memory Drive. That fake **enforces `drive.file` semantics** — it tracks
+which files the app created and returns 404 for everything else, exactly as
+Google does. That is the point of it: without that rule it would happily serve a
+hand-made folder and the suite would pass while a real install failed.
+
+It cannot tell you whether Google's real API agrees with this model of it. A
+green run means the app is internally consistent; a live install still needs
+running once by hand.
 
 ## What is covered, and why these things
 
