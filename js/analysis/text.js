@@ -214,6 +214,20 @@ const escapeRe = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /** Compiled once — rebuilding these per response is the slow path. */
 const COMPILED = SAFETY_CATEGORIES.map((category) => ({
   ...category,
+  /**
+   * Phrasings where a trigger word means something harmless.
+   *
+   * A word list cannot read context, but it can be told about the handful of
+   * places a word reliably means nothing. In this vocabulary that matters more
+   * than it sounds: "suicide sprints" is a warm-up, "getting smoked" is a hard
+   * PT session, and a drill team "initiation" is a good night out. Those three
+   * produced every false alarm in a 600-sample corpus and not one true one.
+   *
+   * A match falling inside one of these is dropped. Deliberately narrow — an
+   * exclusion that is too broad silently stops the screen working, which is the
+   * worst failure available here.
+   */
+  exclusions: (category.unless || []).map((re) => new RegExp(re.source, 'gi')),
   matchers: [
     ...category.terms.map((term) => ({
       term,
@@ -241,11 +255,28 @@ export function screenText(text, { context = 8 } = {}) {
   const found = [];
 
   for (const category of COMPILED) {
+    // Where this category's trigger words are known to mean nothing.
+    const safe = [];
+    for (const exclusion of category.exclusions) {
+      exclusion.lastIndex = 0;
+      let skip = exclusion.exec(source);
+      while (skip) {
+        safe.push([skip.index, skip.index + skip[0].length]);
+        skip = exclusion.exec(source);
+      }
+    }
+    const excluded = (at, length) =>
+      safe.some(([from, to]) => at >= from && at + length <= to);
+
     const matches = [];
     for (const matcher of category.matchers) {
       matcher.re.lastIndex = 0;
       let match = matcher.re.exec(source);
       while (match) {
+        if (excluded(match.index, match[0].length)) {
+          match = matcher.re.exec(source);
+          continue;
+        }
         // Locate the match in word-space to pull a readable window around it.
         const before = source.slice(0, match.index).split(/\s+/).length - 1;
         const start = Math.max(0, before - context);

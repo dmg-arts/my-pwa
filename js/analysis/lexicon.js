@@ -37,6 +37,21 @@ export const SENTIMENT = {
   recommend: 2, learned: 2, learning: 2, growth: 2, progress: 2, rewarding: 2,
   accessible: 2, responsive: 2, punctual: 2, disciplined: 2, capable: 2,
 
+  // --- student vocabulary ---
+  //
+  // Added from a 600-sample corpus of cadet-register writing. Only words whose
+  // own meaning is unambiguous got in.
+  //
+  // Deliberately rejected from that same corpus: destroyed, wrecked, smoked,
+  // annihilated, torture, brutal, killed, roasted. They *appear* in positive
+  // sentences — "basically torture but worth it", "wrecked us and I loved every
+  // second" — and averaging the sentiment of sentences containing them makes
+  // them look positive. That is a measurement artifact, not a valence: the
+  // positive reading comes from "worth it" and "loved", which are already
+  // scored below. Adding the hyperbole would double-count them and would read
+  // "that session was torture" as praise.
+  goated: 4, elite: 3,
+
   // --- mild positive ---
   fine: 1, okay: 1, ok: 1, adequate: 1, decent: 1, reasonable: 1, satisfied: 1,
   satisfactory: 1, acceptable: 1, better: 1, nice: 1, like: 1, liked: 1,
@@ -135,17 +150,34 @@ export const SAFETY_CATEGORIES = [
     severity: 'critical',
     note: 'Conduct that degrades or endangers a cadet, or misuse of position.',
     terms: [
-      'hazing', 'hazed', 'haze', 'initiation', 'brutalized', 'brutalised',
+      'hazing', 'hazed', 'haze', 'brutalized', 'brutalised',
       'humiliated', 'humiliating', 'humiliation', 'degrading', 'degraded',
       'demeaning', 'belittled', 'belittling', 'tormented', 'ridiculed',
-      'singled out', 'made an example', 'punishment detail', 'smoked',
+      'singled out', 'made an example', 'punishment detail',
       'abuse of power', 'abused authority', 'retaliation', 'retaliated',
       'blacklisted', 'targeted me', 'picked on',
+    ],
+    // 'smoked' and 'initiation' used to be terms here and were removed rather
+    // than excluded. Across 600 samples they produced eight false alarms and
+    // no true ones: in this vocabulary getting smoked is a hard PT session and
+    // a drill team initiation is a good night out. The patterns below still
+    // catch either word when it appears with punishment framing around it.
+    unless: [
+      /\bhazed\s+by\s+(?:my|the)\s+own\b/i,
     ],
     patterns: [
       /\bforced\s+(?:me|us|him|her|them)\s+to\b/i,
       /\bmade\s+(?:me|us|him|her|them)\s+(?:do|stand|hold|run|eat|drink)\b/i,
       /\b(?:physical|verbal)\s+(?:abuse|punishment)\b/i,
+      // The shape a real disclosure takes: seniors making juniors do something
+      // that is not training. Almost never phrased with the word "hazing".
+      /\b(?:mak(?:e|es|ing)|made|had)\s+(?:the\s+)?(?:new|newer|newest|junior|freshman|freshmen|incoming)\b/i,
+      /\bnew(?:er|est)?\s+(?:cadets?|members?|guys?|people)\s+(?:have|has|had)\s+to\b/i,
+      /\b(?:as1\d{2}|as100s|freshmen|freshman|new cadets?)\b[^.]{0,80}\b(?:have|has|had)\s+to\b/i,
+      /\bkeeps?\s+assigning\s+all\b/i,
+      /\bunofficial\s+(?:tradition|rule|requirement)\b/i,
+      /\bsmoked?\s+(?:us|me|them|him|her)\s+(?:for|as|until)\b/i,
+      /\binitiation\b[^.]{0,60}\b(?:had to|made|forced|until|blindfold)\b/i,
     ],
   },
   {
@@ -165,6 +197,14 @@ export const SAFETY_CATEGORIES = [
       /\b(?:made|makes)\s+(?:me|her|him|them)\s+(?:feel\s+)?uncomfortable\b/i,
       /\basked\s+(?:me|her|him)\s+out\s+(?:repeatedly|again)\b/i,
       /\bcomments?\s+about\s+my\s+(?:body|appearance|looks)\b/i,
+      // Written about somebody else, and about a pattern rather than an
+      // incident: "keeps" is doing the work, not any single word.
+      /\bkeeps?\s+(?:making|passing)\s+comments?\s+(?:about|on)\b[^.]{0,60}\b(?:female|women|girls?|her|appearance|body|uniform|looks?)\b/i,
+      /\bcomment(?:s|ing|ed)?\s+(?:about|on)\s+how\s+(?:the\s+)?(?:female|women|girls?)\b/i,
+      /\bkeeps?\s+finding\s+reasons?\s+to\b/i,
+      /\bfill\s+out\s+the\s+uniform\b/i,
+      /\b(?:stand|standing|stood)\s+very\s+close\b/i,
+      /\b(?:pull|pulls|pulling|pulled)\s+(?:the\s+same|her)\b[^.]{0,40}\baside\s+privately\b/i,
     ],
   },
   {
@@ -185,6 +225,15 @@ export const SAFETY_CATEGORIES = [
       /\b(?:treated|treats)\s+(?:me|us|them)\s+differently\s+because\b/i,
       /\bonly\s+(?:the\s+)?(?:white|black|male|female|men|women)\s+cadets\b/i,
       /\bmade\s+(?:a\s+)?(?:joke|comment)s?\s+about\s+my\s+(?:race|religion|accent|country)\b/i,
+      // The shape it is actually reported in: a consistent pattern of who gets
+      // passed over, with the protected characteristic mentioned as the tell
+      // rather than named as a complaint.
+      /\bthe\s+only\s+(?:openly\s+)?(?:\w+\s+){0,2}cadet\s+(?:in|on|who)\b/i,
+      /\b(?:keeps?|kept|consistently|always)\s+(?:skipping|passing)\s+over\b/i,
+      /\b(?:keeps?|kept|consistently|always)\s+(?:putting|placing|assigning)\s+the\s+(?:same|two|only)\b/i,
+      /\b(?:harsher|tougher|stricter)\b[^.]{0,50}\bcompared\s+to\b/i,
+      /\bskips?\s+over\s+the\s+(?:international|foreign|minority)\b/i,
+      /\b(?:muslim|jewish|black|hispanic|asian|international|gay|lesbian|trans)\s+cadets?\b[^.]{0,60}\b(?:always|keeps?|every\s+time|regardless)\b/i,
     ],
   },
   {
@@ -201,6 +250,12 @@ export const SAFETY_CATEGORIES = [
     patterns: [
       /\bgoing\s+to\s+(?:hurt|kill|beat|shoot)\b/i,
       /\bafraid\s+(?:for\s+my\s+safety|of\s+(?:him|her|them))\b/i,
+      // Reported as a quotation, almost always. The quoting is the signal: a
+      // cadet repeating someone's exact words is telling you it landed badly.
+      /\bwatch\s+(?:your|yourself|his|her|their)\s*(?:back|step)?\b/i,
+      /\bmake\s+(?:him|her|them|you)\s+(?:pay|regret|sorry)\b/i,
+      /\b(?:he|she|they)(?:'?d|\s+would)\s+(?:regret|pay\s+for)\s+it\b/i,
+      /\byou(?:'?ll|\s+will)\s+regret\b/i,
     ],
   },
   {
@@ -215,8 +270,29 @@ export const SAFETY_CATEGORIES = [
       'breaking point', 'mental breakdown', 'panic attacks', 'depressed',
       'depression', 'anxiety attacks',
     ],
+    // "Suicide sprints" and "suicide pace" are drills. They caused every
+    // false alarm this category produced and never once a real one.
+    unless: [
+      /\bsuicides?\s*(?:sprints?|drills?|runs?|pace|laps?)\b/i,
+      /\bsuicide\s+prevention\b/i,
+    ],
     patterns: [
       /\b(?:dont|do\s+not)\s+want\s+to\s+(?:be\s+here|live|wake\s+up)\b/i,
+      // How it is actually written: understated, first person, and usually
+      // buried after something unrelated. No method, no plan, no key word.
+      /\b(?:stopped|quit)\s+caring\b/i,
+      /\b(?:dont|don't|do\s+not)\s+(?:really\s+)?(?:see|know)\s+(?:the\s+point|why\s+i)\b/i,
+      /\bhard\s+time\s+seeing\s+the\s+point\b/i,
+      /\bwhat(?:'?s)?\s+the\s+point\s+(?:of|anymore)\b/i,
+      /\bdont\s+care\s+what\s+happens\b/i,
+      /\bfeels?\s+pointless\b/i,
+      // And the other shape: somebody reporting concern about a third person,
+      // quoting what they said. This is the one a detachment most needs to see.
+      /\b(?:worried|concerned)\s+about\s+(?:my|one\s+of|a)\b[^.]{0,60}\b(?:been\s+saying|said|mentioned)\b/i,
+      /\bbetter\s+off\s+without\s+(?:him|her|them|me)\b/i,
+      /\bwish(?:es|ed)?\s+(?:he|she|they|i)\s+could\s+just\s+disappear\b/i,
+      /\b(?:if|when)\s+(?:he|she|they|i)\s+(?:just\s+)?(?:wasnt|wasn't|weren't|werent)\s+around\b/i,
+      /\beasier\s+for\s+everyone\s+if\b/i,
     ],
   },
   {
@@ -229,7 +305,10 @@ export const SAFETY_CATEGORIES = [
       'drugs', 'weed', 'marijuana', 'cocaine', 'pills', 'adderall',
       'under the influence', 'dui', 'substance abuse',
     ],
-    patterns: [],
+    patterns: [
+      /\bneeds?\s+a\s+(?:few|couple)\s+(?:drinks?|beers?)\b/i,
+      /\b(?:drink|drinks|drinking)\s+to\s+get\s+through\b/i,
+    ],
   },
   {
     id: 'integrity',
@@ -242,7 +321,18 @@ export const SAFETY_CATEGORIES = [
       'classified', 'opsec', 'operational security', 'leaked', 'unauthorized',
       'fraud', 'stolen', 'theft',
     ],
-    patterns: [],
+    patterns: [
+      // Records quietly changed to suit somebody.
+      /\b(?:scores?|grades?|times?|results?)\b[^.]{0,40}\b(?:got|were|been)\s+(?:adjusted|changed|bumped|altered)\b/i,
+      /\b(?:bumped|adjusted|changed)\s+(?:up\s+)?(?:his|her|their|the)\s+(?:scores?|grades?|marks?)\b/i,
+      /\b(?:answers?|questions?|the\s+test|the\s+exam)\b[^.]{0,40}\bahead\s+of\s+time\b/i,
+      // Retaliation for reporting is an integrity failure and reads nothing
+      // like the words above — it is always someone being warned off quietly.
+      /\breport(?:ing|ed)?\b[^.]{0,60}\b(?:not\s+go\s+well|reflect\s+poorly|consequences|regret)\b/i,
+      /\b(?:consequences|trouble)\b[^.]{0,60}\bif\s+(?:he|she|they|i|we)\s+report/i,
+      /\bbringing\s+it\s+up\b[^.]{0,40}\b(?:again|would)\b/i,
+      /\btold\b[^.]{0,50}\bnot\s+to\s+(?:report|say\s+anything|mention)\b/i,
+    ],
   },
 ];
 

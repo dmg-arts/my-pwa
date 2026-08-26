@@ -67,6 +67,59 @@ appearing three or more times, leaning consistently positive or negative across
 the corpus, with no entry in `SENTIMENT`. Suggested valences are a starting point
 for your judgement, not an answer.
 
+## Results so far
+
+600 samples, ten batches, generated August 2026. Split **b1–b7 to tune on,
+b8–b10 held back** — the holdout is the only number that means anything, because
+patterns written while looking at the misses will always fit those misses.
+
+| | Safety recall | Safety precision | Sentiment exact | Direction wrong |
+|---|---|---|---|---|
+| Before | 9.0% | 31.0% | 27.2% | 12.5% |
+| After (tune set) | 75.7% | 100% | — | — |
+| **After (holdout)** | **80.0%** | **100%** | — | — |
+| After (all 600) | 77.0% | 100% | 28.8% | 12.5% |
+
+The holdout scoring slightly *higher* than the tune set is the result worth
+having: the patterns generalise rather than memorise.
+
+### What actually moved the numbers
+
+**Every false alarm came from four words**, all military or athletic idiom:
+`smoked` (a hard PT session), `suicide` (sprints and pace), `initiation` (a
+drill team night out), and one figurative `hazed`. Across 600 samples they
+produced twenty false alarms and **not one true one**. `smoked` and `initiation`
+were removed as standalone terms and re-added inside patterns that require
+punishment framing; the others became exclusions.
+
+**Recall was low because real disclosures do not use the vocabulary.** They are
+hedged, understated, and buried after something unrelated — "the ruck marches
+themselves are fine. One thing I probably should mention is…". The patterns that
+found them key on *shape* rather than words: seniors making juniors do things,
+"keeps finding reasons to", "the only \<x\> cadet in", a quoted threat, somebody
+worried about a friend and repeating what they said.
+
+### The trap in the vocabulary report
+
+The report ranks words by the mean sentiment of the samples containing them.
+**That is not the word's valence**, and treating it as one is how a lexicon gets
+worse. `torture` scored +1.0 because it appears in "basically torture but worth
+it"; `wrecked` scored +1.3 from "wrecked us and I loved every second". The
+positive reading comes from *worth it* and *loved*, which are already scored.
+Adding the hyperbole would double-count them and read "that session was torture"
+as praise.
+
+Only `goated` and `elite` were added — words whose own meaning is unambiguous.
+Eight others the report ranked highly were rejected for the reason above, and
+the rejection is written into `lexicon.js` so it does not get undone.
+
+### What the numbers do not say
+
+Sentiment barely moved, and will not: 12.5% of samples are read in the wrong
+direction and most of those are **sarcasm**, which a word list cannot do.
+"Nothing says leadership development like standing in a parking lot for an hour"
+scores positive and always will. That is a known ceiling, not a tuning target.
+
 ## Honest limits
 
 **Synthetic writing is a model's impression of how students write, not how

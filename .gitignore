@@ -6,6 +6,11 @@ node_modules/
 shots/
 batches/
 *.jsonl
+# ...except the tuning corpus. It is the regression suite for every future
+# lexicon change: without it the before/after numbers cannot be reproduced and
+# the next person is back to guessing. Synthetic throughout, so nothing to
+# protect.
+!tools/tuning/**/*.jsonl
 
 # Screens by perspective: a few dozen images, regenerated on demand and stale
 # the moment a view changes. The two PDFs in docs/ are committed; these are not.
