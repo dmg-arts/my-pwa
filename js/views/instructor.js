@@ -19,7 +19,7 @@ import {
   confirmDialog, fmtDate, fmtRelative, pluralize, download, pickFile, readFileAsText,
   mount, remount } from '../util.js';
 import {
-  SEMESTERS, AS_CLASSES, REQUEST_STATUS, ROLES, schoolYears, isDevMode,
+  SEMESTERS, AS_CLASSES, REQUEST_STATUS, ROLES, schoolYears,
 } from '../config.js';
 import { connection } from '../state.js';
 import { hasRole, currentUser, activeRoles, signOut, listStudents } from '../auth.js';
@@ -103,10 +103,6 @@ export async function renderPanel(root, { query }, panel) {
             type: 'button', class: 'btn btn--sm',
             onclick: () => { signOut(); toast('Signed out.', 'ok'); navigate('/home'); },
           }, icon('lock'), 'Sign out'))),
-
-      isDevMode() && notice('warn', 'Development mode is on',
-        el('p', {}, 'This panel is unlocked without a sign-in on this device. '
-          + 'Turn it off in Settings before fielding the app.')),
 
       // What this panel holds, so nobody has to infer it from the title. The
       // cadre one especially: knowing instructors cannot see this list is the

@@ -333,9 +333,12 @@ build refuses to load rather than being silently downgraded. Add one in
 - **Student identity is authenticated.** Cadets sign in, so a submission receipt
   records a verified person rather than a typed claim, and nobody can burn a
   classmate's single submission.
-- **Development mode** (Settings → Access) unlocks the panels on one device so
-  the app can be built out before accounts exist. It is device-local, shown as a
-  banner on every gated screen, and must be off before fielding.
+- **No device-local flag grants access.** There used to be one — development
+  mode made every role check pass, so a box ticked on a page that needs no
+  sign-in opened the admin console. It is gone. What remains under Settings →
+  Access enables an *email sign-in* for installations with no Google Client ID,
+  and that goes through the roster like any other: an address nobody added is
+  refused, and the roles are the real ones.
 - Nothing is transmitted anywhere except the detachment's own Google Drive.
 
 ---

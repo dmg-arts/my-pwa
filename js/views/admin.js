@@ -17,7 +17,7 @@ import {
   fmtDateTime, mount, remount } from '../util.js';
 import {
   APP, AS_CLASSES, BACKENDS, ROLES, ROLE_LABELS, AS_PROGRESSION, MAX_COMMANDERS,
-  currentSchoolYear, isDevMode,
+  currentSchoolYear,
 } from '../config.js';
 import { record, AUDIT, AUDIT_LABELS } from '../audit.js';
 import {
@@ -298,10 +298,6 @@ async function renderConsole(root) {
           type: 'button', class: 'btn btn--sm',
           onclick: () => { signOut(); toast('Signed out.', 'ok'); navigate('/home'); },
         }, icon('lock'), 'Sign out'))),
-
-    isDevMode() && notice('warn', 'Development mode is on',
-      el('p', {}, 'The Instructor Panel and these admin screens are unlocked on this device. '
-        + 'Turn it off in Settings before fielding the app.')),
 
     accounts.filter((a) => a.roles?.includes(ROLES.admin) && a.active !== false).length === 1
       && notice('warn', 'You are the only administrator',

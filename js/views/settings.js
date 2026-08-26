@@ -8,7 +8,7 @@ import {
   el, icon, field, select, notice, toast, confirmDialog, spinner, badge,
   fmtDateTime, download, modal,
   mount, remount } from '../util.js';
-import { APP, BACKENDS, ROLES, SEMESTERS, schoolYears, isDevMode, setDevMode } from '../config.js';
+import { APP, BACKENDS, ROLES, SEMESTERS, schoolYears, isDirectSignIn, setDirectSignIn } from '../config.js';
 import { settings, connection, applySettings, markSetupComplete } from '../state.js';
 import { hasAdmin, signOut, currentUser } from '../auth.js';
 import { db, adapters, parseFolderId } from '../storage/index.js';
@@ -34,31 +34,37 @@ export async function renderSettings(root) {
 }
 
 /* ------------------------------------------------------------------ *
- * Access — the development-mode escape hatch
+ * Access — signing in without Google
  * ------------------------------------------------------------------ */
 
+/**
+ * The one switch on this page that touches access, and what it no longer does.
+ *
+ * This was "development mode", and it made every role check pass — the panels
+ * opened with no sign-in at all. Since this page is deliberately reachable
+ * without signing in, that meant anybody holding a detachment laptop could tick
+ * a box and open the admin console. The proxy still refused them data, needing
+ * a token they did not have, but "the server would have stopped them" is a poor
+ * reason to leave a door unlatched.
+ *
+ * It now enables exactly one thing: the email sign-in on the sign-in screen,
+ * for installations with no Google Client ID. That is the *This device only*
+ * evaluation path the setup guide recommends, and without this it is a dead end
+ * — Google cannot sign anyone in without a Client ID, so the Instructor Panel
+ * could never be opened.
+ *
+ * It grants nothing by itself. Whoever signs in that way is checked against the
+ * roster like anybody else and gets the roles they actually hold.
+ */
 async function accessSection() {
   const adminExists = await hasAdmin().catch(() => false);
-  const on = isDevMode();
+  const on = isDirectSignIn();
+  const conn = connection.get();
+  const hasClientId = Boolean(conn.clientId);
 
-  /**
-   * Who may switch this on.
-   *
-   * Development mode makes every role check pass, and this page is deliberately
-   * reachable without signing in — display settings belong to whoever is
-   * holding the device. Together that meant anybody who picked up a detachment
-   * laptop could tick one box and open Database Administration. The proxy still
-   * refused them any actual data, because that needs a token they do not have,
-   * but "the server would have stopped them" is not a reason to leave the door
-   * unlatched.
-   *
-   * So: before a detachment has any administrator, the toggle is open — that is
-   * the state it exists for, building the thing before real accounts exist.
-   * Afterwards, turning it on requires being signed in as one.
-   *
-   * Turning it *off* is never gated. The safe direction should never need a
-   * credential, least of all one the person may not be able to produce.
-   */
+  // Enabling requires being an administrator once the detachment has one.
+  // Turning it *off* never does: the safe direction should not need a
+  // credential, least of all one the person may be unable to produce.
   const session = currentUser();
   const isAdmin = (session?.roles || []).includes(ROLES.admin);
   const mayEnable = !adminExists || isAdmin;
@@ -67,22 +73,22 @@ async function accessSection() {
     type: 'checkbox', checked: on, disabled: !on && !mayEnable,
     onchange: async (e) => {
       if (!e.target.checked) {
-        setDevMode(false);
-        toast('Development mode off — sign-in is required again.', 'ok');
+        setDirectSignIn(false);
+        toast('Google sign-in is now the only way in on this device.', 'ok');
         return navigate('/settings');
       }
       if (!mayEnable) {
         e.target.checked = false;
         return toast('Sign in as a database administrator to turn this on.', 'warn', 6000);
       }
-      const confirmed = await confirmDialog('Turn on development mode?',
-        'The Instructor Panel, the Cadre Panel and Database Administration will open on this '
-        + 'device without a sign-in. Use it only while building — never on a device students '
-        + 'can reach.',
-        { confirmLabel: 'Turn on', danger: true });
+      const confirmed = await confirmDialog('Allow signing in without Google?',
+        'This device will offer an email box on the sign-in screen. The roster still decides '
+        + 'who gets in and as what \u2014 but an email is easier to claim than a Google account, '
+        + 'so leave it off wherever Google sign-in works.',
+        { confirmLabel: 'Allow it', danger: true });
       if (!confirmed) { e.target.checked = false; return undefined; }
-      setDevMode(true);
-      toast('Development mode on.', 'warn');
+      setDirectSignIn(true);
+      toast('Email sign-in allowed on this device.', 'warn');
       return navigate('/settings');
     },
   });
@@ -91,29 +97,32 @@ async function accessSection() {
     el('h2', { class: 'section-title' }, 'Access'),
 
     on
-      ? notice('warn', 'Development mode is on',
-        el('p', {}, 'Anyone using this device can open the Instructor Panel and Database '
-          + 'Administration without signing in. Turn this off before fielding the app.'))
-      : notice('ok', 'Sign-in is enforced',
+      ? notice('warn', 'This device allows signing in without Google',
+        el('p', {}, hasClientId
+          ? 'This installation has a Google Client ID, so nobody needs this \u2014 and the '
+            + 'sign-in screen will not offer it while one is configured. Turn it off.'
+          : 'The sign-in screen offers an email box as well as Google. The roster still '
+            + 'decides who gets in and what they may do.'))
+      : notice('ok', 'Google sign-in only',
         el('p', {}, adminExists
-          ? 'The Instructor Panel and Database Administration require an account.'
-          : 'No administrator account exists yet — the first person to open Database '
-            + 'Administration will be asked to create one.')),
+          ? 'Every panel requires an account on the roster.'
+          : 'No administrator account exists yet \u2014 the first person to sign in claims '
+            + 'the detachment.')),
 
     el('label', { class: 'check' }, toggle,
       el('span', {},
-        el('span', { class: 'check__text' }, 'Development mode (skip sign-in on this device)'),
+        el('span', { class: 'check__text' }, 'Allow signing in with an email instead of Google'),
         el('span', { class: 'check__desc', style: { display: 'block' } },
           !on && !mayEnable
             ? 'Locked. This detachment has administrator accounts, so turning this on requires '
               + 'signing in as one first. It can always be turned off.'
-            : 'Device-local. It does not change anyone else\'s access, and it never changes '
-              + 'your data.'))),
+            : 'For an installation with no Google Client ID \u2014 evaluating the app on one '
+              + 'device, before the Google setup exists. Device-local, and it grants no access '
+              + 'on its own.'))),
 
     el('p', { class: 'field__hint' },
-      'The roster is managed in Database Administration. Everyone signs in with their Google '
-      + 'account, so this app stores no passwords — access is decided by which emails are on the '
-      + 'roster, and by who your detachment has shared the Drive folder with.'));
+      'The roster is managed in Database Administration. This app stores no passwords: access is '
+      + 'decided by which emails are on the roster, and by the roles each one holds.'));
 }
 
 /**

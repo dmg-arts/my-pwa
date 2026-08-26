@@ -13,7 +13,7 @@
  */
 
 import { el, icon, field, notice, toast, remount } from '../util.js';
-import { ROLES, isDevMode } from '../config.js';
+import { ROLES, isDirectSignIn } from '../config.js';
 import { signInWithGoogle, signInAsDeveloper, hasAnyAccount } from '../auth.js';
 import { renderSignInButton } from '../google-identity.js';
 import { connection } from '../state.js';
@@ -112,7 +112,7 @@ export async function renderLogin(root, role, title, onSuccess) {
         el('div', { style: { marginTop: 'var(--sp-3)' } },
           el('button', { type: 'button', class: 'btn btn--sm', onclick: () => navigate('/settings') },
             icon('settings'), 'Open Settings'))),
-      isDevMode() ? developerSignIn(role, finish, fail) : null));
+      isDirectSignIn() ? developerSignIn(role, finish, fail) : null));
     return;
   }
 

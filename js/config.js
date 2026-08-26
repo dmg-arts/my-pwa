@@ -9,7 +9,7 @@
 export const APP = {
   name: 'TOP-Feedback',
   shortName: 'TOP-FB',
-  version: '0.15.1',
+  version: '0.16.0',
   /**
    * Bump when the on-disk record shape changes, and add a matching entry to
    * MIGRATIONS in js/migrations.js. The runner upgrades a detachment's existing
@@ -25,7 +25,7 @@ export const LS = {
   studentPrefs: 'topfb.student.prefs.v1',
   setupComplete: 'topfb.setup.complete.v1',
   session: 'topfb.session.v1',
-  devMode: 'topfb.devmode.v1',
+  directSignIn: 'topfb.directsignin.v1',
   queue: 'topfb.queue.v1',
 };
 
@@ -115,17 +115,35 @@ export const ROLE_LABELS = {
 };
 
 /**
- * Development mode leaves the Instructor Panel and Database Administration
- * unlocked so the app can be built out before real accounts exist. It is
- * device-local, loudly indicated in the UI, and must be off before fielding.
+ * Whether this device offers signing in with an email instead of Google.
+ *
+ * This used to be "development mode", and it did something much broader and
+ * much worse: it made every role check pass, so the panels opened with no
+ * sign-in at all. That is gone. The flag now enables exactly one thing — the
+ * email sign-in on the sign-in screen — and grants no access by itself.
+ *
+ * It still has to exist, because an installation using *This device only* has
+ * no Google Client ID and therefore no way to sign anybody in. That is the
+ * evaluation path the setup guide recommends, and without this it is a dead
+ * end: setup completes and the Instructor Panel can never be opened.
+ *
+ * What it is not is a bypass. `signInAsDeveloper` goes through the same roster
+ * check as a Google sign-in — an email that is not on the roster is refused,
+ * the account's real roles apply, and the audit log names a real person. The
+ * sign-in screen only offers it when no Client ID is configured, which a
+ * Drive-backed detachment always has.
+ *
+ * The storage key changed with the meaning, so any device that had the old
+ * development mode switched on comes back with this off. That is the safe
+ * direction and the intended one.
  */
-export function isDevMode() {
-  return localStorage.getItem(LS.devMode) === '1';
+export function isDirectSignIn() {
+  return localStorage.getItem(LS.directSignIn) === '1';
 }
 
-export function setDevMode(on) {
-  if (on) localStorage.setItem(LS.devMode, '1');
-  else localStorage.removeItem(LS.devMode);
+export function setDirectSignIn(on) {
+  if (on) localStorage.setItem(LS.directSignIn, '1');
+  else localStorage.removeItem(LS.directSignIn);
 }
 
 /**

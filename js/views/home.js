@@ -7,13 +7,12 @@ import { el, icon, badge, emptyState, mount, remount } from '../util.js';
 import { connection } from '../state.js';
 import { db } from '../storage/index.js';
 import { navigate } from '../router.js';
-import { APP, isDevMode } from '../config.js';
+import { APP } from '../config.js';
 import { currentUser, activeRoles } from '../auth.js';
 import { PANELS, canOpenPanel } from '../panels.js';
 
 /** Shows whether a panel will ask for credentials before it opens. */
 function gateBadge() {
-  if (isDevMode()) return badge('Unlocked — dev mode', 'warn', 'unlock');
   const session = currentUser();
   return session
     ? badge(`Signed in — ${session.username}`, 'ok', 'unlock')

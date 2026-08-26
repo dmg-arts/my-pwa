@@ -67,9 +67,17 @@ await page.evaluate(() => {
     proxyUrl: '', folderName: 'mem', connectedAt: new Date().toISOString(),
   }));
   localStorage.setItem('topfb.setup.complete.v1', '1');
-  localStorage.setItem('topfb.devmode.v1', '1');
 });
 await page.reload({ waitUntil: 'networkidle' });
+
+// Signed in properly rather than by flipping a flag that unlocked everything.
+// The panels now require real roles, which is also better fidelity: this walks
+// the same gates a person does.
+await page.evaluate(async () => {
+  const a = await import('/js/auth.js');
+  await a.signInWithGoogle(
+    { email: 'bench@det025.edu', name: 'Bench, Harness', emailVerified: true }, null, 'tok');
+});
 // The first load redirected to #/setup and rewrote the hash, so a reload alone
 // lands back there whatever the stored configuration says.
 await page.goto(`${BASE}#/home`, { waitUntil: 'domcontentloaded' });

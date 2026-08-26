@@ -148,7 +148,7 @@
   </div>
   <h1>TOP-Feedback</h1>
   <p class="sub">Installation and Setup Guide</p>
-  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Alpha 0.15</p>
+  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Alpha 0.16</p>
   <div class="meta">
     <strong>Before you start</strong>
     Allow about 45 minutes for a first-time setup using Google Drive. You will need
@@ -175,7 +175,7 @@
     <li><span class="n">2</span><span><strong>Prepare the Google account</strong><span class="d"> — folder, Cloud project, Drive API, OAuth client</span></span></li>
     <li><span class="n">3</span><span><strong>Publish the app</strong><span class="d"> — free hosting, or run it from one computer</span></span></li>
     <li><span class="n">4</span><span><strong>Run the setup wizard</strong><span class="d"> — connect the app to your folder</span></span></li>
-    <li><span class="n">5</span><span><strong>Claim the folder</strong><span class="d"> — the first Google sign-in, and turning off development mode</span></span></li>
+    <li><span class="n">5</span><span><strong>Claim the folder</strong><span class="d"> — the first Google sign-in, and the access setting</span></span></li>
     <li><span class="n">6</span><span><strong>Deploy the submission server</strong><span class="d"> — 15 minutes, and it changes what everything below costs</span></span></li>
     <li><span class="n">7</span><span><strong>Build the roster</strong><span class="d"> — roles, and adding people by email or CSV</span></span></li>
     <li><span class="n">8</span><span><strong>Invite everyone</strong><span class="d"> — one link, or a QR code on a projector</span></span></li>
@@ -529,8 +529,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     <li><strong>Add a second administrator.</strong> The console will remind you while you are the
     only one. It is not a formality: a single admin who loses access leaves the roster repairable
     only by editing <code>users/users.json</code> in Drive by hand.</li>
-    <li><strong>Check that development mode is off.</strong> Go to <em>Settings &rarr; Access</em>.
-    It should read "Sign-in is enforced".</li>
+    <li><strong>Check the access setting.</strong> Go to <em>Settings &rarr; Access</em>. It should read "Google sign-in only".</li>
   </ol>
 
   <div class="note note--danger">
@@ -541,17 +540,25 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     short, and the folder should be shared only with the people who need it.</p>
   </div>
 
-  <div class="note note--warn">
-    <strong class="title">Development mode</strong>
-    <p>This setting unlocks the Instructor Panel, the Cadre Panel and the admin console on one
-    device without signing in. It exists for building and demonstrating the app. It must be off
-    before any cadet can reach the device, and the app shows a warning banner on every affected
-    screen while it is on.</p>
-    <p><strong>Once your detachment has an administrator account, it can no longer be switched
-    on by somebody who is not signed in as one.</strong> That is deliberate: Settings is reachable
-    without signing in, because display preferences belong to whoever is holding the device, and a
-    switch that turned off sign-in entirely did not belong beside them. Turning it <em>off</em> is
-    never restricted.</p>
+  <div class="note">
+    <strong class="title">"Allow signing in with an email instead of Google"</strong>
+    <p>
+      The one setting under <em>Settings &rarr; Access</em>. It exists for an installation with
+      <strong>no Google Client ID</strong> &mdash; evaluating the app on a single device, before
+      the Google setup in Part 2 has been done. Without it such an installation is a dead end,
+      because Google cannot sign anybody in when there is no Client ID to sign them in against.
+    </p>
+    <p>
+      <strong>It grants nothing on its own.</strong> Whoever signs in that way is checked against
+      the roster exactly like a Google sign-in: an address nobody has added is refused, and the
+      roles that come back are the real ones. It adds a way to say who you are; it is not a way
+      to skip being anybody.
+    </p>
+    <p>
+      A detachment on Google Drive has a Client ID by definition, so the sign-in screen will not
+      offer it and the setting should stay off. Once your detachment has an administrator account,
+      only an administrator can switch it on &mdash; turning it <em>off</em> is never restricted.
+    </p>
   </div>
 </section>
 
@@ -791,7 +798,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 
   <ul class="checklist">
     <li><strong>The app opens over HTTPS</strong> at the address you published.</li>
-    <li><strong>Settings → Access reads "Sign-in is enforced"</strong> — development mode is off.</li>
+    <li><strong>Settings → Access reads "Google sign-in only"</strong> — the email sign-in is off.</li>
     <li><strong>At least two people hold the Database admin role</strong>, so losing one account does not lock the detachment out.</li>
     <li><strong>The submission server answers</strong> — Settings &rarr; Submission proxy &rarr; <em>Save and test</em> reports a version.</li>
     <li><strong>The Drive folder is shared with nobody but you.</strong> With the server deployed, nobody else needs it.</li>

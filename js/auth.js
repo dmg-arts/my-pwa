@@ -18,7 +18,7 @@
  * worth. Short version: Drive sharing is the boundary that holds.
  */
 
-import { ROLES, isDevMode, effectiveRoles } from './config.js';
+import { ROLES, isDirectSignIn, effectiveRoles } from './config.js';
 import { startSession, currentUser, signOut } from './session.js';
 import { makeId, nowIso } from './util.js';
 import { AUDIT } from './audit.js';
@@ -319,21 +319,30 @@ export async function signInWithGoogle(profile, requiredRole = null, rawToken = 
 }
 
 /**
- * Sign-in without Google, for development and offline demos only.
+ * Signing in with an email instead of Google.
  *
- * Google will not issue a token to a page served from a random port, and the
- * local and folder backends have no Drive account behind them at all — so
- * without this, the app could not be run or tested off a Drive. It takes an
- * email and trusts it, which is exactly as weak as it sounds.
+ * An installation using *This device only* has no Google Client ID, so Google
+ * cannot sign anybody in — and that is the evaluation path the setup guide
+ * recommends. Without this, such an install would be a dead end: setup would
+ * complete and the Instructor Panel could never be opened.
  *
- * Two things keep that from becoming a hole in a real installation: it throws
- * unless developer mode is switched on in Settings (a device-local flag, not a
- * stored setting), and the sign-in screen only offers it when no Google Client
- * ID is configured. A Drive-backed detachment has a Client ID by definition —
- * they cannot reach their own folder without one.
+ * It takes an email and trusts it, which is exactly as weak as it sounds, and
+ * three things keep that from mattering:
+ *
+ *   - **The roster still decides.** This calls `signInWithGoogle` below, so an
+ *     address nobody has added is refused, a deactivated account is refused,
+ *     and the roles that come back are the real ones. It is a different way to
+ *     assert who you are, not a way to skip being anybody.
+ *   - It throws unless the device has switched it on in Settings, which now
+ *     requires being an administrator once the detachment has one.
+ *   - The sign-in screen only offers it when no Client ID is configured, and a
+ *     Drive-backed detachment always has one.
  */
 export async function signInAsDeveloper(email, requiredRole = null) {
-  if (!isDevMode()) throw new Error('Developer sign-in is off. Turn on developer mode in Settings.');
+  if (!isDirectSignIn()) {
+    throw new Error('Signing in without Google is switched off on this device. '
+      + 'Turn it on in Settings.');
+  }
   const problem = validateEmail(email);
   if (problem) throw new Error(problem);
   return signInWithGoogle({ email: normalizeEmail(email), name: null, developer: true }, requiredRole);
@@ -353,26 +362,25 @@ export async function hasAnyAccount() {
 /**
  * Role check used by the route guards.
  *
- * In development mode this returns true so the panels can be built out before
- * a Google Client ID exists. `isDevMode()` is device-local and surfaced as a
- * banner, and Settings refuses to leave it on quietly.
+ * There is no longer any device-local flag that makes this return true. It used
+ * to: development mode short-circuited every role check, so anyone holding a
+ * detachment laptop could open the Cadre Panel and the admin console by ticking
+ * a box on a page that needs no sign-in. What replaced it is signing in — the
+ * email sign-in exists for installations with no Google Client ID, but it goes
+ * through the roster like any other, so the roles it produces are real.
  */
 export function hasRole(role) {
-  if (isDevMode()) return true;
   return effectiveRoles(currentUser()?.roles || []).includes(role);
 }
 
 /**
  * The roles to treat this session as holding, implications included.
  *
- * Anything asking "which areas may I show?" must use this rather than reading
- * `currentUser().roles` directly, so it agrees with `hasRole` about development
- * mode. In dev mode there is usually no session at all, so a panel that read
- * the session would be let through the gate and then render empty — a gate
- * saying yes and the content saying no.
+ * Anything asking "which areas may I show?" uses this rather than reading
+ * `currentUser().roles` directly, so it can never disagree with `hasRole` about
+ * what somebody holds.
  */
 export function activeRoles() {
-  if (isDevMode()) return Object.values(ROLES);
   return effectiveRoles(currentUser()?.roles || []);
 }
 
