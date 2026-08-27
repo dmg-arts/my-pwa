@@ -272,7 +272,19 @@ async function shoot(page, dir, name, route, { mobile = false, mustRefuse = fals
   count++;
 }
 
-fs.rmSync(OUT, { recursive: true, force: true });
+/**
+ * Clears only what this script wrote.
+ *
+ * This used to be `rmSync(OUT, { recursive: true })`, which emptied the whole
+ * folder — and took a contact-sheet PDF somebody had put there with it. The
+ * folder is gitignored, so there was no copy to restore from. A generator has
+ * no business deleting files it did not create, however tempting a one-line
+ * clean slate is.
+ */
+for (const view of PERSPECTIVES) {
+  fs.rmSync(path.join(OUT, view.id), { recursive: true, force: true });
+}
+fs.rmSync(path.join(OUT, 'README.md'), { force: true });
 
 for (const view of PERSPECTIVES) {
   const ctx = await browser.newContext({ viewport: { width: 1240, height: 900 }, deviceScaleFactor: 2 });

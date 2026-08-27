@@ -35,6 +35,11 @@ node tools/docs/capture-perspectives.mjs docs/screens
 48 images into `docs/screens/`, which is **gitignored** — regenerate rather than
 trusting a copy. Six folders: signed out, then one per role.
 
+It clears only the folders it writes. Anything else you keep in there is left
+alone: it used to empty the whole directory, which destroyed a contact-sheet PDF
+somebody had put there, and since the folder is gitignored there was nothing to
+restore from.
+
 Each also visits the screens its role should *not* reach, kept under `refused/`,
 and **the run fails if one of them opens**. That makes the folder a check rather
 than a gallery: a screenshot of the Cadre Panel proves cadre can open it and
