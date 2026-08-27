@@ -464,7 +464,7 @@ async function tabDatabase(host, { panel } = {}) {
 
     try {
       const bundle = await buildAnonymisedExport({ includeFlagged: includeFlagged.checked });
-      download(`top-feedback-anonymised-${new Date().toISOString().slice(0, 7)}.json`,
+      download(`nine31-anonymised-${new Date().toISOString().slice(0, 7)}.json`,
         JSON.stringify(bundle, null, 2));
       await writeAudit({
         action: AUDIT.dataExported,
@@ -485,7 +485,7 @@ async function tabDatabase(host, { panel } = {}) {
   async function exportBundle() {
     try {
       const bundle = await db.exportBundle();
-      download(`top-feedback-backup-${new Date().toISOString().slice(0, 10)}.json`,
+      download(`nine31-backup-${new Date().toISOString().slice(0, 10)}.json`,
         JSON.stringify(bundle, null, 2));
       toast('Backup downloaded.', 'ok');
     } catch (err) {
@@ -576,7 +576,7 @@ async function tabDatabase(host, { panel } = {}) {
       el('h3', { class: 'section-title' }, 'Backup and restore'),
       el('p', { class: 'muted' },
         'A backup is a single JSON file containing every record. It imports into any '
-        + 'TOP-Feedback install, which is also how you migrate from this device to Google Drive.'),
+        + '9ThirtyOne install, which is also how you migrate from this device to Google Drive.'),
       el('div', { class: 'row row--wrap' },
         canDoMaintenance()
           ? el('button', { type: 'button', class: 'btn', onclick: exportBundle }, icon('download'), 'Export backup')

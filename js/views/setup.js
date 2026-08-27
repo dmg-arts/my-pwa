@@ -135,7 +135,7 @@ function stepBackend(body, root) {
       id: BACKENDS.folder,
       iconName: 'folder',
       title: 'Synced Drive folder on this computer',
-      desc: 'Points at the TOP-Feedback folder inside Google Drive for Desktop. '
+      desc: 'Points at the 9ThirtyOne folder inside Google Drive for Desktop. '
         + 'Google\'s own client handles syncing. Desktop Chrome or Edge only.',
       available: adapters.folder.isAvailable(),
       unavailableReason: 'This browser cannot open local folders — use Chrome or Edge on a computer.',

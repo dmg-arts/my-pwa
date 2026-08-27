@@ -1,7 +1,7 @@
 # Generation template
 
 Paste everything below the line into a fresh conversation in whatever environment
-you are using. It is self-contained — it assumes no knowledge of TOP-Feedback.
+you are using. It is self-contained — it assumes no knowledge of 9ThirtyOne.
 
 Run it several times. Each run should use a different **batch focus** (see the
 list at the end) so batches do not converge on the same twenty sentences.

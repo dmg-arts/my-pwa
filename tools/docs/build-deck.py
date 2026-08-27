@@ -1,7 +1,7 @@
-"""Builds the TOP-Feedback introduction deck, as a PDF.
+"""Builds the 9ThirtyOne introduction deck, as a PDF.
 
     python3 -m venv .venv && .venv/bin/pip install python-pptx
-    .venv/bin/python tools/docs/build-deck.py ./shots docs/TOP-Feedback-Introduction.pdf
+    .venv/bin/python tools/docs/build-deck.py ./shots docs/9ThirtyOne-Introduction.pdf
 
 **The deliverable is a PDF.** It is drawn with python-pptx, because that library
 is what lays out slides, but PowerPoint files are not what gets sent: Keynote
@@ -251,7 +251,7 @@ def s01_title():
           [("✓", 38, True, NAVY, 0)], align=PP_ALIGN.CENTER, shrink=False)
 
     block(s, M, Inches(2.85), Inches(11), Inches(1.25),
-          [("TOP-Feedback", 58, True, WHITE, 0)], shrink=False)
+          [("9ThirtyOne", 58, True, WHITE, 0)], shrink=False)
     block(s, M, Inches(4.2), Inches(9.8), Inches(1.1),
           [("The student and instructor feedback cycle,", 22, False, WHITE, 5),
            ("owned entirely by your detachment.", 22, False, WHITE, 0)], shrink=False)
@@ -326,7 +326,7 @@ def s04_data():
           "Each record is a plain file you can open in Drive — nothing is locked in a format only this app can read.")
 
     rect(s, M, Inches(2.75), Inches(6.0), Inches(3.5), TINT, radius=0.03)
-    tree = ("TOP-Feedback/\n"
+    tree = ("9ThirtyOne/\n"
             "   config/      detachment profile and settings\n"
             "   users/       the roster: who may sign in, and as what\n"
             "   forms/       feedback form definitions\n"
@@ -510,7 +510,7 @@ def s12_split():
     block(s, M, Inches(4.75), Inches(10.8), Inches(1.9),
           [("Same number. Opposite situations. Only one of them needs acting on.",
             19, False, WHITE, 14),
-           ("TOP-Feedback finds the split, says so plainly, and tells you the average describes "
+           ("9ThirtyOne finds the split, says so plainly, and tells you the average describes "
             "nobody — so you read both groups instead of the middle.", 17, False, WHITE, 0)])
     notes(s, "This is the strongest single argument for the analysis over a spreadsheet. A "
              "spreadsheet gives you the mean and stops there.")
@@ -682,7 +682,7 @@ def s17_start():
     y = Inches(2.3)
     for n, head, body in [
         ("1", "Create the account",
-         "A new Google account for the detachment, and a folder named TOP-Feedback."),
+         "A new Google account for the detachment, and a folder named 9ThirtyOne."),
         ("2", "Register the app",
          "One free Google Cloud project, so the app can reach that Drive. About ten minutes."),
         ("3", "Deploy the server",
@@ -699,7 +699,7 @@ def s17_start():
 
     rect(s, M, Inches(6.35), Inches(11.4), Emu(19050), WHITE)
     block(s, M, Inches(6.6), Inches(11.4), Inches(0.45),
-          [("Step by step, with screenshots: TOP-Feedback Setup Guide (PDF).",
+          [("Step by step, with screenshots: 9ThirtyOne Setup Guide (PDF).",
             15, False, WHITE, 0)], shrink=False)
     notes(s, "Close here. Anyone who will actually perform the install should be given the setup "
              "guide PDF rather than this deck.")
@@ -717,7 +717,7 @@ OUT.parent.mkdir(parents=True, exist_ok=True)
 # not what ships. Keynote refuses to open python-pptx output, and a deck that
 # only opens in PowerPoint is a deck that fails in the room it matters in. So
 # the .pptx is an intermediate in a temp directory and the PDF is the product.
-BUILD = Path(tempfile.mkdtemp(prefix="top-feedback-deck-")) / "deck.pptx"
+BUILD = Path(tempfile.mkdtemp(prefix="nine31-deck-")) / "deck.pptx"
 prs.save(str(BUILD))
 
 

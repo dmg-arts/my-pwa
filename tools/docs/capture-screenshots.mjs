@@ -179,9 +179,9 @@ await page.evaluate(async () => {
       anonymous: true, status: 'open', assignedUsernames: [],
     });
   }
-  const s = JSON.parse(sessionStorage.getItem('topfb.session.v1'));
+  const s = JSON.parse(sessionStorage.getItem('nine31.session.v1'));
   s.roles = ['commander', 'instructor'];
-  sessionStorage.setItem('topfb.session.v1', JSON.stringify(s));
+  sessionStorage.setItem('nine31.session.v1', JSON.stringify(s));
 });
 await page.goto(`${BASE}#/cadre`, { waitUntil: 'networkidle' });
 await page.reload({ waitUntil: 'networkidle' });
@@ -277,9 +277,9 @@ await page.evaluate(async () => {
   await seed('okafor.sam', [[4, 3, 5, 6, 4, 5, 4]]);
   await seed('lindqvist.ana', [[9, 8]]);
 
-  const s = JSON.parse(sessionStorage.getItem('topfb.session.v1'));
+  const s = JSON.parse(sessionStorage.getItem('nine31.session.v1'));
   s.roles = ['commander'];
-  sessionStorage.setItem('topfb.session.v1', JSON.stringify(s));
+  sessionStorage.setItem('nine31.session.v1', JSON.stringify(s));
 });
 await page.goto(`${BASE}#/instructor?tab=people`, { waitUntil: 'networkidle' });
 await page.reload({ waitUntil: 'networkidle' });
@@ -298,9 +298,9 @@ await shot('people-detail', { fullPage: true });
 // job from running the portal.
 await page.evaluate(async () => {
   const { connection } = await import('/js/state.js');
-  const session = JSON.parse(sessionStorage.getItem('topfb.session.v1'));
+  const session = JSON.parse(sessionStorage.getItem('nine31.session.v1'));
   session.roles = ['admin', 'instructor'];
-  sessionStorage.setItem('topfb.session.v1', JSON.stringify(session));
+  sessionStorage.setItem('nine31.session.v1', JSON.stringify(session));
   connection.set({
     clientId: '000000000000-topfeedbackdemo.apps.googleusercontent.com',
     folderId: '1DemoFolderIdForTheScreenshotsOnly',

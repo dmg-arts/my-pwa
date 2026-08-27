@@ -13,8 +13,8 @@
  * Bump CACHE_VERSION on release to roll users onto new assets.
  */
 
-const CACHE_VERSION = 'v27';
-const CACHE_NAME = `topfb-shell-${CACHE_VERSION}`;
+const CACHE_VERSION = 'v28';
+const CACHE_NAME = `nine31-shell-${CACHE_VERSION}`;
 
 const SHELL = [
   './',
@@ -81,7 +81,10 @@ self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const names = await caches.keys();
     await Promise.all(names
-      .filter((name) => name.startsWith('topfb-shell-') && name !== CACHE_NAME)
+      // Both prefixes: caches written before the rename would otherwise sit in
+      // every existing browser forever, since nothing would ever match them.
+      .filter((name) => (name.startsWith('nine31-shell-') || name.startsWith('topfb-shell-'))
+        && name !== CACHE_NAME)
       .map((name) => caches.delete(name)));
     await self.clients.claim();
   })());

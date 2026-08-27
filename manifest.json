@@ -1,6 +1,6 @@
 {
-  "name": "TOP-Feedback",
-  "short_name": "TOP-FB",
+  "name": "9ThirtyOne",
+  "short_name": "9ThirtyOne",
   "id": "./",
   "description": "Student and cadre feedback for AFROTC detachments. Each organization keeps its data in its own Google Drive.",
   "start_url": "./index.html",

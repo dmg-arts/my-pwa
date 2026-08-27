@@ -131,13 +131,23 @@ export async function checkProxy(url) {
   } catch {
     return {
       ok: false,
-      error: 'That address answered, but not with a TOP-Feedback proxy. If the deployment asks '
+      error: 'That address answered, but not with a 9ThirtyOne proxy. If the deployment asks '
         + 'people to sign in, set its access to "Anyone" and deploy again.',
     };
   }
 
-  if (body.service !== 'top-feedback-proxy') {
-    return { ok: false, error: 'That is a Google Apps Script, but not the TOP-Feedback proxy.' };
+  if (body.service === 'top-feedback-proxy') {
+    // The name it answered to before the rename. Recognised rather than
+    // rejected so the message can say what to do instead of "not ours".
+    return {
+      ok: false,
+      error: 'That deployment is running an older version of the script, from before the app '
+        + 'was renamed. Open the Apps Script editor, paste in the current Code.gs, and deploy '
+        + 'a new version. The URL does not change.',
+    };
+  }
+  if (body.service !== 'nine31-proxy') {
+    return { ok: false, error: 'That is a Google Apps Script, but not the 9ThirtyOne proxy.' };
   }
   if (!body.configured) {
     return {

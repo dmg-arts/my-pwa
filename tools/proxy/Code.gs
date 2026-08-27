@@ -1,5 +1,5 @@
 /**
- * TOP-Feedback submission proxy.
+ * 9ThirtyOne submission proxy.
  *
  * Runs as a Google Apps Script web app inside the detachment's own Google
  * account. Deployment instructions are in README.md next to this file.
@@ -238,7 +238,7 @@ function doGet() {
   var cfg = config();
   return json({
     ok: true,
-    service: 'top-feedback-proxy',
+    service: 'nine31-proxy',
     version: PROXY_VERSION,
     configured: Boolean(cfg.folderId && cfg.clientId),
   });
@@ -1580,7 +1580,7 @@ function fail(message) {
  * Fill in the two values, press Run, then delete them from this function.
  */
 function setUp() {
-  var FOLDER_ID = '';   // the detachment's TOP-Feedback folder id
+  var FOLDER_ID = '';   // the detachment's 9ThirtyOne folder id
   var CLIENT_ID = '';   // ends .apps.googleusercontent.com
 
   if (!FOLDER_ID || !CLIENT_ID) {

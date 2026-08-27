@@ -181,7 +181,7 @@ export function parseJoinParams(query) {
  * regional detachment might be using, and a cadet reading it on a phone should
  * understand what they are being asked to do before they tap anything.
  */
-export function joinMailto({ link, orgName = '', appName = 'TOP-Feedback' }) {
+export function joinMailto({ link, orgName = '', appName = '9ThirtyOne' }) {
   const who = orgName || 'your detachment';
   const subject = `${appName} — join ${who}`;
   const body = [

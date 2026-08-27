@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>TOP-Feedback — Installation and Setup Guide</title>
+<title>9ThirtyOne — Installation and Setup Guide</title>
 <style>
   @page {
     size: Letter;
@@ -146,9 +146,9 @@
             stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
   </div>
-  <h1>TOP-Feedback</h1>
+  <h1>9ThirtyOne</h1>
   <p class="sub">Installation and Setup Guide</p>
-  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Alpha 0.16</p>
+  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Alpha 0.18</p>
   <div class="meta">
     <strong>Before you start</strong>
     Allow about 45 minutes for a first-time setup using Google Drive. You will need
@@ -165,7 +165,7 @@
 <section class="first">
   <h2>What this guide covers</h2>
   <p class="lead">
-    TOP-Feedback is a web app that runs in a browser and stores every record in a Google Drive
+    9ThirtyOne is a web app that runs in a browser and stores every record in a Google Drive
     folder your detachment owns. There is no vendor, no server and no shared database — which is
     why setup involves your own Google account rather than an account with us.
   </p>
@@ -195,7 +195,7 @@
 
   <div class="note note--ok">
     <strong class="title">You are not signing up for anything</strong>
-    <p>TOP-Feedback has no accounts with a vendor, no subscription and no data-processing
+    <p>9ThirtyOne has no accounts with a vendor, no subscription and no data-processing
     agreement to sign, because no data ever reaches anyone but you. Everything below sets up
     <em>your</em> Google account to hold <em>your</em> detachment's feedback.</p>
   </div>
@@ -218,7 +218,7 @@
     <tr>
       <td><strong>Synced folder</strong></td>
       <td>A single office computer</td>
-      <td>Points at the TOP-Feedback folder inside Google Drive for Desktop. Google's own client handles syncing. Desktop Chrome or Edge only — no phones.</td>
+      <td>Points at the 9ThirtyOne folder inside Google Drive for Desktop. Google's own client handles syncing. Desktop Chrome or Edge only — no phones.</td>
     </tr>
     <tr>
       <td><strong>This device only</strong></td>
@@ -285,8 +285,8 @@
   <div class="note note--ok">
     <strong class="title">You do not create a folder yourself</strong>
     <p>
-      Earlier versions of this guide asked you to make a <code>TOP-Feedback</code> folder in Drive
-      and paste its address into the app. <strong>Do not do that.</strong> The app creates its own
+      Earlier versions of this guide asked you to create a folder in Drive by hand and paste its
+      address into the app. <strong>Do not do that.</strong> The app creates its own
       folder during setup in Part 4, and a folder you make by hand cannot be used.
     </p>
     <p>
@@ -361,7 +361,7 @@
   <div class="note note--danger">
     <strong class="title">Do not click "Publish app"</strong>
     <p>
-      It sounds like the step that makes things work. It is the opposite. TOP-Feedback asks for
+      It sounds like the step that makes things work. It is the opposite. 9ThirtyOne asks for
       Google Drive access on your behalf while you are setting up. Publishing to production without
       completing Google's verification blocks <em>everyone</em>, including you, with
       <em>"Access blocked &hellip; has not completed the Google verification process"</em> and no way
@@ -420,7 +420,7 @@
 <section>
   <h2><span class="num">3</span>Publish the app</h2>
   <p class="lead">
-    TOP-Feedback is a folder of files with no build step and no backend, so it can be served from
+    9ThirtyOne is a folder of files with no build step and no backend, so it can be served from
     anywhere that serves static files.
   </p>
 
@@ -434,7 +434,7 @@
   <h3>Option A — free static hosting (recommended)</h3>
   <table>
     <tr><th style="width:26%">Host</th><th>Notes</th></tr>
-    <tr><td>GitHub Pages</td><td>Free. Push the folder to a repository and enable Pages in the settings. Address looks like <code>https://yourname.github.io/top-feedback</code>.</td></tr>
+    <tr><td>GitHub Pages</td><td>Free. Push the folder to a repository and enable Pages in the settings. Address looks like <code>https://yourname.github.io/nine-thirty-one</code>.</td></tr>
     <tr><td>Netlify or Cloudflare Pages</td><td>Free tier. Drag the folder onto their dashboard — no command line needed.</td></tr>
     <tr><td>Your institution's web server</td><td>Copy the folder into any directory served over HTTPS.</td></tr>
   </table>
@@ -442,7 +442,7 @@
   <h3>Option B — run it from one computer</h3>
   <p>Useful for a trial, or where the detachment cannot publish to the web. Requires Python 3,
   which is pre-installed on macOS and Linux.</p>
-  <pre>cd top-feedback
+  <pre>cd nine-thirty-one
 python3 serve.py              # then open http://localhost:8000
 
 python3 serve.py --https      # needed to reach it from a phone</pre>
@@ -481,11 +481,11 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
       <ul>
         <li><strong>Google Drive:</strong> paste the Client ID from Part 2b, then click
         <em>Sign in and create the folder</em>. A Google window opens; sign in as the detachment
-        account and grant access. The app creates its <code>TOP-Feedback</code> folder and shows
+        account and grant access. The app creates its <code>9ThirtyOne</code> folder and shows
         you its address &mdash; <strong>copy that address now</strong>, you need it in Part 6.
         There is no folder link to paste: see Part 2a for why.</li>
         <li><strong>Synced folder:</strong> click <em>Select folder…</em> and choose the
-        TOP-Feedback folder inside your Google Drive for Desktop directory.</li>
+        9ThirtyOne folder inside your Google Drive for Desktop directory.</li>
         <li><strong>This device only:</strong> nothing to connect.</li>
       </ul>
     </li>
@@ -509,7 +509,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 <section>
   <h2><span class="num">5</span>Claim the folder</h2>
 
-  <p class="lead">TOP-Feedback issues no passwords. Everyone signs in with the Google account your
+  <p class="lead">9ThirtyOne issues no passwords. Everyone signs in with the Google account your
   detachment already mails them at, and a roster inside your Drive folder decides who is allowed in
   and what they can do. Your first job is to put yourself on that roster.</p>
 
@@ -609,7 +609,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
   <ol class="steps">
     <li><strong>Open script.google.com</strong> signed in as the account that owns the Drive
     folder. This matters: the script files everything using that account's access.</li>
-    <li><strong>New project</strong>, named <code>TOP-Feedback Server</code>. Delete what is
+    <li><strong>New project</strong>, named <code>9ThirtyOne Server</code>. Delete what is
     there and paste in <code>tools/proxy/Code.gs</code> from the app's files.</li>
     <li><strong>Fill in the two values at the bottom</strong> of the file &mdash; your folder ID
     and your Client ID &mdash; then run <code>setUp</code> once and clear them out again.</li>
@@ -955,7 +955,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
   <h2>Reference</h2>
 
   <h3>What gets created in your folder</h3>
-  <pre>TOP-Feedback/
+  <pre>9ThirtyOne/
 ├── config/      detachment profile and shared settings
 ├── users/       the roster — who may sign in, and as what
 ├── forms/       feedback form definitions

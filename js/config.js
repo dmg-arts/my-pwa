@@ -1,5 +1,5 @@
 /**
- * TOP-Feedback — application constants and the shape of the data model.
+ * 9ThirtyOne — application constants and the shape of the data model.
  *
  * Everything the rest of the app assumes about *where things live* and *what a
  * record looks like* is declared here, so re-pointing at a different Drive or
@@ -7,9 +7,9 @@
  */
 
 export const APP = {
-  name: 'TOP-Feedback',
-  shortName: 'TOP-FB',
-  version: '0.17.0',
+  name: '9ThirtyOne',
+  shortName: '9ThirtyOne',
+  version: '0.18.0',
   /**
    * Bump when the on-disk record shape changes, and add a matching entry to
    * MIGRATIONS in js/migrations.js. The runner upgrades a detachment's existing
@@ -20,13 +20,13 @@ export const APP = {
 
 /** localStorage keys. Device-local only — never org data. */
 export const LS = {
-  settings: 'topfb.settings.v1',
-  connection: 'topfb.connection.v1',
-  studentPrefs: 'topfb.student.prefs.v1',
-  setupComplete: 'topfb.setup.complete.v1',
-  session: 'topfb.session.v1',
-  directSignIn: 'topfb.directsignin.v1',
-  queue: 'topfb.queue.v1',
+  settings: 'nine31.settings.v1',
+  connection: 'nine31.connection.v1',
+  studentPrefs: 'nine31.student.prefs.v1',
+  setupComplete: 'nine31.setup.complete.v1',
+  session: 'nine31.session.v1',
+  directSignIn: 'nine31.directsignin.v1',
+  queue: 'nine31.queue.v1',
 };
 
 /**
@@ -161,7 +161,7 @@ export const BACKENDS = {
  * database: one JSON document per record, grouped by collection.
  */
 export const DB_LAYOUT = {
-  root: 'TOP-Feedback',
+  root: '9ThirtyOne',
   folders: {
     config: 'config',
     users: 'users',
@@ -210,7 +210,7 @@ export const INDEXES = {
   legacyReceiptsFor: (requestId) => `receipts/${requestId}/_index.json`,
 };
 
-export const FOLDER_TREE_PREVIEW = `TOP-Feedback/
+export const FOLDER_TREE_PREVIEW = `9ThirtyOne/
 ├── config/      org profile, shared settings
 ├── users/       accounts — students, instructors, admins
 ├── roster/      legacy student roster (migrated into users/)

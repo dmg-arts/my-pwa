@@ -3,7 +3,7 @@
 Both files in `docs/` are generated from the running app, so every screenshot
 shows real behaviour with seeded data rather than a mock-up.
 
-These scripts are for maintainers and are **not** needed to run TOP-Feedback.
+These scripts are for maintainers and are **not** needed to run 9ThirtyOne.
 They have dependencies the app itself does not: Playwright with a Chrome
 binary, and `python-pptx`.
 
@@ -56,7 +56,7 @@ Two traps, both already hit:
 Letter margins — and Chrome is the renderer those rules were tuned against:
 
 ```bash
-node tools/docs/build-guide.mjs ./shots docs/TOP-Feedback-Setup-Guide.pdf
+node tools/docs/build-guide.mjs ./shots docs/9ThirtyOne-Setup-Guide.pdf
 ```
 
 It inlines the two screenshot placeholders (`SHOT_SETUP_STORAGE`,
@@ -73,7 +73,7 @@ regressions in this document were both invisible in the source.
 ```bash
 python3 -m venv .venv && .venv/bin/pip install python-pptx
 brew install --cask libreoffice                # once
-.venv/bin/python tools/docs/build-deck.py ./shots docs/TOP-Feedback-Introduction.pdf
+.venv/bin/python tools/docs/build-deck.py ./shots docs/9ThirtyOne-Introduction.pdf
 ```
 
 Slide layouts, colours and speaker notes all live in that one file. It uses the

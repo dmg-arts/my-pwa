@@ -609,7 +609,7 @@ export const db = {
       if (rows.length) receipts[request.id] = rows;
     }
     return {
-      format: 'top-feedback-bundle',
+      format: 'nine31-bundle',
       schemaVersion: APP.schemaVersion,
       appVersion: APP.version,
       exportedAt: nowIso(),
@@ -619,8 +619,12 @@ export const db = {
 
   /** Restores a bundle. `mode: 'merge'` keeps existing records with new ids. */
   async importBundle(bundle, { mode = 'merge' } = {}) {
-    if (bundle?.format !== 'top-feedback-bundle') {
-      throw new Error('That file is not a TOP-Feedback backup.');
+    // 'top-feedback-bundle' is what this app stamped into every backup before
+    // it was renamed. A detachment that took one is not going to re-take it,
+    // and refusing their only copy over a string would be indefensible.
+    const KNOWN = ['nine31-bundle', 'top-feedback-bundle'];
+    if (!KNOWN.includes(bundle?.format)) {
+      throw new Error('That file is not a 9ThirtyOne backup.');
     }
     if (mode === 'replace') await this.wipeData();
 

@@ -319,7 +319,7 @@ await step('a second submission is blocked at the form', async () => {
 await step('anonymity holds: response has no username, receipt does', async () => {
   const r = await page.evaluate(async () => {
     const all = await new Promise((res) => {
-      const q = indexedDB.open('topfb');
+      const q = indexedDB.open('nine31');
       q.onsuccess = () => {
         const t = q.result.transaction('docs').objectStore('docs').getAll();
         t.onsuccess = () => res(t.result);
@@ -522,9 +522,9 @@ await step('analysis renders with completion tracking', async () => {
 
 /** Rewrites the signed-in session's roles, the way a differently-rostered account would arrive. */
 const setRoles = (roles) => page.evaluate((r) => {
-  const s = JSON.parse(sessionStorage.getItem('topfb.session.v1'));
+  const s = JSON.parse(sessionStorage.getItem('nine31.session.v1'));
   s.roles = r;
-  sessionStorage.setItem('topfb.session.v1', JSON.stringify(s));
+  sessionStorage.setItem('nine31.session.v1', JSON.stringify(s));
 }, roles);
 
 await step('an instructor cannot open the Cadre Panel', async () => {
@@ -668,7 +668,7 @@ await step('a truncated join link is refused rather than half-applied', async ()
   if (!/incomplete|missing something/i.test(text)) throw new Error('a truncated link was accepted');
   // And it must not have touched the device's existing configuration.
   const backend = await page.evaluate(() => {
-    try { return JSON.parse(localStorage.getItem('topfb.connection.v1')).backend; }
+    try { return JSON.parse(localStorage.getItem('nine31.connection.v1')).backend; }
     catch { return null; }
   });
   if (backend !== 'local') throw new Error(`connection was changed to ${backend}`);
@@ -676,7 +676,7 @@ await step('a truncated join link is refused rather than half-applied', async ()
 
 await step('a join link for the folder already in use says so', async () => {
   const link = await page.evaluate(() => {
-    const conn = JSON.parse(localStorage.getItem('topfb.connection.v1'));
+    const conn = JSON.parse(localStorage.getItem('nine31.connection.v1'));
     return `#/join?c=724504040762-abcdefghijklmnopqrstuvwxyz012345&f=${conn.folderId || 'none'}`;
   });
   await page.goto(`${BASE}${link}`, { waitUntil: 'networkidle' });
@@ -686,7 +686,7 @@ await step('a join link for the folder already in use says so', async () => {
   // mismatch path rather than the already-here path — either way it must not
   // silently reconfigure the device.
   const backend = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem('topfb.connection.v1')).backend);
+    JSON.parse(localStorage.getItem('nine31.connection.v1')).backend);
   if (backend !== 'local') throw new Error(`connection changed to ${backend} without consent`);
 });
 
@@ -698,7 +698,7 @@ await step('a join link for the folder already in use says so', async () => {
  */
 const giveJoinConfig = async () => {
   await page.evaluate(() => {
-    const key = 'topfb.connection.v1';
+    const key = 'nine31.connection.v1';
     const conn = JSON.parse(localStorage.getItem(key));
     conn.clientId = '724504040762-rrq3q51dip6rib0g8lof5pq5r6da2g03.apps.googleusercontent.com';
     conn.folderId = '1Te9Pc7JgOSUluq3tc0FCK4IqbKm1MTIM';
@@ -760,7 +760,7 @@ await step('the join config is put back so later screens do not call Google', as
   // 127.0.0.1, which is not a registered origin — harmless, but it fills the
   // console with errors the suite treats as failures.
   await page.evaluate(() => {
-    const key = 'topfb.connection.v1';
+    const key = 'nine31.connection.v1';
     const conn = JSON.parse(localStorage.getItem(key));
     conn.clientId = '';
     localStorage.setItem(key, JSON.stringify(conn));
@@ -768,7 +768,7 @@ await step('the join config is put back so later screens do not call Google', as
   await page.goto(`${BASE}#/admin`, { waitUntil: 'networkidle' });
   await page.reload({ waitUntil: 'networkidle' });
   const cleared = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem('topfb.connection.v1')).clientId);
+    JSON.parse(localStorage.getItem('nine31.connection.v1')).clientId);
   if (cleared) throw new Error('the client id was not cleared');
 });
 
@@ -801,7 +801,7 @@ await step('cadre reads go to Drive when no proxy is configured', async () => {
 
 await step('cadre reads go to the proxy when one is configured, with the right actions', async () => {
   const posted = await page.evaluate(async () => {
-    const key = 'topfb.connection.v1';
+    const key = 'nine31.connection.v1';
     const conn = JSON.parse(localStorage.getItem(key));
     const original = conn.proxyUrl;
     conn.proxyUrl = 'https://script.google.com/macros/s/AKfycbTESTdeployment0123456789/exec';
@@ -857,9 +857,9 @@ await step('the By instructor tab is offered to commanders only', async () => {
   }
 
   await page.evaluate(() => {
-    const s = JSON.parse(sessionStorage.getItem('topfb.session.v1'));
+    const s = JSON.parse(sessionStorage.getItem('nine31.session.v1'));
     s.roles = ['commander'];
-    sessionStorage.setItem('topfb.session.v1', JSON.stringify(s));
+    sessionStorage.setItem('nine31.session.v1', JSON.stringify(s));
   });
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('[role=tablist]', { timeout: 12000 });
@@ -914,9 +914,9 @@ await step('by-instructor covers cadre and commanders, not only instructors', as
       });
     }
 
-    const s = JSON.parse(sessionStorage.getItem('topfb.session.v1'));
+    const s = JSON.parse(sessionStorage.getItem('nine31.session.v1'));
     s.roles = ['commander'];
-    sessionStorage.setItem('topfb.session.v1', JSON.stringify(s));
+    sessionStorage.setItem('nine31.session.v1', JSON.stringify(s));
   });
 
   await page.goto(`${BASE}#/instructor?tab=people`, { waitUntil: 'networkidle' });
@@ -973,9 +973,9 @@ await step('a person under the threshold is withheld, counting their total', asy
         answers: { q1: 8 },
       });
     }
-    const s = JSON.parse(sessionStorage.getItem('topfb.session.v1'));
+    const s = JSON.parse(sessionStorage.getItem('nine31.session.v1'));
     s.roles = ['commander'];
-    sessionStorage.setItem('topfb.session.v1', JSON.stringify(s));
+    sessionStorage.setItem('nine31.session.v1', JSON.stringify(s));
   });
 
   await page.goto(`${BASE}#/instructor?tab=people`, { waitUntil: 'networkidle' });
@@ -1149,7 +1149,7 @@ await step('the export says plainly what it is', async () => {
     const { buildAnonymisedExport } = await import('/js/export-anon.js');
     return buildAnonymisedExport();
   });
-  if (parsed.format !== 'top-feedback-anonymised') throw new Error('no format marker');
+  if (parsed.format !== 'nine31-anonymised') throw new Error('no format marker');
   if (!/identify people/i.test(parsed.notice || '')) {
     throw new Error('the file does not warn that free text can still identify people');
   }
@@ -1889,8 +1889,8 @@ if (shots) await page.screenshot({ path: `${shots}/m4-mobile.png`, fullPage: tru
 const ACCESS_TOGGLE = 'section:has(> .section-title:text-is("Access")) input[type=checkbox]';
 
 const setFlag = (on) => page.evaluate((v) => {
-  if (v) localStorage.setItem('topfb.directsignin.v1', '1');
-  else localStorage.removeItem('topfb.directsignin.v1');
+  if (v) localStorage.setItem('nine31.directsignin.v1', '1');
+  else localStorage.removeItem('nine31.directsignin.v1');
 }, on);
 
 await step('the access flag grants no roles by itself', async () => {
@@ -1959,7 +1959,7 @@ await step('an administrator can turn it on, and anyone can turn it off', async 
   await page.waitForSelector('dialog.modal', { timeout: 8000 });
   await page.click('dialog .btn--danger');
   await page.waitForTimeout(900);
-  if (!(await page.evaluate(() => localStorage.getItem('topfb.directsignin.v1') === '1'))) {
+  if (!(await page.evaluate(() => localStorage.getItem('nine31.directsignin.v1') === '1'))) {
     throw new Error('an admin could not enable it');
   }
 
@@ -1972,7 +1972,7 @@ await step('an administrator can turn it on, and anyone can turn it off', async 
   if (await off.isDisabled()) throw new Error('it could not be turned off');
   await off.click();
   await page.waitForTimeout(900);
-  if (await page.evaluate(() => localStorage.getItem('topfb.directsignin.v1') === '1')) {
+  if (await page.evaluate(() => localStorage.getItem('nine31.directsignin.v1') === '1')) {
     throw new Error('it survived being switched off');
   }
 });

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Development server for TOP-Feedback.
+"""Development server for 9ThirtyOne.
 
 A service worker, the File System Access API, and Google OAuth all require a
 secure context, so opening index.html from the filesystem will not exercise the
@@ -82,7 +82,7 @@ def ensure_cert() -> bool:
             [
                 "openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
                 "-keyout", str(KEY_FILE), "-out", str(CERT_FILE),
-                "-days", "365", "-subj", "/CN=top-feedback.local",
+                "-days", "365", "-subj", "/CN=nine-thirty-one.local",
                 "-addext", f"subjectAltName=DNS:localhost,IP:127.0.0.1,IP:{lan_ip()}",
             ],
             check=True, capture_output=True,
@@ -126,7 +126,7 @@ def main() -> int:
         httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
 
     local_url = f"{scheme}://localhost:{args.port}/"
-    print(f"\n  TOP-Feedback dev server\n")
+    print(f"\n  9ThirtyOne dev server\n")
     print(f"    local    {local_url}")
     print(f"    network  {scheme}://{lan_ip()}:{args.port}/")
     if not args.https:

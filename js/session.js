@@ -77,7 +77,7 @@ export function currentIdToken() {
  * import this one, and importing them back would be a cycle. Anything holding
  * data belonging to a person must listen.
  */
-export const IDENTITY_CHANGED = 'topfb:identity-changed';
+export const IDENTITY_CHANGED = 'nine31:identity-changed';
 
 function announceIdentityChange() {
   try {

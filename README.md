@@ -1,4 +1,4 @@
-# TOP-Feedback
+# 9ThirtyOne
 
 A progressive web app for the student ↔ instructor feedback cycle, built for
 AFROTC detachments. Every organization owns its own data: the app has no server
@@ -27,8 +27,8 @@ Two documents live in `docs/`, generated from the real app:
 
 | File | For | Contents |
 |---|---|---|
-| `TOP-Feedback-Setup-Guide.pdf` | Whoever installs it | 26 pages: creating the detachment's Google account, the Cloud setup, publishing, the wizard, the submission server, the roster, join links, a verification checklist, and troubleshooting. |
-| `TOP-Feedback-Introduction.pdf` | Briefing cadre or a commander | 21 slides with speaker notes: what it does, how each role uses it, and the anonymity and safety design. |
+| `9ThirtyOne-Setup-Guide.pdf` | Whoever installs it | 26 pages: creating the detachment's Google account, the Cloud setup, publishing, the wizard, the submission server, the roster, join links, a verification checklist, and troubleshooting. |
+| `9ThirtyOne-Introduction.pdf` | Briefing cadre or a commander | 21 slides with speaker notes: what it does, how each role uses it, and the anonymity and safety design. |
 
 `privacy.html` ships alongside the app and deploys to the same domain, which is
 where Google's OAuth verification requires it to be.
@@ -101,7 +101,7 @@ the identical interface, so the rest of the app does not know which is in use.
 The chosen folder becomes the database. Each record is one JSON document.
 
 ```
-TOP-Feedback/
+9ThirtyOne/
 ├── config/      org profile and shared settings
 ├── users/       accounts — students, instructors, admins
 ├── roster/      legacy roster (migrated into users/ automatically)
@@ -148,7 +148,7 @@ Done once by the detachment, on the account the detachment owns:
    otherwise *External* and add each cadre member as a test user.
 4. **Credentials** → **OAuth client ID** → *Web application*. Add the address the
    app is served from as an **Authorised JavaScript origin**.
-5. In Drive, create a folder named `TOP-Feedback` and share it with the cadre who
+5. In Drive, create a folder named `9ThirtyOne` and share it with the cadre who
    need access.
 6. In the app's setup wizard, paste the **Client ID** and the **folder link**.
 

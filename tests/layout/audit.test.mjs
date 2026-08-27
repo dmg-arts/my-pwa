@@ -404,11 +404,11 @@ for (const viewport of WIDTHS) {
     await seed(page);
     // Everything below runs as a commander, so the restricted screens render.
     await page.evaluate((t) => {
-      const s = JSON.parse(sessionStorage.getItem('topfb.session.v1'));
+      const s = JSON.parse(sessionStorage.getItem('nine31.session.v1'));
       s.roles = ['commander', 'admin'];
-      sessionStorage.setItem('topfb.session.v1', JSON.stringify(s));
-      const saved = JSON.parse(localStorage.getItem('topfb.settings.v1') || '{}');
-      localStorage.setItem('topfb.settings.v1', JSON.stringify({ ...saved, theme: t }));
+      sessionStorage.setItem('nine31.session.v1', JSON.stringify(s));
+      const saved = JSON.parse(localStorage.getItem('nine31.settings.v1') || '{}');
+      localStorage.setItem('nine31.settings.v1', JSON.stringify({ ...saved, theme: t }));
     }, theme);
 
     for (const screen of SCREENS) {

@@ -139,11 +139,11 @@ record('Cold start', 'Bytes over the wire', transferred);
 /* ---------- get past setup so the real screens can be measured ---------- */
 
 await page.evaluate(() => {
-  localStorage.setItem('topfb.connection.v1', JSON.stringify({
+  localStorage.setItem('nine31.connection.v1', JSON.stringify({
     backend: 'local', orgName: 'Det 025', clientId: '', folderId: 'bench',
     proxyUrl: '', folderName: 'bench', connectedAt: new Date().toISOString(),
   }));
-  localStorage.setItem('topfb.setup.complete.v1', '1');
+  localStorage.setItem('nine31.setup.complete.v1', '1');
 });
 await page.reload({ waitUntil: 'networkidle' });
 
@@ -274,7 +274,7 @@ await browser.close();
 
 const bundle = payload();
 
-console.log('\nTOP-Feedback — performance profile');
+console.log('\n9ThirtyOne — performance profile');
 console.log('='.repeat(64));
 console.log(`\nSource: ${bundle.count} files, ${(bundle.total / 1024).toFixed(0)} KB unminified`);
 for (const f of bundle.biggest) {

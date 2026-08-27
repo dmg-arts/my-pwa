@@ -73,7 +73,7 @@ function buildAppBar() {
     style: { background: 'none', border: '0', padding: '0', cursor: 'pointer', textAlign: 'left' },
     onclick: () => navigate('/home'),
   },
-    el('span', { class: 'appbar__mark', 'aria-hidden': 'true' }, 'TF'),
+    el('span', { class: 'appbar__mark', 'aria-hidden': 'true' }, '931'),
     el('span', { style: { minWidth: '0' } },
       el('span', { class: 'appbar__title', style: { display: 'block' } }, APP.name),
       el('span', { class: 'appbar__sub', style: { display: 'block' } }, conn.orgName || 'Not configured')));
@@ -259,7 +259,7 @@ if ('serviceWorker' in navigator) {
 // Stashed so Settings can offer an explicit "Install this app" button.
 window.addEventListener('beforeinstallprompt', (event) => {
   event.preventDefault();
-  window.__topfbInstallPrompt = event;
+  window.__nine31InstallPrompt = event;
 });
 
 window.addEventListener('unhandledrejection', (event) => {

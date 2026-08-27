@@ -283,8 +283,8 @@ for (const view of PERSPECTIVES) {
   // A Client ID so the sign-in gates render Google's real button rather than
   // "not configured", which is what a fielded detachment actually sees.
   await page.evaluate((id) => {
-    const conn = JSON.parse(localStorage.getItem('topfb.connection.v1') || '{}');
-    localStorage.setItem('topfb.connection.v1', JSON.stringify({ ...conn, clientId: id }));
+    const conn = JSON.parse(localStorage.getItem('nine31.connection.v1') || '{}');
+    localStorage.setItem('nine31.connection.v1', JSON.stringify({ ...conn, clientId: id }));
   }, DEMO_CLIENT);
   await page.reload({ waitUntil: 'networkidle' });
 

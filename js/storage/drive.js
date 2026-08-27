@@ -37,7 +37,7 @@ const SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const API = 'https://www.googleapis.com/drive/v3';
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
-const TOKEN_KEY = 'topfb.drive.token';
+const TOKEN_KEY = 'nine31.drive.token';
 
 let gisPromise = null;
 let tokenClient = null;
@@ -164,7 +164,7 @@ export const driveAdapter = {
       return data;
     }
 
-    const boundary = `topfb${Math.random().toString(36).slice(2)}`;
+    const boundary = `nine31${Math.random().toString(36).slice(2)}`;
     const metadata = { name: filename, parents: [parentId], mimeType: 'application/json' };
     const multipart =
       `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +

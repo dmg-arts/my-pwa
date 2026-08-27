@@ -547,7 +547,7 @@ function aboutSection() {
   const install = el('div', { class: 'row row--wrap' });
 
   // The beforeinstallprompt event is captured in app.js and stashed here.
-  const deferred = window.__topfbInstallPrompt;
+  const deferred = window.__nine31InstallPrompt;
   if (deferred) {
     mount(install, el('button', {
       type: 'button', class: 'btn',
@@ -555,7 +555,7 @@ function aboutSection() {
         deferred.prompt();
         const { outcome } = await deferred.userChoice;
         if (outcome === 'accepted') toast('Installing…', 'ok');
-        window.__topfbInstallPrompt = null;
+        window.__nine31InstallPrompt = null;
       },
     }, icon('download'), 'Install this app'));
   }
@@ -572,7 +572,7 @@ function aboutSection() {
     el('div', { class: 'row row--wrap' },
       el('button', {
         type: 'button', class: 'btn btn--sm',
-        onclick: () => download('top-feedback-diagnostics.json', JSON.stringify({
+        onclick: () => download('nine31-diagnostics.json', JSON.stringify({
           app: APP,
           connection: { ...connection.get(), clientId: connection.get().clientId ? '(set)' : '' },
           settings: settings.get(),

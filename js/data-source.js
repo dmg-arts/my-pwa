@@ -55,7 +55,7 @@ export async function connectionStatus() {
     try {
       const response = await fetch(url, { method: 'GET', redirect: 'follow' });
       const body = await response.json();
-      return body?.service === 'top-feedback-proxy'
+      return body?.service === 'nine31-proxy'
         ? { status: 'ready', detail: 'Through your detachment\'s server' }
         : { status: 'error', detail: 'The submission service did not answer properly.' };
     } catch {

@@ -48,7 +48,7 @@ You need the two values from your existing setup:
 1. Go to **[script.google.com](https://script.google.com)**, signed in as the
    account that **owns the Drive folder**. This matters: the script writes files
    as whoever owns it.
-2. **New project**. Name it `TOP-Feedback Proxy`.
+2. **New project**. Name it `9ThirtyOne Proxy`.
 3. Delete the contents of `Code.gs` and paste in this folder's `Code.gs`.
 4. Save.
 
@@ -87,7 +87,7 @@ You need the two values from your existing setup:
 
 ## 4. Point the app at it
 
-1. In TOP-Feedback: **Settings → Submission proxy**.
+1. In 9ThirtyOne: **Settings → Submission proxy**.
 2. Paste the `/exec` URL and press **Save and test**. It checks the deployment is
    reachable, is the right script, and is configured — so you find out now rather
    than when a cadet cannot submit.

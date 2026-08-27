@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>TOP-Feedback</title>
+  <title>9ThirtyOne</title>
   <meta name="description" content="Student and cadre feedback for AFROTC detachments. Your data stays in your own Google Drive.">
   <meta name="theme-color" content="#ffffff">
   <meta name="color-scheme" content="light dark">
@@ -11,7 +11,7 @@
   <!-- iOS standalone -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="TOP-FB">
+  <meta name="apple-mobile-web-app-title" content="9ThirtyOne">
   <link rel="apple-touch-icon" href="./icons/icon-180.png">
 
   <link rel="manifest" href="./manifest.json">
@@ -34,7 +34,7 @@
     page is pinned by hash. The app itself adds no inline styles: element styles
     go through the CSSOM, which this does not relax.
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'sha256-90VRZkxKmJQAgLPpmcpbxv3y7b4tkrsas7CK/G9pSsU=' https://accounts.google.com https://apis.google.com; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://script.google.com https://script.googleusercontent.com; img-src 'self' data: https://*.googleusercontent.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; font-src 'self'; frame-src https://accounts.google.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'sha256-+4WPqxDTZlDyUQYYPExPcj/zOoToK48unIR46yQvv/w=' https://accounts.google.com https://apis.google.com; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://script.google.com https://script.googleusercontent.com; img-src 'self' data: https://*.googleusercontent.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; font-src 'self'; frame-src https://accounts.google.com;">
 
   <script>
     // Refuse to run inside someone else's frame.
@@ -50,7 +50,7 @@
     if (window.top !== window.self) {
       document.documentElement.innerHTML =
         '<body style="font:16px system-ui;padding:2rem;color:#14181f;background:#fff">'
-        + '<h1 style="font-size:1.2rem">TOP-Feedback cannot run here</h1>'
+        + '<h1 style="font-size:1.2rem">9ThirtyOne cannot run here</h1>'
         + '<p>This page was opened inside another site\u2019s frame, which it will not do.</p>'
         + '<p><a href="' + window.location.href + '" target="_blank" rel="noopener">Open it directly</a></p>'
         + '</body>';
@@ -61,7 +61,7 @@
     // dark device. Mirrors applySettings() in js/state.js.
     (function () {
       try {
-        var saved = JSON.parse(localStorage.getItem('topfb.settings.v1') || '{}');
+        var saved = JSON.parse(localStorage.getItem('nine31.settings.v1') || '{}');
         var theme = saved.theme || 'system';
         if (theme === 'system') {
           theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -88,14 +88,14 @@
         <div class="notice notice--warn">
           <div>
             <strong class="notice__title">JavaScript is required</strong>
-            TOP-Feedback runs entirely in your browser and needs JavaScript enabled.
+            9ThirtyOne runs entirely in your browser and needs JavaScript enabled.
           </div>
         </div>
       </noscript>
     </main>
 
     <footer class="appfoot">
-      TOP-Feedback — your detachment's data stays in your own Google account.
+      9ThirtyOne — your detachment's data stays in your own Google account.
     </footer>
   </div>
 

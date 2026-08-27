@@ -3,7 +3,7 @@
  *
  * This is the literal reading of "point the app at the org's Google Drive": the
  * detachment installs Google Drive for Desktop, and picks their synced
- * TOP-Feedback folder here. Google's client handles sync; the app just reads and
+ * 9ThirtyOne folder here. Google's client handles sync; the app just reads and
  * writes JSON files. Desktop Chromium only (Chrome/Edge) — Safari and every
  * mobile browser lack the API, which is why the `drive` backend exists.
  */
@@ -22,7 +22,7 @@ export const folderAdapter = {
 
   /** Opens the native folder picker and remembers the handle. */
   async chooseFolder() {
-    const handle = await window.showDirectoryPicker({ id: 'topfb-root', mode: 'readwrite' });
+    const handle = await window.showDirectoryPicker({ id: 'nine31-root', mode: 'readwrite' });
     await idb.put(STORE_HANDLES, handle, HANDLE_KEY);
     rootHandle = handle;
     return { name: handle.name };

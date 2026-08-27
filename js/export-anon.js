@@ -116,7 +116,7 @@ export async function buildAnonymisedExport({ includeFlagged = false } = {}) {
   }
 
   return {
-    format: 'top-feedback-anonymised',
+    format: 'nine31-anonymised',
     schemaVersion: APP.schemaVersion,
     appVersion: APP.version,
     exportedMonth: toMonth(new Date().toISOString()),

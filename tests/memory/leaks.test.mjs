@@ -62,11 +62,11 @@ async function metric(name) {
 
 await page.goto(BASE, { waitUntil: 'networkidle' });
 await page.evaluate(() => {
-  localStorage.setItem('topfb.connection.v1', JSON.stringify({
+  localStorage.setItem('nine31.connection.v1', JSON.stringify({
     backend: 'local', orgName: 'Det 025', clientId: '', folderId: 'mem',
     proxyUrl: '', folderName: 'mem', connectedAt: new Date().toISOString(),
   }));
-  localStorage.setItem('topfb.setup.complete.v1', '1');
+  localStorage.setItem('nine31.setup.complete.v1', '1');
 });
 await page.reload({ waitUntil: 'networkidle' });
 

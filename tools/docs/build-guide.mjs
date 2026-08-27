@@ -1,5 +1,5 @@
 /**
- * Renders tools/docs/setup-guide.html to docs/TOP-Feedback-Setup-Guide.pdf.
+ * Renders tools/docs/setup-guide.html to docs/9ThirtyOne-Setup-Guide.pdf.
  *
  * Chrome's own print engine is used rather than a PDF library: the guide is
  * written print-first (page breaks, running footer, Letter margins) and Chrome
@@ -9,7 +9,7 @@ import { chromium } from 'playwright';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 const SHOTS = process.argv[2] || './shots';
-const OUT = process.argv[3] || 'docs/TOP-Feedback-Setup-Guide.pdf';
+const OUT = process.argv[3] || 'docs/9ThirtyOne-Setup-Guide.pdf';
 
 const dataUri = (name) => {
   const path = `${SHOTS}/${name}`;

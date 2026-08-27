@@ -4,7 +4,7 @@
  * cloneable but cannot go in localStorage).
  */
 
-const DB_NAME = 'topfb';
+const DB_NAME = 'nine31';
 const DB_VERSION = 2;
 export const STORE_DOCS = 'docs';       // path -> { path, data, updatedAt }
 export const STORE_HANDLES = 'handles'; // key  -> FileSystemDirectoryHandle

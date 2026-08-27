@@ -218,7 +218,7 @@ await step('the wizard creates the folder itself, with no link to paste', async 
     await runWizardToDrive(page);
 
     const folders = drive.created().filter((f) => f.mimeType === 'application/vnd.google-apps.folder');
-    const root = folders.find((f) => f.name === 'TOP-Feedback');
+    const root = folders.find((f) => f.name === '9ThirtyOne');
     if (!root) throw new Error(`no root folder created; got ${JSON.stringify(folders.map((f) => f.name))}`);
     if ((root.parents || []).length) throw new Error('the root was created inside another folder');
     if (pageErrors.length) throw new Error(pageErrors[0]);
@@ -239,7 +239,7 @@ await step('the folder it made is the one it then uses', async () => {
     await page.click('.wizard .btn--lg');
     await page.waitForSelector('.role-grid', { timeout: 15000 });
 
-    const root = drive.created().find((f) => f.name === 'TOP-Feedback');
+    const root = drive.created().find((f) => f.name === '9ThirtyOne');
     if (!root) throw new Error('no root folder was created');
     if (root.mimeType !== 'application/vnd.google-apps.folder') {
       throw new Error(`the root was created as ${root.mimeType}, not a folder`);
@@ -253,7 +253,7 @@ await step('the folder it made is the one it then uses', async () => {
     }
     if (pageErrors.length) throw new Error(pageErrors[0]);
 
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('topfb.connection.v1') || '{}'));
+    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('nine31.connection.v1') || '{}'));
     if (stored.folderId !== root.id) {
       throw new Error(`the app stored "${stored.folderId}" but created "${root.id}"`);
     }
@@ -285,7 +285,7 @@ await step('a folder the app did not create is unreachable, and says why', async
   // rather than implying the address was mistyped.
   const { page, ctx, drive } = await pageWithDrive();
   try {
-    const handmade = drive.planted('TOP-Feedback');
+    const handmade = drive.planted('9ThirtyOne');
     await runWizardToDrive(page);
     await page.click('button:has-text("Continue")');
     await page.waitForSelector('.tree', { timeout: 12000 });
@@ -317,7 +317,7 @@ await step('signing out revokes the Drive token rather than dropping it', async 
       window.google.accounts.oauth2.revoke = (_t, done) => { called = true; if (done) done(); };
       const m = await import('/js/storage/index.js');
       m.adapters.drive.signOut();
-      return { called, token: sessionStorage.getItem('topfb.drive.token') };
+      return { called, token: sessionStorage.getItem('nine31.drive.token') };
     });
     if (!revoked.called) throw new Error('the token was discarded locally but left valid at Google');
     if (revoked.token) throw new Error('the token is still in session storage');
