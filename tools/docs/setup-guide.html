@@ -42,11 +42,7 @@
     display: flex; flex-direction: column;
     page-break-after: always;
   }
-  .cover__mark {
-    width: 20mm; height: 20mm; border-radius: 4mm; background: #fff;
-    display: flex; align-items: center; justify-content: center; margin-bottom: 14mm;
-  }
-  .cover__mark svg { width: 12mm; height: 12mm; }
+  .cover__mark { width: 22mm; height: 22mm; display: block; margin-bottom: 14mm; }
   .cover h1 { font-size: 34pt; line-height: 1.08; margin: 0 0 6mm; letter-spacing: -0.02em; font-weight: 700; }
   .cover .sub { font-size: 14pt; opacity: .92; margin: 0 0 3mm; font-weight: 400; }
   .cover .meta { margin-top: auto; font-size: 9.5pt; opacity: .8; border-top: 1px solid rgba(255,255,255,.3); padding-top: 5mm; }
@@ -140,12 +136,10 @@
 
 <!-- ============================= COVER ============================= -->
 <div class="cover">
-  <div class="cover__mark">
-    <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-      <path d="M148 262 L212 326 L364 174" fill="none" stroke="#1c4f8b" stroke-width="54"
-            stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  </div>
+  <!-- The real app icon, inlined by build-guide.mjs. Drawn here by hand until
+       0.18.1, which meant the cover kept the old checkmark through a rename
+       because nothing connected this document to the icon files. -->
+  <img class="cover__mark" src="APP_ICON" alt="">
   <h1>9ThirtyOne</h1>
   <p class="sub">Installation and Setup Guide</p>
   <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Alpha 0.18</p>

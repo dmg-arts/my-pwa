@@ -17,9 +17,14 @@ const dataUri = (name) => {
   return `data:image/png;base64,${readFileSync(path).toString('base64')}`;
 };
 
+/** The app icon itself, so the cover cannot drift from the product's identity. */
+const iconUri = () =>
+  `data:image/png;base64,${readFileSync('icons/icon-512.png').toString('base64')}`;
+
 let html = readFileSync('tools/docs/setup-guide.html', 'utf8')
   .replace('SHOT_SETUP_STORAGE', dataUri('setup-2-storage.png'))
-  .replace('SHOT_SETUP_FOLDERS', dataUri('setup-3-folders.png'));
+  .replace('SHOT_SETUP_FOLDERS', dataUri('setup-3-folders.png'))
+  .replace('APP_ICON', iconUri());
 
 const tmp = '/tmp/setup-guide.inlined.html';
 writeFileSync(tmp, html);

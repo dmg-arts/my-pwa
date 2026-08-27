@@ -48,7 +48,7 @@ if (!(await ready())) {
 
 /** Runs one suite against the server already up, resolving to its exit code. */
 const run = (file) => new Promise((done) => {
-  const suite = spawn(process.execPath, [resolve(HERE, file)], {
+  const suite = spawn(process.execPath, [resolve(ROOT, file)], {
     cwd: ROOT,
     stdio: 'inherit',
     env: { ...process.env, BASE_URL: BASE },
@@ -56,10 +56,23 @@ const run = (file) => new Promise((done) => {
   suite.on('exit', (code) => done(code ?? 1));
 });
 
-// Both share one server. The Drive suite intercepts googleapis.com in the
-// browser rather than reaching Google, so it needs nothing else.
+/**
+ * Which suites to run, all sharing this one server.
+ *
+ * Named on the command line, or all three by default. The layout audit is in
+ * here because it needs a server exactly as much as the others do and used to
+ * be invoked directly — so `npm test` passed only on a machine that happened to
+ * have one running already, and failed on a clean checkout at the last step.
+ *
+ * The Drive suite intercepts googleapis.com in the browser rather than reaching
+ * Google, so it needs nothing beyond this either.
+ */
+const SUITES = process.argv.slice(2).length
+  ? process.argv.slice(2)
+  : ['tests/e2e/app.test.mjs', 'tests/e2e/drive.test.mjs', 'tests/layout/audit.test.mjs'];
+
 let failed = 0;
-for (const file of ['app.test.mjs', 'drive.test.mjs']) {
+for (const file of SUITES) {
   failed += (await run(file)) === 0 ? 0 : 1;
 }
 shutdown();

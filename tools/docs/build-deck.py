@@ -36,6 +36,7 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
 from pptx.util import Emu, Inches, Pt
 
+ROOT = Path(__file__).resolve().parents[2]   # repo root, not tools/
 SHOTS = Path(sys.argv[1])
 OUT = Path(sys.argv[2])
 
@@ -204,8 +205,12 @@ def png_size(path):
 
 
 def picture(s, name, x, y, box_w, box_h, frame=True):
-    """Scales an image to fit its box without distortion, and centres it."""
-    path = SHOTS / name
+    """Scales an image to fit its box without distortion, and centres it.
+
+    `name` is resolved inside the screenshots directory, or used as-is when a
+    Path is passed — which is how the title slide reaches the app icon.
+    """
+    path = name if isinstance(name, Path) else SHOTS / name
     pw, ph = png_size(path)
     scale = min(box_w / pw, box_h / ph)
     w, h = int(pw * scale), int(ph * scale)
@@ -246,9 +251,11 @@ def card(s, x, y, w, h, heading, body, accent=NAVY):
 def s01_title():
     s = slide()
     background(s, NAVY)
-    rect(s, M, Inches(1.35), Inches(0.9), Inches(0.9), WHITE, radius=0.2)
-    block(s, M, Inches(1.47), Inches(0.9), Inches(0.66),
-          [("✓", 38, True, NAVY, 0)], align=PP_ALIGN.CENTER, shrink=False)
+    # The real icon. This was a white rounded rectangle with a typed checkmark
+    # in it until 0.18.1, which is how the deck kept the old mark through a
+    # rename: nothing connected the slide to the icon files.
+    picture(s, ROOT / "icons" / "icon-512.png", M, Inches(1.35),
+            Inches(0.95), Inches(0.95), frame=False)
 
     block(s, M, Inches(2.85), Inches(11), Inches(1.25),
           [("9ThirtyOne", 58, True, WHITE, 0)], shrink=False)
