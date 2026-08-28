@@ -148,10 +148,27 @@ async function scroll(page, pixels, seconds = 1.6) {
   await page.waitForTimeout(250);
 }
 
-/** Navigates and re-injects the cursor, which a reload destroys. */
+/**
+ * Navigates and re-injects the cursor, which a reload destroys.
+ *
+ * `domcontentloaded` rather than `networkidle`: any screen with a sign-in gate
+ * pulls Google's script from accounts.google.com, and the network never goes
+ * idle on those, so waiting for it just times out after thirty seconds. The
+ * fixed settle below is what actually makes the shot ready.
+ */
 async function go(page, route, { settle = 1.2 } = {}) {
-  await page.goto(`${BASE}#${route}`, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(500);
+  const target = `${BASE}#${route}`;
+  if (page.url() === target) {
+    // Navigating to the URL already showing is a same-document no-op: the
+    // router never re-runs, so the screen stays exactly as it was. That matters
+    // straight after a sign-in, where the page is still showing the gate the
+    // sign-in just satisfied, and the section then waits for content that will
+    // never appear.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  } else {
+    await page.goto(target, { waitUntil: 'domcontentloaded' });
+  }
+  await page.waitForTimeout(1400);
   await cursor(page);
   await hold(page, settle);
 }
@@ -170,9 +187,39 @@ const PEOPLE = {
 
 /** Runs the wizard for real — section 1 films part of this. */
 async function runWizard(page) {
-  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.wizard');
   await cursor(page);
+}
+
+/**
+ * Puts the app straight into a configured detachment, skipping the wizard.
+ *
+ * Only section 1 films setup; every other section opens on a unit that already
+ * exists, which is what its viewer will have. Writing the connection directly
+ * is also four seconds rather than forty, across six recordings.
+ */
+async function prepare(page) {
+  // Written as an init script rather than after a load, so the *first painted
+  // frame* is already a configured detachment. Setting it afterwards meant
+  // every section opened on a second of the setup wizard before snapping to
+  // where it belonged — accurate, and confusing in a video about roles.
+  await page.context().addInitScript(() => {
+    localStorage.setItem('nine31.connection.v1', JSON.stringify({
+      backend: 'local', orgName: 'AFROTC Detachment 025',
+      clientId: '000000000000-9thirtyonedemo.apps.googleusercontent.com',
+      folderId: 'demo', proxyUrl: '', folderName: '9ThirtyOne',
+      connectedAt: new Date().toISOString(),
+    }));
+    localStorage.setItem('nine31.setup.complete.v1', '1');
+  });
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1100);
+  await seedDetachment(page);
+  // Seeding runs the schema migration, which raises a "database updated" toast.
+  // True, and nothing to do with what the section is about, so it does not get
+  // to sit in the corner of the next shot.
+  await page.evaluate(() => document.querySelectorAll('.toast').forEach((t) => t.remove()));
 }
 
 /** Everything the later sections need to have something to show. */
@@ -246,7 +293,12 @@ async function seedDetachment(page, { withResponses = true } = {}) {
         await m.db.saveResponse({ requestId: 'req_quiet', formId: 'form_req_demo',
           anonymous: true, answers: { q1: v, q2: v, q3: v } });
       }
-      for (const [email] of cadets.slice(0, 5)) {
+      // Deliberately skipping the first cadet: she is the one the student
+      // section signs in as, and if she has already answered, her list opens on
+      // the cadre and commander requests instead of the ordinary one. Both are
+      // correct — a cadet answers requests from every area — but it is a
+      // confusing first thing to show in a walkthrough about who sees what.
+      for (const [email] of cadets.slice(1, 6)) {
         await m.db.addReceipt('req_demo', (await a.findByEmail(email)).username);
       }
     }
@@ -255,12 +307,35 @@ async function seedDetachment(page, { withResponses = true } = {}) {
   }, [PEOPLE, withResponses]);
 }
 
-const signInAs = (page, person) => page.evaluate(async (p) => {
-  const a = await import('/js/auth.js');
-  a.signOut();
-  const exp = Math.floor(Date.now() / 1000) + 3600;
-  await a.signInWithGoogle({ ...p, emailVerified: true, exp }, null, 'tok');
-}, person);
+/**
+ * Signs in, and checks it worked.
+ *
+ * A failed sign-in does not throw here — it leaves the app on its sign-in gate,
+ * and the section then fails fifteen seconds later on a selector that was never
+ * going to appear, pointing at the wrong thing entirely. Asserting the roles
+ * that came back turns that into an error naming the actual cause.
+ */
+async function signInAs(page, person) {
+  const got = await page.evaluate(async (p) => {
+    const a = await import('/js/auth.js');
+    a.signOut();
+    const exp = Math.floor(Date.now() / 1000) + 3600;
+    try {
+      const account = await a.signInWithGoogle({ ...p, emailVerified: true, exp }, null, 'tok');
+      return { ok: true, roles: account.roles || [] };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  }, person);
+
+  if (!got.ok) throw new Error(`sign-in as ${person.email} refused: ${got.error}`);
+  const wanted = person.roles[0];
+  if (!got.roles.includes(wanted)) {
+    throw new Error(
+      `signed in as ${person.email} but got [${got.roles}] not ${wanted} — `
+      + 'the roster was probably not seeded, so this account claimed an empty one');
+  }
+}
 
 /** A Client ID so the sign-in screens show Google's real button. */
 const setClientId = (page) => page.evaluate(() => {
@@ -306,7 +381,175 @@ const SECTIONS = [
 
       await page.waitForSelector('.role-grid', { timeout: 15000 });
       await cursor(page);
+      await hold(page, 3.4);
+      await moveTo(page, '.role-card', { nth: 0 });
+      await hold(page, 2.2);
+      await moveTo(page, '.role-card', { nth: 1 });
+      await hold(page, 2.0);
+    },
+  },
+  {
+    id: '2a-student-desktop',
+    size: DESKTOP,
+    async run(page) {
+      await prepare(page);
+      // What a cadet actually receives: a link, and nothing to configure.
+      await go(page, '/join?c=000000000000-9thirtyonedemo&f=demo&n=AFROTC%20Detachment%20025&p=AKfycbxDEMO',
+        { settle: 3.2 });
+      await scroll(page, 180);
+      await hold(page, 2.2);
+
+      // The sign-in gate, with Google's own button.
+      await go(page, '/student', { settle: 2.6 });
+      await signInAs(page, PEOPLE.student);
+      await go(page, '/student', { settle: 2.4 });
+      // Only what is assigned to them, filtered.
+      await moveTo(page, '.filters');
+      await hold(page, 2.6);
+      await moveTo(page, '.list__item');
+      await hold(page, 2.0);
+    },
+  },
+  {
+    id: '2b-student-phone',
+    size: PHONE,
+    async run(page) {
+      await prepare(page);
+      await signInAs(page, PEOPLE.student);
+      await go(page, '/student', { settle: 2.0 });
+      await click(page, '.list__item', { settle: 2.4 });
+
+      // The nine-point word scale — the thing cadets actually interact with.
+      await hold(page, 2.4);
+      await scroll(page, 320, 2.0);
+      await hold(page, 2.6);
+      await click(page, '.scale__opt', { nth: 7, settle: 1.8 });
+      await scroll(page, 300, 1.8);
+      await hold(page, 2.6);
+      await click(page, '.scale__opt', { nth: 12, settle: 1.8 });
+      await scroll(page, 340, 2.0);
+      await hold(page, 3.4);
+      await scroll(page, 320, 2.0);
       await hold(page, 3.0);
+    },
+  },
+  {
+    id: '3-instructor',
+    size: DESKTOP,
+    async run(page) {
+      await prepare(page);
+      await signInAs(page, PEOPLE.instructor);
+      await go(page, '/instructor?tab=requests', { settle: 2.6 });
+
+      // Building a form.
+      await click(page, 'button:has-text("Create Feedback")', { settle: 2.2 });
+      await type(page, 'input[placeholder^="e.g. AS200 Leadership"]',
+        'AS200 Field Training Prep — Week 4');
+      await hold(page, 1.4);
+      await scroll(page, 420, 2.0);
+      await hold(page, 2.6);
+
+      // The analysis, which is the part worth watching.
+      await go(page, '/instructor?tab=analysis', { settle: 4.0 });
+      await hold(page, 2.6);
+      await scroll(page, 400, 2.2);
+      await hold(page, 4.0);          // the distribution
+      await scroll(page, 480, 2.2);
+      await hold(page, 4.2);          // the split called out
+      await scroll(page, 520, 2.2);
+      await hold(page, 4.0);          // written answers
+      await scroll(page, 560, 2.2);
+      await hold(page, 4.2);          // the safety screen
+      await scroll(page, 520, 2.2);
+      await hold(page, 3.4);          // who still owes feedback
+    },
+  },
+  {
+    id: '4-cadre',
+    size: DESKTOP,
+    async run(page) {
+      await prepare(page);
+      await signInAs(page, PEOPLE.cadre);
+      await go(page, '/cadre?tab=requests', { settle: 3.4 });
+      // The restricted notice, then the badge on the item itself.
+      await moveTo(page, '.notice--info');
+      await hold(page, 3.2);
+      await scroll(page, 380, 2.0);
+      await moveTo(page, '.badge--warn');
+      await hold(page, 2.8);
+      // Both panels, one button apart.
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await hold(page, 0.6);
+      await moveTo(page, 'button:has-text("Instructor Panel")');
+      await hold(page, 2.4);
+
+      // And what an instructor gets at the same address.
+      await signInAs(page, PEOPLE.instructor);
+      await go(page, '/cadre', { settle: 3.6 });
+    },
+  },
+  {
+    id: '5-commander',
+    size: DESKTOP,
+    async run(page) {
+      await prepare(page);
+      await signInAs(page, PEOPLE.commander);
+      await go(page, '/cadre?tab=requests', { settle: 2.8 });
+      await scroll(page, 380, 2.0);
+      await hold(page, 3.0);          // the commander's own area, badged
+
+      await go(page, '/instructor?tab=people', { settle: 3.4 });
+      await hold(page, 2.4);
+      // Somebody with enough responses to be summarised.
+      await click(page, 'tbody tr', { nth: 0, settle: 3.2 });
+      await scroll(page, 300, 1.8);
+      await hold(page, 2.4);
+
+      // And somebody under the threshold, where it refuses to answer.
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await go(page, '/instructor?tab=people', { settle: 2.0 });
+      const withheld = page.locator('tbody tr', { hasText: 'Okafor' });
+      if (await withheld.count()) {
+        await withheld.first().scrollIntoViewIfNeeded();
+        await withheld.first().click();
+        await hold(page, 4.2);
+      }
+    },
+  },
+  {
+    id: '6-admin',
+    size: DESKTOP,
+    async run(page) {
+      await prepare(page);
+      await signInAs(page, PEOPLE.admin);
+      await go(page, '/admin', { settle: 3.0 });
+      await scroll(page, 320, 2.0);
+      await hold(page, 3.0);          // the roster, and what each person may do
+
+      // Getting people set up: one link, or a code on a screen.
+      await go(page, '/admin/invite', { settle: 3.4 });
+      await scroll(page, 300, 2.0);
+      await hold(page, 3.4);
+
+      // The activity log.
+      await go(page, '/instructor?tab=database', { settle: 2.6 });
+      await scroll(page, 620, 2.4);
+      await hold(page, 3.6);          // the activity log
+      await scroll(page, 520, 2.2);
+      await hold(page, 4.0);          // the anonymised backup export
+    },
+  },
+  {
+    id: '7-close',
+    size: DESKTOP,
+    async run(page) {
+      await prepare(page);
+      await signInAs(page, PEOPLE.commander);
+      await go(page, '/settings', { settle: 3.2 });
+      await scroll(page, 360, 2.2);
+      await hold(page, 3.4);
+      await go(page, '/home', { settle: 4.5 });
+      await hold(page, 4.0);
     },
   },
 ];

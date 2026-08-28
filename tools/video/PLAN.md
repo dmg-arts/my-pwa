@@ -33,7 +33,7 @@ only open decision, and it is recorded here once made.
 |---|---|
 | Audience | A detachment being onboarded — procedural, not a pitch |
 | Narration | Synthesised, and **final** rather than a placeholder to be re-recorded |
-| Voice | *pending — samples generated in `/tmp/voice-samples/`* |
+| Voice | **Daniel** (en_GB), the least robotic of the installed legacy voices |
 | On-screen detachment | Fictional "AFROTC Detachment 025", invented cadet names |
 | Assembly | ffmpeg, installed |
 | Resolution | 1920×1080, except the student phone shots |
@@ -49,20 +49,30 @@ downloaded by hand:
 > Voices → English → pick a **(Premium)** or **(Enhanced)** voice → download
 
 Ava (Premium), Zoe (Premium), Tom (Enhanced) and Evan (Enhanced) are all a large
-step up and would not embarrass the video. Once one is installed it appears in
-`say -v '?'` and `VOICE` in `build.mjs` can point at it.
+step up. Once one is installed it appears in `say -v '?'` and `VOICE` in
+`build.mjs` can point at it — that is a one-line change and a rebuild, so
+upgrading later costs nothing.
+
+**Daniel is chosen for now** as the best of what is installed.
 
 ## Progress
 
-- [x] Plan, narration script, shot list
-- [x] Recorder harness — visible cursor, deliberate pacing, seeded detachment
-- [x] Section 1 (overview) recorded and reviewed
-- [ ] Sections 2–7
-- [ ] `build.mjs` — title cards, voiceover, assembly
-- [ ] Final review end to end
+- [x] Plan, shot list, narration
+- [x] Recorder — visible cursor, deliberate pacing, seeded detachment
+- [x] All eight clips recorded and reviewed
+- [x] `build.mjs` — title cards, voiceover, length-matched assembly
+- [x] **First cut: 5:09**
 
-**Blocked on nothing.** The voice is the only open decision and it affects the
-last step only; everything else can be built first.
+The narration now lives in `script.mjs`, which is the source of truth — editing
+a line there changes that section's length and nothing else. This file describes
+the video; it does not repeat the words.
+
+### Worth doing before this is final
+
+- **A better voice.** Daniel is the best of the legacy set and still sounds
+  synthetic. See the note above; it is a one-line change and a rebuild.
+- The instructor section races slightly at the analysis; another pass on holds
+  would help if a viewer says so.
 
 ## Structure
 
