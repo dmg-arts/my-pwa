@@ -25,14 +25,14 @@
 | Disclosure threshold | "Privacy threshold," "anonymity cutoff" | Visible text only |
 | Anonymized export | "The archive" — different object, see §2 | Visible text only |
 | Join link | "Invite link" | Visible text only |
-| Handle | "Username" (ambiguous with the sign-in identity) | Identifiers too — **deferred**⁴ |
+| Username | "Handle" | Already consistent⁴ |
 | Feedback request | "Form," when what's meant is one issued instance rather than the template | Visible text only |
 | Teaching on Purpose | — | Visible text only; pitch-level material only, see §5 |
 
 ¹ `proxy.js` and other code identifiers may keep "proxy" — this row governs what a person reads, not the file that implements it.
 ² "Roster" the term maps to the `users/` folder, which holds the live data. `roster/` is the legacy folder migrated into `users/` on setup — a consistency pass should not rename `users/` toward `roster/`; that direction is backwards.
 ³ AFROTC's own word, and the one the beta detachment uses. Visible text only: `ROLES.student`, the `/student` route, `students.json`, `js/views/student.js` and `nine31.student.prefs.v1` are stored or addressed identifiers and do not move — only `ROLE_LABELS.student` changes, which is the seam that exists for exactly this. The gap between the id and the label is deliberate; there is a comment in `js/config.js` saying so.
-⁴ Deferred out of the first lexicon pass. `username` appears in ~344 places and is a stored record field, so this row is a migration rather than a wording change and needs a `MIGRATIONS` entry and a `schemaVersion` bump. The term is right; it has not been applied yet. Do not read the visible text as already conforming.
+⁴ This row previously ran the other way — "Handle" preferred, "Username" banned — on the reasoning that username is ambiguous with the sign-in identity. Reversed by decision: the sign-in identity is the *email*, and the app, the roster, the setup guide and the on-disk field have all said `username` from the beginning. Keeping "handle" would have meant a migration across ~344 sites to introduce an ambiguity nobody had reported. The few identity-sense uses of "handle" that existed were changed to username instead.
 
 ---
 

@@ -144,12 +144,12 @@ await step('a cadet is added to the roster by email', async () => {
   }
 });
 
-await step('a handle is derived so receipts have something stable to key on', async () => {
-  const handle = await page.evaluate(async ([email]) => {
+await step('a username is derived so receipts have something stable to key on', async () => {
+  const username = await page.evaluate(async ([email]) => {
     const a = await import('/js/auth.js');
     return (await a.findByEmail(email))?.username;
   }, [STUDENT_EMAIL]);
-  if (handle !== 'alvarez.mia') throw new Error(`handle was "${handle}"`);
+  if (username !== 'alvarez.mia') throw new Error(`username was "${username}"`);
 });
 
 await step('the same email cannot be added twice', async () => {
@@ -191,7 +191,7 @@ await step('a deactivated account cannot sign in', async () => {
   }, [STUDENT_EMAIL]);
 });
 
-await step('changing an email keeps the handle their receipts are filed under', async () => {
+await step('changing an email keeps the username their receipts are filed under', async () => {
   const after = await page.evaluate(async ([email]) => {
     const a = await import('/js/auth.js');
     const account = await a.findByEmail(email);
@@ -200,7 +200,7 @@ await step('changing an email keeps the handle their receipts are filed under', 
     return { moved: moved.username, back: back.username };
   }, [STUDENT_EMAIL]);
   if (after.moved !== 'alvarez.mia' || after.back !== 'alvarez.mia') {
-    throw new Error(`handle changed with the email: ${JSON.stringify(after)}`);
+    throw new Error(`username changed with the email: ${JSON.stringify(after)}`);
   }
 });
 if (shots) await page.screenshot({ path: `${shots}/m1-admin.png`, fullPage: true });
@@ -400,7 +400,7 @@ await step('a v1 folder is migrated forward on load', async () => {
   }
   if (!result.migratedUser) throw new Error('roster student not converted to an account');
   // v4 leaves an account with no email flagged rather than deleted: it still
-  // carries the handle its receipts are filed under, which an admin needs.
+  // carries the username its receipts are filed under, which an admin needs.
   if (!result.migratedUser.needsEmail) throw new Error('emailless account not flagged by v4');
   if ('password' in result.migratedUser) throw new Error('a password field survived v4');
   console.log(`       ${result.ran[0]}`);

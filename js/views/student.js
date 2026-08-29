@@ -10,7 +10,7 @@
  * submission *receipt* and to stop a second attempt. The identity is then
  * dropped — an anonymous response record carries no name and no email, so
  * nothing links an answer to a person. Receipts live in a different folder from
- * responses, and are filed under the roster handle rather than the email.
+ * responses, and are filed under the roster username rather than the email.
  */
 
 import {

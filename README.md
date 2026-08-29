@@ -283,7 +283,7 @@ Database Administration → **Add person** takes a name and the Google account
 email. **Import roster CSV** takes the same list the det already uses to mail
 cadets: a `name` column and an `email` column, optionally `class`.
 
-Each account also carries a lowercase **handle** (`alvarez.mia`), derived from
+Each account also carries a lowercase **username** (`alvarez.mia`), derived from
 the name. It is internal: submission receipts are filed under it, so it stays
 fixed when someone's email changes and their submission history survives a move
 between schools.

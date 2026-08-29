@@ -971,7 +971,7 @@ function patchAccount(users, id, patch) {
 
   // Receipts are filed as `receipts/<requestId>/<username>.json`, and the
   // anonymisation that runs when somebody is removed finds their records the
-  // same way. Renaming a handle would orphan every receipt they hold: their
+  // same way. Renaming a username would orphan every receipt they hold: their
   // submissions would stop counting, they could answer the same feedback twice,
   // and a later deletion would leave their records behind. The app never asks
   // for it, so it is refused here rather than half-supported.

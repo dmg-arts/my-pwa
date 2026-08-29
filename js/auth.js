@@ -99,7 +99,7 @@ export function suggestUsername(name, taken = []) {
  * @typedef {object} Account
  * @property {string} id
  * @property {string} email        the Google account they sign in with; the key
- * @property {string} username     stable internal handle; receipts are filed under it
+ * @property {string} username     stable internal username; receipts are filed under it
  * @property {string} name         display name
  * @property {string[]} roles      any of student | instructor | admin
  * @property {string} asClass      AS100…AS400, FT, CADRE
@@ -143,7 +143,7 @@ export async function listStudents() {
  * Adds someone to the roster.
  *
  * The email is the identity — it is what a Google sign-in is matched against.
- * The username is kept as a stable internal handle: receipts are stored as
+ * The username is kept as a stable internal identifier: receipts are stored as
  * `receipts/<requestId>/<username>.json`, and keying those on an address that
  * can change would orphan a cadet's submission history the first time they move
  * schools.
@@ -159,17 +159,17 @@ export async function createAccount({ email, name, username = '', roles = [ROLES
   }
 
   const existing = await listAccounts();
-  const handle = normalizeUsername(username) || suggestUsername(name, existing.map((a) => a.username));
-  const handleProblem = validateUsername(handle);
-  if (handleProblem) throw new Error(handleProblem);
-  if (existing.some((a) => normalizeUsername(a.username) === handle)) {
-    throw new Error(`The handle "${handle}" is already in use.`);
+  const wanted = normalizeUsername(username) || suggestUsername(name, existing.map((a) => a.username));
+  const problem = validateUsername(wanted);
+  if (problem) throw new Error(problem);
+  if (existing.some((a) => normalizeUsername(a.username) === wanted)) {
+    throw new Error(`The username "${wanted}" is already in use.`);
   }
 
   const account = {
     id: makeId('usr'),
     email: address,
-    username: handle,
+    username: wanted,
     name: String(name).trim(),
     roles: [...new Set(roles)],
     asClass,
@@ -213,16 +213,16 @@ export async function updateAccount(id, patch) {
       && roster.some((a) => a.id !== id && normalizeEmail(a.email) === wantedEmail)) {
     throw new Error('That email is already on the roster.');
   }
-  const wantedHandle = patch.username ? normalizeUsername(patch.username) : existing.username;
-  if (wantedHandle !== existing.username
-      && roster.some((a) => a.id !== id && normalizeUsername(a.username) === wantedHandle)) {
-    throw new Error('That handle is already in use.');
+  const wantedUsername = patch.username ? normalizeUsername(patch.username) : existing.username;
+  if (wantedUsername !== existing.username
+      && roster.some((a) => a.id !== id && normalizeUsername(a.username) === wantedUsername)) {
+    throw new Error('That username is already in use.');
   }
 
   const emailChanged = wantedEmail !== normalizeEmail(existing.email);
   const next = {
     ...existing, ...patch,
-    email: wantedEmail, username: wantedHandle,
+    email: wantedEmail, username: wantedUsername,
     updatedAt: nowIso(),
   };
   // Nothing here stores credentials any more; drop any left by an old record.
