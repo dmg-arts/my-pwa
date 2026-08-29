@@ -23,19 +23,21 @@ and no shared database, and writes only to storage the detachment controls.
 
 ## Documentation
 
-Two documents live in `docs/`, generated from the real app:
+`docs/` holds four things. Start with `WHY.md` — everything else assumes it.
 
 | File | For | Contents |
 |---|---|---|
+| `WHY.md` | Cadre and commanders | Why this exists: the centralized detachment model and what it costs, the cadet-instructor gap, how the app works in plain English, and the guarantees with their limits. **The argument the other documents are built on.** |
+| `STYLE.md` | Anyone writing copy | The content lexicon — terminology, object definitions, voice, and the claims that must not be softened. Applied by hand; there is no build step that reads it. |
 | `9ThirtyOne-Setup-Guide.pdf` | Whoever installs it | 26 pages: creating the detachment's Google account, the Cloud setup, publishing, the wizard, the submission server, the roster, join links, a verification checklist, and troubleshooting. |
 | `9ThirtyOne-Introduction.pdf` | Briefing cadre or a commander | 21 slides with speaker notes: what it does, how each role uses it, and the anonymity and safety design. |
 
 `privacy.html` ships alongside the app and deploys to the same domain, which is
 where Google's OAuth verification requires it to be.
 
-Both are rebuilt by the scripts in `tools/docs/` — see the README there. Every
-screenshot in them is the live app with seeded data, nothing mocked up, so the
-documents cannot quietly drift from what the app does.
+The two PDFs are rebuilt by the scripts in `tools/docs/` — see the README there.
+Every screenshot in them is the live app with seeded data, nothing mocked up, so
+the documents cannot quietly drift from what the app does.
 
 ---
 
