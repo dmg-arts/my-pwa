@@ -139,13 +139,19 @@ which. A space somebody may not reach is never returned to them at all.
   responses — including their own, once submitted.
 - **Instructors** see the detachment's ordinary feedback.
 - **Cadre** see all of that plus a cadre space instructors cannot reach.
-- **Commanders** see every space, plus one only they can read, and a view of
-  feedback grouped by the person it reflects on. **At most two at a time**, so a
-  change of command overlaps rather than cutting over. The space belongs to the
-  detachment, so a handover moves the designation and migrates nothing.
+- **Commanders** see every space, plus one only they can read. **At most two at
+  a time**, so a change of command overlaps rather than cutting over. The space
+  belongs to the detachment, so a handover moves the designation and migrates
+  nothing.
 - **Database administrators** maintain the roster and the database. That is a
   separate job from reading feedback, so the role grants no panel access by
   itself.
+
+There is also a view of feedback **grouped by the person it reflects on**, for
+reviewing how instruction is going rather than how one event went. It follows the
+same chain: an instructor is shown their own results, cadre are shown the
+instructors they oversee, and a commander is shown everyone. The narrowing is
+done by the submission server before anything reaches the screen.
 
 ## 6. What it asks of a detachment
 

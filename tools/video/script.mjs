@@ -172,8 +172,10 @@ export const SECTIONS = [
     subtitle: 'Every space, and the point where the app refuses to answer',
     clip: '5-commander',
     narration: `
-      The commander sees both spaces, plus one only they can read, and a view of
-      feedback grouped by the person it reflects on.
+      The commander sees both spaces, plus one only they can read. In the view
+      that groups feedback by the person it reflects on, an instructor sees their
+      own results, cadre see the instructors they oversee, and the commander sees
+      everyone.
       There are at most two commanders at a time, so a change of command
       overlaps rather than cutting over.
       And this is where the app refuses to answer. Below three responses,

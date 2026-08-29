@@ -14,6 +14,10 @@ and no shared database, and writes only to storage the detachment controls.
   see feedback instructors cannot; a commander also sees their own space inside
   it. Not a filtered list: the folders are separate, and the detachment's own
   server decides who may open which.
+- **By instructor** — the same records grouped by the person they reflect on, in
+  either panel. An instructor sees their own results, cadre see the instructors
+  they oversee, a commander sees everyone. `js/people-scope.js` holds the rule
+  and is explicit about where it stops being a boundary.
 - **Database Administration** — behind an admin sign-in. Keeps the roster of
   Google accounts that may use the app, and what each one is allowed to do.
 - **Settings** — where the database lives, plus light/dark, color-vision

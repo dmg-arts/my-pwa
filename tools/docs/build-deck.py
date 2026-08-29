@@ -413,9 +413,11 @@ def s05_roles():
         "Instructor",
         "-Creates feedback, reads responses, runs the analysis.",
         "Cadre",
-        "-All of that, plus a space instructors cannot see.",
+        "-All of that, plus a space instructors cannot see, and oversight of "
+        "every instructor's results.",
         "Commander",
-        "-Sees every space, including one only they can read.",
+        "-Sees every space, including one only they can read, and everyone's "
+        "results including cadre.",
         "Database admin",
         "-Keeps the roster. A separate job, often held alongside.",
     ], size=15, gap=9)
@@ -424,7 +426,9 @@ def s05_roles():
              "than assumed. Cadre and commander spaces are separate folders on the detachment's "
              "Drive, not hidden screens — an instructor cannot reach commander feedback by opening "
              "Drive directly, because the server will not open that folder for them. "
-             "At most two commanders at a time, so a change of command overlaps.")
+             "At most two commanders at a time, so a change of command overlaps. "
+             "The By-instructor view follows the same chain: an instructor sees their own "
+             "results, cadre see the instructors they oversee, a commander sees everyone.")
 
 
 def s06_student_list():

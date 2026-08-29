@@ -189,8 +189,12 @@ const PERSPECTIVES = [
       ['panel-students', '/instructor?tab=students'],
       ['panel-database', '/instructor?tab=database'],
       ['create-feedback', '/instructor/create/new'],
+      // Open to them now, and narrowed to their own results — see
+      // js/people-scope.js. A filtered view is not a refusal, so what it
+      // contains is asserted in tests/proxy/behaviour.test.mjs, not here.
+      ['by-instructor-own', '/instructor?tab=people'],
     ],
-    refused: [['cadre-panel', '/cadre'], ['by-instructor-tab', '/instructor?tab=people'], ['admin', '/admin']],
+    refused: [['cadre-panel', '/cadre'], ['admin', '/admin']],
   },
   {
     id: '3-cadre', as: 'cadre',
@@ -199,8 +203,9 @@ const PERSPECTIVES = [
       ['cadre-panel', '/cadre?tab=requests'],
       ['cadre-responses-analysis', '/cadre?tab=analysis'],
       ['create-feedback-in-cadre-space', '/instructor/create/new?panel=cadre'],
+      ['by-instructor-instructors', '/instructor?tab=people'],
     ],
-    refused: [['by-instructor-tab', '/instructor?tab=people'], ['admin', '/admin']],
+    refused: [['admin', '/admin']],
   },
   {
     id: '4-commander', as: 'commander',
@@ -245,13 +250,18 @@ const PANEL_CONTENT = /Feedback requests|Restricted space|Invite people|Question
 /**
  * A refused *tab* is not a refused *panel*.
  *
- * Asking for `?tab=people` without the commander role lands on the panel's
- * default tab, which is correct and shows ordinary panel content. What must be
- * absent is the restricted view itself, so those entries name their own tell.
+ * Empty, and deliberately kept. It held `by-instructor-tab` while that view was
+ * commander-only: asking for `?tab=people` without the role landed on the
+ * panel's default tab, which is correct and shows ordinary panel content, so
+ * the entry named its own tell rather than relying on PANEL_CONTENT.
+ *
+ * By-instructor is open to every panel role now and narrowed by tier instead —
+ * a filtered view is not a refusal, and what it contains is asserted against
+ * the proxy in tests/proxy/behaviour.test.mjs, where the payload can be
+ * inspected rather than the pixels. The machinery stays for the next tab that
+ * needs it.
  */
-const REFUSAL_TELL = {
-  'by-instructor-tab': /grouped by the person it reflects on/,
-};
+const REFUSAL_TELL = {};
 
 /**
  * Positive control: did those patterns match anything at all this run?
@@ -265,7 +275,10 @@ const REFUSAL_TELL = {
  * matched a screen that *did* open. Then a reworded heading breaks this loudly
  * instead of hollowing it out.
  */
-const seen = { PANEL_CONTENT: false, 'by-instructor-tab': false };
+const seen = {
+  PANEL_CONTENT: false,
+  ...Object.fromEntries(Object.keys(REFUSAL_TELL).map((k) => [k, false])),
+};
 
 async function shoot(page, dir, name, route, { mobile = false, mustRefuse = false } = {}) {
   await page.goto(`${BASE}#${route}`, { waitUntil: 'networkidle' });
