@@ -19,7 +19,7 @@ import {
   confirmDialog, fmtDate, fmtRelative, pluralize, download, pickFile, readFileAsText,
   mount, remount } from '../util.js';
 import {
-  SEMESTERS, AS_CLASSES, REQUEST_STATUS, ROLES, schoolYears,
+  SEMESTERS, AS_CLASSES, REQUEST_STATUS, schoolYears,
 } from '../config.js';
 import { connection } from '../state.js';
 import { hasRole, currentUser, activeRoles, signOut, listStudents } from '../auth.js';
@@ -40,8 +40,11 @@ import { record, AUDIT } from '../audit.js';
 const TABS = [
   { id: 'requests', label: 'Feedback requests', iconName: 'send' },
   { id: 'analysis', label: 'Responses & analysis', iconName: 'chart' },
-  // Commanders only: the same records, grouped by the person they reflect on.
-  { id: 'people', label: 'By instructor', iconName: 'clipboard', role: ROLES.commander },
+  // The same records, grouped by the person they reflect on. Open to every
+  // panel role, because reviewing the instructors under you is an oversight
+  // function and cadre have one — but what it contains differs by role, and
+  // that narrowing is the server's, not this tab's. See js/people-scope.js.
+  { id: 'people', label: 'By instructor', iconName: 'clipboard' },
   { id: 'students', label: 'Cadets', iconName: 'users' },
   { id: 'database', label: 'Database', iconName: 'database' },
 ];

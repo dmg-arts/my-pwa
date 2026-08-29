@@ -90,6 +90,82 @@ var SPACE_ACCESS = {
   commander: ['shared', 'cadre', 'commander']
 };
 
+/**
+ * Whose results an account may see in the By-instructor view.
+ *
+ * `SPACE_ACCESS` above decides which folders an account reads. This decides
+ * which *subjects* within them, which is the oversight tier:
+ *
+ *   own          an instructor sees their own results
+ *   instructors  cadre see the instructors they oversee, and themselves
+ *   all          a commander sees everyone, cadre included
+ *
+ * **Held roles, never effective ones.** `effectiveRoles` below makes cadre imply
+ * instructor, so running this on the effective set would drop every cadre member
+ * into the instructor tier and hand them each other's results — the exact thing
+ * the tier exists to prevent. Effective roles answer "may this account call this
+ * action"; this answers "whose records come back".
+ *
+ * WHAT THIS ENFORCES, AND WHAT IT DOES NOT
+ *
+ * It stops this endpoint serving an instructor a By-instructor view of somebody
+ * else. It does not make that data confidential: `allResponses` and `catalog`
+ * are still open to `instructor` in ACTIONS above, so an instructor with this
+ * URL can fetch every response in the shared space and group it themselves.
+ * Narrowing those would also narrow Responses & analysis, which is a separate
+ * decision nobody has taken. Do not let a document claim more than this does.
+ *
+ * **Mirrored in `js/people-scope.js`.** Apps Script cannot import it, the same
+ * reason SPACE_ACCESS is declared twice. Change one, change the other.
+ */
+function peopleTierFor(account) {
+  var held = (account && account.roles) || [];
+  for (var i = 0; i < held.length; i++) {
+    if (held[i] === 'commander') return 'all';
+  }
+  for (var j = 0; j < held.length; j++) {
+    if (held[j] === 'cadre') return 'instructors';
+  }
+  return 'own';
+}
+
+/** An instructor and nothing above it. Admin does not disqualify. */
+function isPlainInstructor(user) {
+  var held = (user && user.roles) || [];
+  var instructor = false;
+  for (var i = 0; i < held.length; i++) {
+    if (held[i] === 'cadre' || held[i] === 'commander') return false;
+    if (held[i] === 'instructor') instructor = true;
+  }
+  return instructor;
+}
+
+/** The person a request reflects on: its subject, or whoever issued it. */
+function subjectOfRequest(request) {
+  return (request && (request.subject || request.createdBy)) || null;
+}
+
+/**
+ * Whether one request is in an account's people scope.
+ *
+ * An instructor keeps what they *issued* as well as what is about them — they
+ * built and sent the form, so withholding the answers reads as a fault rather
+ * than a policy.
+ */
+function requestInPeopleScope(root, request, account, tier) {
+  if (tier === 'all') return true;
+  var me = String((account && account.username) || '').toLowerCase();
+  if (tier === 'own') {
+    return String(request.subject || '').toLowerCase() === me
+      || String(request.createdBy || '').toLowerCase() === me;
+  }
+  var subject = subjectOfRequest(request);
+  if (!subject) return false;
+  subject = String(subject).toLowerCase();
+  if (subject === me) return true;
+  return isPlainInstructor(findByUsername(root, subject));
+}
+
 /** Every space this account may see, combined across the roles it holds. */
 function spacesFor(account) {
   var roles = effectiveRoles(account);
@@ -158,6 +234,11 @@ var ACTIONS = {
   roster:       ['instructor', 'cadre', 'commander', 'admin'],
   audit:        ['commander', 'admin'],
   overview:     ['instructor', 'cadre', 'commander', 'admin'],
+  // Open to every panel role, but what comes back is narrowed by
+  // peopleTierFor: an instructor gets their own, cadre get the instructors they
+  // oversee, a commander gets everyone. The narrowing is the point of the
+  // action — see peopleTierFor for what it does and does not guarantee.
+  people:       ['instructor', 'cadre', 'commander', 'admin'],
 
   saveForm:       ['instructor', 'cadre', 'commander', 'admin'],
   saveRequest:    ['instructor', 'cadre', 'commander', 'admin'],
@@ -317,6 +398,9 @@ function doPost(e) {
     }
     if (body.action === 'allResponses') {
       return json({ ok: true, responses: readAllResponses(root, account) });
+    }
+    if (body.action === 'people') {
+      return json({ ok: true, people: readPeople(root, account) });
     }
     if (body.action === 'roster') {
       return json({ ok: true, users: readRoster(root) });
@@ -1351,6 +1435,76 @@ function readJsonAt(root, segments, name) {
  * feedback is comfortably inside Apps Script's response limit, but this is the
  * first thing that will need paging if a detachment runs for years.
  */
+/**
+ * The By-instructor view: requests, their forms, their responses, and the staff
+ * they are about — all narrowed to this account's people tier.
+ *
+ * **The narrowing happens here, before anything is returned.** A client-side
+ * filter over `catalog` and `allResponses` would put every instructor's records
+ * in every instructor's browser and hide them with a predicate, which is not a
+ * boundary at all. Responses are gathered per surviving request rather than
+ * read wholesale and filtered, so a request out of scope is never opened.
+ *
+ * `staff` is narrowed the same way, because the view lists people who have no
+ * feedback yet — "nobody has asked about this instructor" is worth seeing, and
+ * it must not become a way to enumerate people the tier excludes.
+ */
+function readPeople(root, account) {
+  var tier = peopleTierFor(account);
+  var spaces = spacesFor(account);
+  var me = String((account && account.username) || '').toLowerCase();
+
+  var requests = [];
+  var forms = [];
+  var responses = [];
+  var formIds = {};
+
+  for (var s = 0; s < spaces.length; s++) {
+    var rows = readFolderDocs(root, spacePath(spaces[s], 'requests'));
+    for (var i = 0; i < rows.length; i++) {
+      if (!requestInPeopleScope(root, rows[i], account, tier)) continue;
+      rows[i].space = spaces[s];
+      requests.push(rows[i]);
+      formIds[rows[i].formId] = spaces[s];
+
+      var found = readFolderDocs(root, spacePath(spaces[s], 'responses', rows[i].id));
+      for (var r = 0; r < found.length; r++) {
+        found[r].space = spaces[s];
+        responses.push(found[r]);
+      }
+    }
+  }
+
+  // Only the forms the surviving requests actually render with.
+  for (var id in formIds) {
+    if (!Object.prototype.hasOwnProperty.call(formIds, id)) continue;
+    var form = readJson(root, spacePath(formIds[id], 'forms'), id + '.json');
+    if (form) {
+      form.space = formIds[id];
+      forms.push(form);
+    }
+  }
+
+  var users = readRoster(root);
+  var staff = [];
+  for (var u = 0; u < users.length; u++) {
+    var user = users[u];
+    var name = String(user.username || '').toLowerCase();
+    var isStaff = false;
+    var held = user.roles || [];
+    for (var h = 0; h < held.length; h++) {
+      if (held[h] !== 'student') isStaff = true;
+    }
+    if (!isStaff) continue;
+    if (tier === 'all' || name === me
+        || (tier === 'instructors' && isPlainInstructor(user))) {
+      staff.push(user);
+    }
+  }
+
+  return { requests: requests, forms: forms, responses: responses, staff: staff, tier: tier };
+}
+
 function readAllResponses(root, account) {
   var spaces = spacesFor(account);
   var out = [];

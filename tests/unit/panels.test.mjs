@@ -1,12 +1,12 @@
 /**
- * Which panel shows which area.
+ * Which panel shows which space.
  *
  * The split between the Instructor Panel and the Cadre Panel is what stops
  * restricted feedback appearing in a list an instructor is reading. The proxy
  * is what makes it *true* — these checks pin the presentation rule that decides
  * what a person who is already allowed to read something is looking at now.
  *
- * The case worth guarding: a cadre member must not see the commander's area,
+ * The case worth guarding: a cadre member must not see the commander's space,
  * even though both live in the same panel. Getting that backwards is invisible
  * until a commander files something sensitive and a cadre member reads it.
  */
@@ -29,13 +29,13 @@ const { PANELS, panelSpacesFor, canOpenPanel, inSpaces, panelFor } =
 
 /* ---------- what each role sees in each panel ---------- */
 
-check('the Instructor Panel is the detachment area, whoever opens it', () => {
+check('the Instructor Panel is the detachment space, whoever opens it', () => {
   for (const roles of [['instructor'], ['cadre'], ['commander'], ['admin', 'instructor']]) {
     eq(panelSpacesFor(PANELS.instructor, roles), ['shared'], `roles ${roles.join('+')}`);
   }
 });
 
-check('a cadre member sees the cadre area and not the commander’s', () => {
+check('a cadre member sees the cadre space and not the commander’s', () => {
   eq(panelSpacesFor(PANELS.cadre, ['cadre']), ['cadre'], 'cadre in the Cadre Panel');
 });
 

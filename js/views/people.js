@@ -1,10 +1,19 @@
 /**
- * Feedback grouped by the person it reflects on. Commanders only.
+ * Feedback grouped by the person it reflects on.
  *
- * A commander's question is not "how did the drill block go" but "how is this
- * instructor doing" — and until now the app could only answer the first. The
- * data was always there; nothing here grants access a commander did not already
- * have. What it adds is the lens.
+ * The question here is not "how did the drill block go" but "how is this
+ * instructor doing", and the app could once answer it only for a commander.
+ * Three tiers now, because reviewing the instructors under you is an oversight
+ * function and cadre have one:
+ *
+ *   - an **instructor** sees their own results, and anything they issued;
+ *   - **cadre** see the instructors they oversee, and themselves;
+ *   - a **commander** sees everyone, cadre included.
+ *
+ * The narrowing is done by `loadPeople`, which in proxy mode is the *server*
+ * deciding what comes back rather than this screen filtering something wider it
+ * was already sent. `js/people-scope.js` holds the rule and is honest about
+ * where it stops being a boundary.
  *
  * THAT LENS DESERVES CARE, AND GETS IT
  *
@@ -28,10 +37,10 @@
 import {
   el, icon, badge, field, select, notice, spinner, emptyState, pluralize, fmtDate,
   mount, remount } from '../util.js';
-import { PRIVACY, ROLES, ROLE_LABELS, nearestAnchor, scaleValues } from '../config.js';
+import { PRIVACY, ROLE_LABELS, nearestAnchor, scaleValues } from '../config.js';
 import { describe, histogram } from '../analysis/stats.js';
 import { inSpaces } from '../panels.js';
-import { loadCatalog, loadAllResponses, loadRoster } from '../data-source.js';
+import { loadPeople } from '../data-source.js';
 import { spaceShort, isRestricted } from '../spaces.js';
 import { navigate } from '../router.js';
 
@@ -100,44 +109,31 @@ function groupByPerson(requests, responses, formsById, staffByUsername) {
   });
 }
 
-/**
- * Everyone who could be the subject of feedback, whether or not they have any.
- *
- * Any role but student: instructors, **cadre**, commanders and database
- * administrators alike. The tab is called "By instructor" after the job most
- * feedback is about, not after the only role it covers — a detachment reviewing
- * only the people labelled instructor would miss the cadre running the labs,
- * which is much of what a commander needs a picture of.
- *
- * Cadets are excluded because this is feedback *about* instruction. Their own
- * submissions are the input to it.
- */
-function staffFrom(roster) {
-  return roster.filter((a) => (a.roles || []).some((r) => r !== ROLES.student));
-}
-
 export async function renderPeople(host, { spaces = null } = {}) {
   remount(host, spinner('Gathering feedback by person…'));
 
-  let catalog;
-  let responses;
-  let roster;
+  let people;
   try {
-    [catalog, responses, roster] = await Promise.all([
-      loadCatalog(), loadAllResponses(), loadRoster(),
-    ]);
+    people = await loadPeople();
   } catch (err) {
     return remount(host, notice('danger', 'Could not load feedback', el('p', {}, err.message)));
   }
 
-  // Scoped to the panel this was opened from, so a commander reviewing cadre
-  // material is not silently shown detachment feedback in the same totals.
-  const requests = spaces ? catalog.requests.filter(inSpaces(spaces)) : catalog.requests;
+  // Already narrowed to who this account may see. What remains is the panel
+  // scope, so a commander reviewing cadre material is not shown detachment
+  // feedback in the same totals.
+  const requests = spaces ? people.requests.filter(inSpaces(spaces)) : people.requests;
   const inScope = new Set(requests.map((r) => r.id));
-  if (spaces) responses = responses.filter((r) => inScope.has(r.requestId));
+  const responses = spaces
+    ? people.responses.filter((r) => inScope.has(r.requestId))
+    : people.responses;
 
-  const formsById = new Map(catalog.forms.map((f) => [f.id, f]));
-  const staff = staffFrom(roster);
+  const formsById = new Map(people.forms.map((f) => [f.id, f]));
+  // Anyone who could be the subject of feedback and this account may see.
+  // Cadets are absent because this is feedback *about* instruction and theirs
+  // is the input to it; who else appears is the tier's business, not this
+  // screen's — see loadPeople.
+  const staff = people.staff;
   const staffByUsername = new Map(staff.map((a) => [a.username, a]));
   const groups = groupByPerson(requests, responses, formsById, staffByUsername);
 
@@ -313,8 +309,8 @@ export async function renderPeople(host, { spaces = null } = {}) {
     drawDetail();
   }
 
-  const years = [...new Set(catalog.requests.map((r) => r.schoolYear).filter(Boolean))].sort();
-  const terms = [...new Set(catalog.requests.map((r) => r.semester).filter(Boolean))];
+  const years = [...new Set(requests.map((r) => r.schoolYear).filter(Boolean))].sort();
+  const terms = [...new Set(requests.map((r) => r.semester).filter(Boolean))];
 
   remount(host,
     el('div', { class: 'page-head' },
@@ -322,7 +318,13 @@ export async function renderPeople(host, { spaces = null } = {}) {
       el('p', { class: 'page-sub' },
         'Feedback grouped by the person it reflects on. Nothing here is a ranking — '
         + 'response counts and cohorts differ, and an average of nine ordinal points is not '
-        + 'a performance score.')),
+        + 'a performance score.'),
+      // Whose results these are, said plainly. An instructor seeing one row
+      // should know it is their row and not the detachment's whole picture.
+      people.tier && people.tier !== 'all'
+        ? badge(people.tier === 'own' ? 'Your own results'
+          : 'The instructors you oversee', 'neutral', 'users')
+        : null),
 
     el('div', { class: 'filters' },
       field('School year', select(
