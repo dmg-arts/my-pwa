@@ -305,25 +305,60 @@ def s02_what():
 def s03_problem():
     s = slide()
     eyebrow(s, "Why it exists")
-    title(s, "Feedback nobody can act on")
+    title(s, "A detachment cannot run on a university's system",
+          "Which is the whole reason none of the ordinary tooling fits.")
 
-    points(s, M, Inches(2.3), Inches(5.9), Inches(3.9), [
-        "Paper forms get collected, stacked, and never counted.",
-        "Survey tools put cadet feedback on a company's servers.",
-        "An average hides the very thing you needed to see.",
-        "A disclosure of hazing can sit unread in a pile for weeks.",
-    ], size=18, gap=22)
+    points(s, M, Inches(2.5), Inches(5.9), Inches(3.9), [
+        "AFROTC is a centralized detachment model.",
+        "-One host facility, cadets from several Crosstown universities.",
+        "So no one university's IT system can serve the detachment.",
+        "-It has cadets at schools that system has never heard of.",
+        "So the detachment stands up a Det Google Account.",
+        "-Which solves communications, and loses everything else.",
+    ], size=17, gap=17)
 
-    rect(s, Inches(7.25), Inches(2.2), Inches(5.2), Inches(3.5), TINT, radius=0.04)
-    block(s, Inches(7.7), Inches(2.62), Inches(4.3), Inches(2.7),
-          [("What it replaces", 16, True, NAVY, 12),
-           ("One app that issues the form, collects the responses, runs the statistics, "
-            "reads the written answers, and flags anything a person needs to see today.",
-            15, False, INK, 12),
-           ("On a phone. Offline. At no cost.", 15, True, INK, 0)])
+    rect(s, Inches(7.25), Inches(2.2), Inches(5.2), Inches(3.9), TINT, radius=0.04)
+    block(s, Inches(7.7), Inches(2.55), Inches(4.3), Inches(3.2),
+          [("What that costs", 16, True, NAVY, 12),
+           ("No feedback system standardized across detachments.", 15, False, INK, 9),
+           ("Aerospace Studies runs through host university systems, "
+            "with varying degrees of return.", 15, False, INK, 9),
+           ("Leadership Laboratory has no capture at all.", 15, True, INK, 9),
+           ("Upperclassmen improvise on personal accounts — no oversight, "
+            "no archive, gone at graduation.", 15, False, INK, 0)])
     page_no(s)
-    notes(s, "Frame the problem before the product. The last bullet is the one a commander cares "
-             "about most.")
+    notes(s, "This is the slide that earns the rest. A university system comes with a course "
+             "platform, a survey tool, somewhere evaluations live; a Google account comes with "
+             "none of it. LLAB is the line to slow down on — it is where cadets lead cadets, the "
+             "part most worth measuring and the part with no instrumentation at all.")
+
+
+def s03b_instructors():
+    s = slide()
+    eyebrow(s, "Why it exists")
+    title(s, "Cadets are required to instruct. Nothing certifies them to.",
+          "The second gap, and the one feedback actually closes.")
+
+    points(s, M, Inches(2.5), Inches(5.9), Inches(3.7), [
+        "AFROTC requires upperclassmen to instruct lowerclassmen.",
+        "It provides no formal certification process for doing it.",
+        "-No baseline, no structured feedback on their teaching, no record "
+        "of improvement across a term.",
+        "Cadre are accountable for the outcome, working without instruments.",
+    ], size=17, gap=20)
+
+    rect(s, Inches(7.25), Inches(2.2), Inches(5.2), Inches(3.6), TINT, radius=0.04)
+    block(s, Inches(7.7), Inches(2.6), Inches(4.3), Inches(2.9),
+          [("Where feedback stops being admin", 16, True, NAVY, 12),
+           ("A cadet instructor who can see how a block landed — and see it again next "
+            "term, measured the same way — is being developed.", 15, False, INK, 10),
+           ("One who cannot is being assigned.", 15, True, INK, 10),
+           ("Paired with the Teaching on Purpose seminar, that turns feedback into a "
+            "path to certification rather than a survey.", 15, False, MUTED, 0)])
+    page_no(s)
+    notes(s, "The contrast in the panel is the point: developed versus assigned. Teaching on "
+             "Purpose belongs here and only here — it is pitch-level material, and the setup "
+             "guide and WHY.md deliberately leave it out.")
 
 
 def s04_data():
@@ -712,7 +747,7 @@ def s17_start():
              "guide PDF rather than this deck.")
 
 
-for build in [s01_title, s02_what, s03_problem, s04_data, s05_roles, s06_student_list,
+for build in [s01_title, s02_what, s03_problem, s03b_instructors, s04_data, s05_roles, s06_student_list,
               s07_scale, s08_phone, s09_panel, s09b_cadre, s10_create, s11_ratings, s12_split,
               s13_written, s14_safety, s15_anonymity, s16_admin, s16b_invite,
               s16c_commander, s16d_privacy, s17_start]:

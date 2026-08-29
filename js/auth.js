@@ -184,6 +184,13 @@ export async function createAccount({ email, name, username = '', roles = [ROLES
   // duplicate-email check happens on whichever side actually performs the write,
   // so two administrators adding the same address cannot both succeed.
   await createAccountRecord(account);
+  // Role **ids** here, not ROLE_LABELS — so this log line reads "(student)"
+  // while every screen says "Cadet". That is deliberate. The summary is written
+  // once and kept forever, so it has to record the role that was actually
+  // granted; a display name baked into a permanent record goes stale the next
+  // time the label changes, and then the log says something that was never true.
+  // The action column is label-mapped (js/audit.js) because it is UI. This is
+  // data.
   await writeAudit({
     action: AUDIT.accountCreated,
     summary: `Added ${account.email} (${account.roles.join(', ')})`,
