@@ -122,8 +122,8 @@ scores positive and always will. That is a known ceiling, not a tuning target.
 
 ## Honest limits
 
-**Synthetic writing is a model's impression of how students write, not how
-students write.** It will be too clean, too on-topic, too evenly distributed, and
+**Synthetic writing is a model's impression of how cadets write, not how
+cadets write.** It will be too clean, too on-topic, too evenly distributed, and
 its slang will lag or overshoot. Tuning against it makes the lexicon better at
 handling a model's idea of cadet writing, which is correlated with the real thing
 but is not the real thing.

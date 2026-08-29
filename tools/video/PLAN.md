@@ -36,7 +36,7 @@ only open decision, and it is recorded here once made.
 | Voice | **Daniel** (en_GB), the least robotic of the installed legacy voices |
 | On-screen detachment | Fictional "AFROTC Detachment 025", invented cadet names |
 | Assembly | ffmpeg, installed |
-| Resolution | 1920×1080, except the student phone shots |
+| Resolution | 1920×1080, except the cadet phone shots |
 
 ### The voice, and why it is worth a moment
 
@@ -82,10 +82,10 @@ without redoing the rest.
 | # | Section | Target | Recorded as |
 |---|---|---|---|
 | 1 | Overview | 45s | Home, storage picture, the folder in Drive |
-| 2 | Student | 45s | Join link → sign in → assigned list → filling a form (phone) |
+| 2 | Cadet | 45s | Join link → sign in → assigned list → filling a form (phone) |
 | 3 | Instructor | 60s | Create feedback → issue → responses & analysis → safety screen |
 | 4 | Cadre | 40s | Cadre Panel, the restricted badges, what an instructor sees instead |
-| 5 | Commander | 45s | Own area, By instructor, a withheld person |
+| 5 | Commander | 45s | Own space, By instructor, a withheld person |
 | 6 | Database admin | 40s | Roster and roles, join link and QR, activity log |
 | 7 | Close | 25s | Where the data lives, licence |
 
@@ -108,7 +108,7 @@ round.
 >
 > Here is what each person sees.
 
-### 2 — Student (45s)
+### 2 — Cadet (45s)
 
 > A cadet never sets anything up. They get a link, or scan a code on a
 > projector, and that is the whole installation.
@@ -139,7 +139,7 @@ round.
 
 ### 4 — Cadre (40s)
 
-> Cadre get the same screen again, pointed at a separate area.
+> Cadre get the same screen again, pointed at a separate space.
 >
 > Feedback filed here is visible to cadre and the commander, and to nobody else.
 > That is not a hidden tab or a setting on a record — it is a different folder,
@@ -148,7 +148,7 @@ round.
 > and they cannot reach it through Drive either.
 >
 > Anything restricted is badged wherever it appears, so nobody has to remember
-> which area they filed something into.
+> which space they filed something into.
 
 ### 5 — Commander (45s)
 
@@ -190,7 +190,7 @@ What each section records, in order. `record.mjs` implements this.
 **1 Overview** — Home signed out · the storage step of the wizard showing the
 three options · the created folder tree · back to Home.
 
-**2 Student** — the join screen from a link · sign in · the assigned list ·
+**2 Cadet** — the join screen from a link · sign in · the assigned list ·
 switch to a phone viewport · open a form · the nine-point word scale · submit ·
 the list showing it as done.
 
@@ -203,7 +203,7 @@ screen with a flagged answer.
 the switch button to the Instructor Panel · the same route as an instructor,
 landing on the sign-in gate.
 
-**5 Commander** — Cadre Panel showing the commander's own area badged · By
+**5 Commander** — Cadre Panel showing the commander's own space badged · By
 instructor · a person with enough responses · a person under the threshold
 showing the withholding notice.
 
@@ -220,5 +220,5 @@ invite screen · the QR code · the activity log.
   screen claims otherwise.
 - **Sign-in is done the way the callback does it**, not through Google's popup,
   for the same reason. The sign-in *screen* is real and is shown.
-- The student section switches to a phone viewport mid-section. That is
+- The cadet section switches to a phone viewport mid-section. That is
   deliberate — it is the device a cadet actually uses.

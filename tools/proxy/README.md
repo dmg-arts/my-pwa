@@ -1,4 +1,4 @@
-# The submission proxy
+# The submission server
 
 A small Google Apps Script that runs inside your detachment's own Google account
 and files cadets' feedback for them.
@@ -147,30 +147,30 @@ replaced.
 
 ### Locked areas
 
-Feedback lives in one of three areas, and an area is a **separate folder**, not a
+Feedback lives in one of three spaces, and a space is a **separate folder**, not a
 label on a record — which is what makes locked mean locked rather than hidden.
 
-| Area | Folder | Who can read it |
+| Space | Folder | Who can read it |
 |---|---|---|
 | Detachment | `requests/` `responses/` | Instructors, cadre, the commander |
 | Cadre only | `cadre/…` | Cadre and the commander |
 | Commander only | `commander/…` | The commander alone |
 
 A read is *scoped* to the caller rather than filtered afterwards: a folder this
-account cannot reach is never opened, so there is nothing to sift. The area comes
+account cannot reach is never opened, so there is nothing to sift. The space comes
 from the stored request, never from the request body, so naming a request you
 cannot see returns nothing rather than redirecting you somewhere you can. And
 feedback cannot be moved between areas once it exists, because moving it would
 carry its responses somewhere they were never meant to be readable.
 
-Cadets are offered requests from **every** area — a commander's feedback request
+Cadets are offered requests from **every** space — a commander's feedback request
 is still meant to be answered — and their answer is filed in that request's own
-area. What a cadet never receives is anyone's responses, so being asked never
+space. What a cadet never receives is anyone's responses, so being asked never
 leaks what was said.
 
 **At most two commanders**, enforced here under the lock rather than in the app.
 Two so a change of command overlaps: the outgoing and incoming commander both
-hold it during the handover. The area belongs to the detachment, so the
+hold it during the handover. The space belongs to the detachment, so the
 designation moves and the records stay.
 
 Roll-up index files (names beginning `_`) are never served. They are caches the

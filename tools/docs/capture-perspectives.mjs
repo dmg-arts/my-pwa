@@ -37,7 +37,7 @@ const CHROME = process.env.CHROME_PATH || [
 ].find((p) => fs.existsSync(p));
 
 /** A Client ID makes the sign-in screens render Google's real button. */
-const DEMO_CLIENT = '000000000000-topfeedbackdemo.apps.googleusercontent.com';
+const DEMO_CLIENT = '000000000000-nine31demo.apps.googleusercontent.com';
 
 const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
 const problems = [];
@@ -171,7 +171,7 @@ const PERSPECTIVES = [
   {
     id: '0-signed-out', as: null,
     allowed: [
-      ['join-link', '/join?c=000000000000-topfeedbackdemo&f=1A2b3C4d5E6f7G8h&n=AFROTC%20Detachment%20025&p=AKfycbxDEMO'],
+      ['join-link', '/join?c=000000000000-nine31demo&f=1A2b3C4d5E6f7G8h&n=AFROTC%20Detachment%20025&p=AKfycbxDEMO'],
       ['setup-wizard', '/setup?rerun=1'],
     ],
     refused: [['student', '/student'], ['instructor-panel', '/instructor'], ['cadre-panel', '/cadre'], ['admin', '/admin']],
@@ -362,7 +362,7 @@ different jobs, so \`admin\` implies no other role.
 | Folder | Signed in as |
 |---|---|
 | \`0-signed-out\` | nobody |
-| \`1-student\` | Alvarez, Mia — student (also captured on a phone) |
+| \`1-student\` | Alvarez, Mia — cadet (also captured on a phone) |
 | \`2-instructor\` | Lindqvist, Ana — instructor |
 | \`3-cadre\` | Okafor, Sam — cadre |
 | \`4-commander\` | Reyes, Maria — commander |

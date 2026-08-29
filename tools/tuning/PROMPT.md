@@ -21,7 +21,7 @@ events, and does two things:
    and academic integrity.
 
 Both were written by guesswork by someone who is not 19 years old, and they are
-tuned against formal English. They miss how students actually write, and they
+tuned against formal English. They miss how cadets actually write, and they
 raise false alarms on ordinary hyperbole. I need labelled examples to measure and
 fix that.
 
@@ -31,7 +31,7 @@ purpose is to build a screen that gets a real disclosure in front of a human
 faster, and — just as importantly — that stops dragging a human into reading
 someone's private feedback because they wrote "that PT session killed me".
 
-For the sensitive categories, write at the level of detail a student would
+For the sensitive categories, write at the level of detail a cadet would
 actually use in a feedback box: enough that a screen could plausibly catch it,
 not graphic. A disclosure is usually short, oblique and understated. That is
 exactly what makes it hard to detect and exactly what I need examples of.
@@ -103,7 +103,7 @@ Examples of the shape I mean:
 
 Mark all of these `"safety":"clean"` and put the trigger word in `vocab`.
 
-**2. Real disclosures phrased the way a student would phrase them.**
+**2. Real disclosures phrased the way a cadet would phrase them.**
 Understated, hedged, buried mid-paragraph after unrelated feedback, or written
 about someone else rather than themselves. Not the obvious phrasing a word list
 already catches.
