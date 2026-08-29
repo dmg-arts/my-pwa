@@ -80,7 +80,7 @@ export const SECTIONS = [
     subtitle: 'The same screen, pointed at a locked folder',
     clip: '4-cadre',
     narration: `
-      Cadre get the same screen again, pointed at a separate area.
+      Cadre get the same screen again, pointed at a separate space.
       Feedback filed here is visible to cadre and the commander, and to nobody
       else. That is not a hidden tab, or a setting on a record. It is a different
       folder, and your detachment's own server decides who may open it.
@@ -91,10 +91,10 @@ export const SECTIONS = [
   {
     id: '5-commander',
     title: 'The commander',
-    subtitle: 'Every area, and the point where the app refuses to answer',
+    subtitle: 'Every space, and the point where the app refuses to answer',
     clip: '5-commander',
     narration: `
-      The commander sees both areas, plus one that only they can read.
+      The commander sees both spaces, plus one that only they can read.
       They also get a view of feedback grouped by the person it reflects on.
       Instructors, cadre, anybody feedback can be about.
       And this is where the app refuses to answer. Below three responses, nothing
