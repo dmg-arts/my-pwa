@@ -524,7 +524,7 @@ function rolloverCard(reload) {
     remount(host);
 
     if (!students.length) {
-      mount(host, el('p', { class: 'muted' }, 'No active student accounts to advance.'));
+      mount(host, el('p', { class: 'muted' }, 'No active cadet accounts to advance.'));
       return;
     }
     if (!moves.length) {

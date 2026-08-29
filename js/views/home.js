@@ -51,7 +51,7 @@ export async function renderHome(root) {
       showCadre && roleCard(PANELS.cadre.path, 'lock', PANELS.cadre.title,
         PANELS.cadre.blurb, gateBadge()),
       roleCard('/admin', 'database', 'Database Administration',
-        'Create and manage student, instructor and administrator accounts for your detachment.',
+        'Create and manage cadet, instructor and administrator accounts for your detachment.',
         gateBadge()),
       el('button', {
         type: 'button', class: 'role-card role-card--wide',
@@ -78,7 +78,7 @@ export async function renderHome(root) {
     remount(counts, 
       badge(`${stats.openRequests} open`, stats.openRequests ? 'ok' : 'neutral', 'send'),
       badge(`${stats.responses} responses`, 'neutral', 'inbox'),
-      badge(`${stats.students} students`, 'neutral', 'users'));
+      badge(`${stats.students} cadets`, 'neutral', 'users'));
   } catch (err) {
     remount(counts, badge('Not reachable', 'danger', 'alert'));
     mount(root, el('div', { style: { marginTop: 'var(--sp-4)' } },

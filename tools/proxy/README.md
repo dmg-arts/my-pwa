@@ -87,7 +87,7 @@ You need the two values from your existing setup:
 
 ## 4. Point the app at it
 
-1. In 9ThirtyOne: **Settings → Submission proxy**.
+1. In 9ThirtyOne: **Settings → Submission server**.
 2. Paste the `/exec` URL and press **Save and test**. It checks the deployment is
    reachable, is the right script, and is configured — so you find out now rather
    than when a cadet cannot submit.

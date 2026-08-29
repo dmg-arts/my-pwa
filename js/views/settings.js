@@ -244,7 +244,7 @@ function proxySection(conn) {
   };
 
   return el('section', { class: 'card stack' },
-    el('h2', { class: 'section-title' }, 'Submission proxy'),
+    el('h2', { class: 'section-title' }, 'Submission server'),
     el('p', { class: 'muted' },
       'Optional, and worth doing before you field this. A small script running in your own '
       + 'Google account files cadets\' feedback for them, so they never need access to the '
@@ -522,7 +522,7 @@ function defaultsSection() {
 
   return el('section', { class: 'card stack', style: { marginTop: 'var(--sp-5)' } },
     el('h2', { class: 'section-title' }, 'Defaults'),
-    el('p', { class: 'muted' }, 'Pre-selects the filters on the student screen for this device — '
+    el('p', { class: 'muted' }, 'Pre-selects the filters on the cadet screen for this device — '
       + 'useful on a kiosk laptop in a classroom.'),
     el('div', { class: 'filters' },
       field('School year', select(
@@ -536,7 +536,7 @@ function defaultsSection() {
         type: 'checkbox', checked: current.studentShowClosed,
         onchange: (e) => settings.set({ studentShowClosed: e.target.checked }),
       }),
-      el('span', { class: 'check__text' }, 'Show closed requests to students by default')));
+      el('span', { class: 'check__text' }, 'Show closed requests to cadets by default')));
 }
 
 /* ------------------------------------------------------------------ *

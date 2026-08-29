@@ -126,7 +126,7 @@ export const MIGRATIONS = [
 
   {
     to: 3,
-    describe: 'Receipts split into one file per student',
+    describe: 'Receipts split into one file per cadet',
     async run({ db, report }) {
       // v2 kept every receipt for a form in a single array. A whole flight
       // submitting at once meant concurrent read-modify-writes on that one

@@ -127,7 +127,7 @@ await page.reload({ waitUntil: 'networkidle' });
 await page.evaluate(() => import('/js/state.js').then(({ connection }) =>
   connection.set({ clientId: '000000000000-topfeedbackdemo.apps.googleusercontent.com' })));
 await page.reload({ waitUntil: 'networkidle' });
-await page.waitForSelector('.page-title:has-text("Student sign-in")');
+await page.waitForSelector('.page-title:has-text("Cadet sign-in")');
 await page.waitForTimeout(2500);
 await shot('student-signin');
 await page.evaluate(() => import('/js/state.js').then(({ connection }) =>

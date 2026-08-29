@@ -224,7 +224,7 @@ await step('a feedback form is issued', async () => {
   }
   await page.fill('input[placeholder^="e.g. AS200 Leadership"]', 'AS200 Drill Block 3');
   await page.selectOption('.filters select', 'AS200');
-  await page.click('.btn--primary:has-text("Issue to students")');
+  await page.click('.btn--primary:has-text("Issue to cadets")');
   await page.waitForSelector('.list__item', { timeout: 10000 });
 });
 
@@ -233,7 +233,7 @@ await step('the student page requires a sign-in', async () => {
   await page.evaluate(() => sessionStorage.clear());
   await page.goto(`${BASE}#/student`, { waitUntil: 'networkidle' });
   await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForSelector('.page-title:has-text("Student sign-in")', { timeout: 8000 });
+  await page.waitForSelector('.page-title:has-text("Cadet sign-in")', { timeout: 8000 });
   if (await page.$('.list__item')) throw new Error('feedback was listed without a sign-in');
 });
 
@@ -535,7 +535,7 @@ await step('an instructor cannot open the Cadre Panel', async () => {
   await page.waitForTimeout(1000);
   const text = await page.textContent('#view');
   // The sign-in gate, not the panel.
-  if (/Restricted area/.test(text)) throw new Error('an instructor reached the cadre panel');
+  if (/Restricted space/.test(text)) throw new Error('an instructor reached the cadre panel');
 });
 
 await step('the two panels show different feedback', async () => {
@@ -1926,7 +1926,7 @@ await step('with the flag on, the panels still refuse a signed-out visitor', asy
     await page.waitForTimeout(700);
     const text = await page.textContent('#view');
     // The sign-in gate, not the panel.
-    if (/Feedback forms|Restricted area|Invite people/.test(text)) {
+    if (/Feedback requests|Restricted space|Invite people/.test(text)) {
       throw new Error(`${path} opened without a sign-in`);
     }
   }

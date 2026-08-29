@@ -240,7 +240,7 @@ const signInAs = (page, person) => page.evaluate(async (p) => {
  * shown one of these instead, the run fails rather than quietly saving a
  * screenshot of a security regression that nobody opens.
  */
-const PANEL_CONTENT = /Feedback forms|Restricted area|Invite people|Question templates/;
+const PANEL_CONTENT = /Feedback requests|Restricted space|Invite people|Question templates/;
 
 /**
  * A refused *tab* is not a refused *panel*.
@@ -253,6 +253,20 @@ const REFUSAL_TELL = {
   'by-instructor-tab': /grouped by the person it reflects on/,
 };
 
+/**
+ * Positive control: did those patterns match anything at all this run?
+ *
+ * Both are wordings lifted out of the UI, so a copy change quietly unarms them.
+ * A stale pattern does not fail — it stops matching, `mustRefuse` passes on
+ * every screen, and the run reports success while checking nothing. That is a
+ * worse outcome than a red build, because it looks like a green one.
+ *
+ * So every permitted capture is tested too, and the run fails if a pattern never
+ * matched a screen that *did* open. Then a reworded heading breaks this loudly
+ * instead of hollowing it out.
+ */
+const seen = { PANEL_CONTENT: false, 'by-instructor-tab': false };
+
 async function shoot(page, dir, name, route, { mobile = false, mustRefuse = false } = {}) {
   await page.goto(`${BASE}#${route}`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(route.includes('analysis') || route.includes('people') ? 2200 : 1100);
@@ -262,6 +276,17 @@ async function shoot(page, dir, name, route, { mobile = false, mustRefuse = fals
   if (/Something went wrong/i.test(body)) problems.push(`${dir}/${name}: crash screen`);
   if (mustRefuse && (REFUSAL_TELL[name] || PANEL_CONTENT).test(body)) {
     problems.push(`${dir}/${name}: OPENED something it should have refused`);
+  }
+  // Every pattern is tried against every screen that opened, not just the one
+  // captured under the matching name — the permitted shot of a screen and its
+  // refused counterpart are named differently ('by-instructor' vs
+  // 'by-instructor-tab'), so keying on the name would only ever prove
+  // PANEL_CONTENT and quietly leave the tells unverified.
+  if (!mustRefuse) {
+    if (PANEL_CONTENT.test(body)) seen.PANEL_CONTENT = true;
+    for (const [key, re] of Object.entries(REFUSAL_TELL)) {
+      if (re.test(body)) seen[key] = true;
+    }
   }
 
   fs.mkdirSync(path.join(OUT, dir), { recursive: true });
@@ -343,6 +368,14 @@ different jobs, so \`admin\` implies no other role.
 | \`4-commander\` | Reyes, Maria — commander |
 | \`5-admin\` | Novak, Dee — database admin |
 `);
+
+for (const [key, matched] of Object.entries(seen)) {
+  if (!matched) {
+    problems.push(`${key} matched nothing on any screen that opened — the pattern is `
+      + 'stale, so every refusal check above passed without checking anything. '
+      + 'Re-read it against the current UI wording.');
+  }
+}
 
 console.log(`\n${count} screenshots in ${OUT}/`);
 if (problems.length) {
