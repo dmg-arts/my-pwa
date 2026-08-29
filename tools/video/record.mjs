@@ -296,7 +296,7 @@ async function seedDetachment(page, { withResponses = true } = {}) {
       // Deliberately skipping the first cadet: she is the one the student
       // section signs in as, and if she has already answered, her list opens on
       // the cadre and commander requests instead of the ordinary one. Both are
-      // correct — a cadet answers requests from every area — but it is a
+      // correct — a cadet answers requests from every space — but it is a
       // confusing first thing to show in a walkthrough about who sees what.
       for (const [email] of cadets.slice(1, 6)) {
         await m.db.addReceipt('req_demo', (await a.findByEmail(email)).username);
@@ -496,7 +496,7 @@ const SECTIONS = [
       await signInAs(page, PEOPLE.commander);
       await go(page, '/cadre?tab=requests', { settle: 2.8 });
       await scroll(page, 380, 2.0);
-      await hold(page, 3.0);          // the commander's own area, badged
+      await hold(page, 3.0);          // the commander's own space, badged
 
       await go(page, '/instructor?tab=people', { settle: 3.4 });
       await hold(page, 2.4);

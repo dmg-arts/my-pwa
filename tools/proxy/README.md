@@ -145,7 +145,7 @@ replaced.
 | `rollover` | admin | Advances the whole roster in one call |
 | `recordAudit` | instructor and above | Appends an entry; the actor comes from the token |
 
-### Locked areas
+### Locked spaces
 
 Feedback lives in one of three spaces, and a space is a **separate folder**, not a
 label on a record — which is what makes locked mean locked rather than hidden.
@@ -160,7 +160,7 @@ A read is *scoped* to the caller rather than filtered afterwards: a folder this
 account cannot reach is never opened, so there is nothing to sift. The space comes
 from the stored request, never from the request body, so naming a request you
 cannot see returns nothing rather than redirecting you somewhere you can. And
-feedback cannot be moved between areas once it exists, because moving it would
+feedback cannot be moved between spaces once it exists, because moving it would
 carry its responses somewhere they were never meant to be readable.
 
 Cadets are offered requests from **every** space — a commander's feedback request

@@ -157,7 +157,7 @@ await shot('instructor-panel');
 
 /* ---------- cadre panel ---------- */
 // The same screen pointed at the restricted folders. Captured as a commander so
-// the commander's own area appears alongside the cadre one, badged — which is
+// the commander's own space appears alongside the cadre one, badged — which is
 // the whole point of the picture.
 await page.evaluate(async () => {
   const m = await import('/js/storage/index.js');

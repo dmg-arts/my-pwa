@@ -198,7 +198,7 @@ const PERSPECTIVES = [
       ['instructor-panel', '/instructor?tab=requests'],
       ['cadre-panel', '/cadre?tab=requests'],
       ['cadre-responses-analysis', '/cadre?tab=analysis'],
-      ['create-feedback-in-cadre-area', '/instructor/create/new?panel=cadre'],
+      ['create-feedback-in-cadre-space', '/instructor/create/new?panel=cadre'],
     ],
     refused: [['by-instructor-tab', '/instructor?tab=people'], ['admin', '/admin']],
   },
@@ -206,7 +206,7 @@ const PERSPECTIVES = [
     id: '4-commander', as: 'commander',
     allowed: [
       ['instructor-panel', '/instructor?tab=requests'],
-      ['cadre-panel-with-own-area', '/cadre?tab=requests'],
+      ['cadre-panel-with-own-space', '/cadre?tab=requests'],
       ['by-instructor', '/instructor?tab=people'],
       ['cadre-responses-analysis', '/cadre?tab=analysis'],
     ],

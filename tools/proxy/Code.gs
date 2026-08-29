@@ -48,7 +48,7 @@
  * An earlier version of this comment said cadre still reached Drive directly.
  * They no longer do. Role checks in a browser cannot lock anything when every
  * cadre member holds Drive access to the same folder, so the cadre and commander
- * areas are only genuinely separate because this script decides who may open
+ * spaces are only genuinely separate because this script decides who may open
  * which folder. `SPACE_ACCESS` is where that lives, and it is enforced by never
  * opening the folder rather than by filtering what was read out of it.
  *
@@ -690,7 +690,7 @@ function removeRecord(root, segments, id) {
 /**
  * Files a form into a space this account is allowed to write to.
  *
- * Same rule as a request, for the same reason: the caller names the area, the
+ * Same rule as a request, for the same reason: the caller names the space, the
  * server decides whether they may have it. A form cannot change space once it
  * exists, because the requests pointing at it would then be reading their
  * questions out of a folder their own readers cannot reach.
@@ -700,12 +700,12 @@ function saveFormInSpace(root, account, form) {
 
   var space = spaceOf(form);
   if (!mayReach(account, space)) {
-    return fail('This account cannot save a form in that area.');
+    return fail('This account cannot save a form in that space.');
   }
 
   var existing = form.id ? locateForm(root, String(form.id)) : null;
   if (existing && existing.space !== space) {
-    return fail('A form cannot be moved between areas once it exists.');
+    return fail('A form cannot be moved between spaces once it exists.');
   }
   if (existing && !mayReach(account, existing.space)) {
     return fail('That form is not available to this account.');
@@ -715,7 +715,7 @@ function saveFormInSpace(root, account, form) {
   return writeRecordAt(root, spacePath(space, 'forms'), form, 'form_');
 }
 
-/** Deletes a form, if this account may reach the area it lives in. */
+/** Deletes a form, if this account may reach the space it lives in. */
 function removeForm(root, account, formId) {
   if (!ID_PATTERN.test(String(formId || ''))) return fail('That id is not valid.');
   var located = locateForm(root, formId);
@@ -738,14 +738,14 @@ function saveRequestInSpace(root, account, request) {
 
   var space = spaceOf(request);
   if (!mayReach(account, space)) {
-    return fail('This account cannot file feedback into that area.');
+    return fail('This account cannot file feedback into that space.');
   }
 
   // Moving a request between spaces would carry its responses somewhere they
   // were never meant to be readable, so it is refused rather than handled.
   var existing = request.id ? locateRequest(root, String(request.id)) : null;
   if (existing && existing.space !== space) {
-    return fail('Feedback cannot be moved between areas once it exists.');
+    return fail('Feedback cannot be moved between spaces once it exists.');
   }
   if (existing && !mayReach(account, existing.space)) {
     return fail('That feedback is not available to this account.');
@@ -889,7 +889,7 @@ function rolesOf(account) {
  *
  * A change of roles is marked severe because it is the one edit that changes
  * what somebody can *read* — including, at the top of the range, every
- * restricted area in the detachment.
+ * restricted space in the detachment.
  */
 function describeAccountChange(before, result) {
   var account = result.account;
@@ -1101,7 +1101,7 @@ function removeAccount(root, actor, id) {
  * Strips one username out of every response and receipt, in every space.
  *
  * Walks all spaces rather than only the ones the caller can read: a person's
- * records must not survive in an area the administrator happens not to have
+ * records must not survive in a space the administrator happens not to have
  * access to.
  */
 function anonymiseEverywhere(root, username) {
@@ -1274,7 +1274,7 @@ function readCatalog(root, account) {
       rows[j].space = spaces[i];
       requests.push(rows[j]);
     }
-    // Forms are read per space too. A form in an area this account cannot
+    // Forms are read per space too. A form in a space this account cannot
     // reach is not filtered out of a larger list — its folder is never opened.
     var formRows = readFolderDocs(root, spacePath(spaces[i], 'forms'));
     for (var k = 0; k < formRows.length; k++) {
@@ -1392,7 +1392,7 @@ function readAudit(root, months) {
  * Counts only — enough for a summary without shipping records.
  *
  * Counted across every space, because an overview that silently omits the
- * restricted areas tells a commander their detachment is quieter than it is.
+ * restricted spaces tells a commander their detachment is quieter than it is.
  */
 function readStats(root) {
   var spaces = Object.keys(SPACE_FOLDERS);

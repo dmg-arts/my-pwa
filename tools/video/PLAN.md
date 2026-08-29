@@ -152,7 +152,7 @@ round.
 
 ### 5 — Commander (45s)
 
-> The commander sees both areas, plus one only they can read.
+> The commander sees both spaces, plus one only they can read.
 >
 > They also get a view of feedback grouped by the person it reflects on —
 > instructors, cadre, anybody feedback can be about.
