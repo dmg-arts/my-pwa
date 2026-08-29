@@ -137,7 +137,7 @@ export function buildJoinLink({ clientId, folderId, orgName = '', proxyUrl = '',
   // therefore cannot read a shared setting to discover it.
   const proxy = shortenProxyUrl(proxyUrl);
   if (proxy) {
-    if (!ID_PATTERN.test(proxy)) throw new Error('That submission proxy URL does not look valid.');
+    if (!ID_PATTERN.test(proxy)) throw new Error('That submission server URL does not look valid.');
     params.set('p', proxy);
   }
 

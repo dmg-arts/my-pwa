@@ -741,7 +741,7 @@ async function schemaCard() {
 }
 
 const ROLE_HINTS = {
-  student: 'Can be targeted by feedback forms, and submits them once.',
+  student: 'Can be targeted by feedback requests, and submits them once.',
   instructor: 'Opens the Instructor Panel to create feedback and read responses.',
   cadre: 'Everything an instructor can do, plus a cadre-only area instructors cannot '
     + 'see — a separate folder, not a hidden screen.',

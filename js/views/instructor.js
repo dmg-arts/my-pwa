@@ -193,7 +193,7 @@ async function tabRequests(host, { panel, spaces } = {}) {
     if (!visible.length) {
       mount(list, emptyState({
         iconName: 'send',
-        title: requests.length ? 'Nothing matches these filters' : 'No feedback forms yet',
+        title: requests.length ? 'Nothing matches these filters' : 'No feedback requests yet',
         message: requests.length ? null : 'Create one to put a form in front of your cadets.',
         action: el('button', {
           type: 'button', class: 'btn btn--primary',

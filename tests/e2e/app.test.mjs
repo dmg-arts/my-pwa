@@ -228,7 +228,7 @@ await step('a feedback form is issued', async () => {
   await page.waitForSelector('.list__item', { timeout: 10000 });
 });
 
-/* ---------- student sign-in ---------- */
+/* ---------- cadet sign-in ---------- */
 await step('the student page requires a sign-in', async () => {
   await page.evaluate(() => sessionStorage.clear());
   await page.goto(`${BASE}#/student`, { waitUntil: 'networkidle' });

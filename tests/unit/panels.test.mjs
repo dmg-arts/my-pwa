@@ -39,7 +39,7 @@ check('a cadre member sees the cadre area and not the commander’s', () => {
   eq(panelSpacesFor(PANELS.cadre, ['cadre']), ['cadre'], 'cadre in the Cadre Panel');
 });
 
-check('a commander sees both restricted areas', () => {
+check('a commander sees both restricted spaces', () => {
   eq(panelSpacesFor(PANELS.cadre, ['commander']), ['cadre', 'commander'], 'commander');
 });
 

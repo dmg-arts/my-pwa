@@ -201,7 +201,7 @@ function updateButton() {
  * ------------------------------------------------------------------ */
 
 /**
- * The submission proxy.
+ * The submission server.
  *
  * Without one, every cadet needs Editor on the Drive folder in order to submit —
  * and Drive has no write-without-read, so they can also read every response in
