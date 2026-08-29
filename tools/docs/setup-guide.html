@@ -610,7 +610,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     <li><strong>Deploy &rarr; New deployment &rarr; Web app</strong>, set to
     <em>Execute as: Me</em> and <em>Who has access: Anyone</em>, and copy the address it gives
     you. It ends in <code>/exec</code>.</li>
-    <li><strong>Paste it into Settings &rarr; Submission proxy</strong> and press
+    <li><strong>Paste it into Settings &rarr; Submission server</strong> and press
     <em>Save and test</em>. It checks the deployment is reachable, is the right script, and is
     configured, so you find out now rather than when a cadet cannot submit.</li>
   </ol>
@@ -636,14 +636,14 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 <section>
   <h2><span class="num">7</span>Build the roster</h2>
   <p class="lead">Everyone signs in &mdash; cadets included. That is what makes "one submission per
-  student" mean something rather than relying on an honour system.</p>
+  cadet" mean something rather than relying on an honour system.</p>
 
   <table>
     <tr><th style="width:22%">Role</th><th>Can do</th></tr>
-    <tr><td><strong>Student</strong></td><td>See feedback assigned to them and submit it once.</td></tr>
+    <tr><td><strong>Cadet</strong></td><td>See feedback assigned to them and submit it once.</td></tr>
     <tr><td><strong>Instructor</strong></td><td>Create feedback, read responses, run analysis.</td></tr>
     <tr><td><strong>Cadre</strong></td><td>Everything an instructor can, plus the <em>Cadre Panel</em> &mdash; the same screen again, holding feedback instructors cannot see. Not a hidden tab: a separate folder they have no access to.</td></tr>
-    <tr><td><strong>Commander</strong></td><td>Sees every area including its own, which nobody else can read. Their own area appears inside the Cadre Panel, marked. Also gets <em>By instructor</em>, which groups feedback by the person it reflects on. <strong>At most two at a time</strong>, so a change of command overlaps.</td></tr>
+    <tr><td><strong>Commander</strong></td><td>Sees every space including its own, which nobody else can read. Their own space appears inside the Cadre Panel, marked. Also gets <em>By instructor</em>, which groups feedback by the person it reflects on. <strong>At most two at a time</strong>, so a change of command overlaps.</td></tr>
     <tr><td><strong>Database admin</strong></td><td>Add and remove people, maintain the database, delete feedback &mdash; always with a recorded reason.</td></tr>
   </table>
 
@@ -653,22 +653,22 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     <strong>Cadre Panel</strong> is the same screen &mdash; same tabs, same filters, same form
     creator &mdash; pointed at the restricted folders. Anyone holding cadre can move between them
     with a button in the top corner, and feedback created from a panel is filed into that panel's
-    area automatically.</p>
+    space automatically.</p>
     <p>They are separate rather than one list with a lock icon for a practical reason: the
     detachment list can then be read on a shared screen without checking who is standing behind
     you.</p>
-    <p>When someone creates feedback they choose which area it belongs to. Detachment feedback is
+    <p>When someone creates feedback they choose which space it belongs to. Detachment feedback is
     visible to every instructor; cadre-only feedback is not; commander-only feedback is visible to
     the commander alone. These are separate folders on Drive, enforced by the submission server,
     so "locked" means locked rather than hidden.</p>
-    <p>Cadets are asked to fill in feedback from every area &mdash; a commander's request is still
+    <p>Cadets are asked to fill in feedback from every space &mdash; a commander's request is still
     meant to be answered &mdash; and never see anybody's responses, so being asked reveals nothing.</p>
   </div>
 
   <div class="note">
     <strong class="title">Two commanders, deliberately</strong>
     <p>Not one, so a change of command overlaps rather than cutting over: the outgoing and incoming
-    commander both hold it during the handover. The area belongs to the detachment, so handing over
+    commander both hold it during the handover. The space belongs to the detachment, so handing over
     means moving the designation &mdash; no records move, and nothing is lost.</p>
   </div>
 
@@ -794,7 +794,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     <li><strong>The app opens over HTTPS</strong> at the address you published.</li>
     <li><strong>Settings → Access reads "Google sign-in only"</strong> — the email sign-in is off.</li>
     <li><strong>At least two people hold the Database admin role</strong>, so losing one account does not lock the detachment out.</li>
-    <li><strong>The submission server answers</strong> — Settings &rarr; Submission proxy &rarr; <em>Save and test</em> reports a version.</li>
+    <li><strong>The submission server answers</strong> — Settings &rarr; Submission server &rarr; <em>Save and test</em> reports a version.</li>
     <li><strong>The Drive folder is shared with nobody but you.</strong> With the server deployed, nobody else needs it.</li>
     <li><strong>The connection indicator in the header reads "ready"</strong> on a device other than the one you set up on.</li>
     <li><strong>The Drive folder contains the app's folders</strong> — open it in Drive and confirm you can see <code>config</code>, <code>users</code>, <code>forms</code> and the rest.</li>
@@ -875,7 +875,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     </tr>
     <tr>
       <td>A cadet cannot see a form</td>
-      <td>Check its status is <em>Open</em>, the open date has passed, the due date has not, and the AS level matches theirs. If it targets named students, check they are on the list.</td>
+      <td>Check its status is <em>Open</em>, the open date has passed, the due date has not, and the AS level matches theirs. If it targets named cadets, check they are on the list.</td>
     </tr>
     <tr>
       <td>"Results withheld" instead of analysis</td>
@@ -953,7 +953,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
 ├── config/      detachment profile and shared settings
 ├── users/       the roster — who may sign in, and as what
 ├── forms/       feedback form definitions
-├── requests/    feedback issued to students, each with an ID
+├── requests/    feedback issued to cadets, each with an ID
 ├── responses/   submitted feedback, one folder per form
 ├── receipts/    who submitted (kept apart from what they said)
 ├── audit/       every deletion and roster change, with who did it
@@ -971,10 +971,10 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
   nobody can attribute. The limit: with very few responses, a single answer can be identified by
   elimination, so anonymous results stay hidden until three people have responded.</p>
 
-  <h4>The cadre and commander areas are separate folders</h4>
+  <h4>The cadre and commander spaces are separate folders</h4>
   <p>Not hidden screens. <code>cadre/</code> and <code>commander/</code> are real folders that the
   submission server will not open for somebody without the role, which is why "locked" here means
-  locked. Feedback cannot be moved between areas once it exists, because moving it would carry its
+  locked. Feedback cannot be moved between spaces once it exists, because moving it would carry its
   responses somewhere they were never meant to be readable.</p>
 
   <h4>Sign-in is not encryption</h4>
