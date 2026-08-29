@@ -7,7 +7,7 @@ import { el, icon, badge, emptyState, mount, remount } from '../util.js';
 import { connection } from '../state.js';
 import { db } from '../storage/index.js';
 import { navigate } from '../router.js';
-import { APP } from '../config.js';
+import { APP, ROLE_LABELS } from '../config.js';
 import { currentUser, activeRoles } from '../auth.js';
 import { PANELS, canOpenPanel } from '../panels.js';
 
@@ -41,13 +41,13 @@ export async function renderHome(root) {
       el('p', { class: 'page-sub' }, 'Choose how you are signing in.')),
 
     el('div', { class: 'role-grid' },
-      roleCard('/student', 'student', 'Student',
+      roleCard('/student', 'student', ROLE_LABELS.student,
         'See the feedback assigned to you and fill it out. Sign in with your Google account.'),
       roleCard(PANELS.instructor.path, 'cadre', PANELS.instructor.title,
         PANELS.instructor.blurb, gateBadge()),
       // Only shown to an account that actually holds cadre. Everyone else does
       // not need a door they cannot open, and a cadet walking up to a shared
-      // laptop should not be met with a list of areas they are shut out of.
+      // laptop should not be met with a list of spaces they are shut out of.
       showCadre && roleCard(PANELS.cadre.path, 'lock', PANELS.cadre.title,
         PANELS.cadre.blurb, gateBadge()),
       roleCard('/admin', 'database', 'Database Administration',

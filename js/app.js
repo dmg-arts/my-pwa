@@ -35,7 +35,7 @@ route('/setup', ({ outlet, query }) => renderSetup(outlet, { rerun: query.get('r
 route('/join', ({ outlet, query }) => renderJoin(outlet, { query }), { title: 'Join' });
 route('/home', ({ outlet }) => renderHome(outlet), { guard: requireSetup, title: 'Home' });
 
-route('/student', ({ outlet }) => renderStudentList(outlet), { guard: requireSetup, title: 'Student' });
+route('/student', ({ outlet }) => renderStudentList(outlet), { guard: requireSetup, title: 'Cadet' });
 route('/student/fill/:id', ({ outlet, params }) => renderStudentFill(outlet, { params }),
   { guard: requireSetup, title: 'Feedback' });
 
