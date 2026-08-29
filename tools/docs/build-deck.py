@@ -260,7 +260,7 @@ def s01_title():
     block(s, M, Inches(2.85), Inches(11), Inches(1.25),
           [("9ThirtyOne", 58, True, WHITE, 0)], shrink=False)
     block(s, M, Inches(4.2), Inches(9.8), Inches(1.1),
-          [("The student and instructor feedback cycle,", 22, False, WHITE, 5),
+          [("The cadet and instructor feedback cycle,", 22, False, WHITE, 5),
            ("owned entirely by your detachment.", 22, False, WHITE, 0)], shrink=False)
     rect(s, M, Inches(5.72), Inches(1.15), Emu(28575), WHITE)
     block(s, M, Inches(6.0), Inches(10), Inches(0.45),
@@ -378,15 +378,15 @@ def s05_roles():
         "Instructor",
         "-Creates feedback, reads responses, runs the analysis.",
         "Cadre",
-        "-All of that, plus an area instructors cannot see.",
+        "-All of that, plus a space instructors cannot see.",
         "Commander",
-        "-Sees every area, including one only they can read.",
+        "-Sees every space, including one only they can read.",
         "Database admin",
         "-Keeps the roster. A separate job, often held alongside.",
     ], size=15, gap=9)
     page_no(s)
     notes(s, "The point of this slide is that access follows rank, and that it is enforced rather "
-             "than assumed. Cadre and commander areas are separate folders on the detachment's "
+             "than assumed. Cadre and commander spaces are separate folders on the detachment's "
              "Drive, not hidden screens — an instructor cannot reach commander feedback by opening "
              "Drive directly, because the server will not open that folder for them. "
              "At most two commanders at a time, so a change of command overlaps.")
@@ -447,22 +447,22 @@ def s09_panel():
     picture(s, "instructor-panel.png", M, Inches(2.4), Inches(11.5), Inches(4.15))
     page_no(s)
     notes(s, "Create Feedback and Feedback Response and Analysis are the headline actions. The "
-             "tabs underneath hold forms, students and database tools.")
+             "tabs underneath hold forms, cadets and database tools.")
 
 
 def s09b_cadre():
     s = slide()
     eyebrow(s, "For cadre and the commander")
     title(s, "The same screen, pointed at the locked folders",
-          "Cadre feedback instructors cannot see \u2014 and the commander's own area inside it.")
+          "Cadre feedback instructors cannot see \u2014 and the commander's own space inside it.")
     picture(s, "cadre-panel.png", M, Inches(2.55), Inches(11.5), Inches(4.0))
     page_no(s)
     notes(s, "Worth being precise here, because this is the feature senior people ask about. "
              "It is not a hidden tab and not a permission flag on a record: the cadre and "
-             "commander areas are separate folders, and the detachment's own server is what "
+             "commander spaces are separate folders, and the detachment's own server is what "
              "decides who may open which. An instructor does not see a filtered list \u2014 the "
              "folder is never opened for them, and they cannot reach it through Drive either. "
-             "The badges mark which area each item belongs to. At most two commanders at a "
+             "The badges mark which space each item belongs to. At most two commanders at a "
              "time, so a change of command overlaps rather than cutting over.")
 
 
