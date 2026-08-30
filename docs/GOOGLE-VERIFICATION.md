@@ -23,7 +23,7 @@ or annual reviews, you are reading about a different architecture.
 | CASA / security assessment | **Never.** Attaches to *restricted* scopes only |
 | 100-user cap | Applies to apps that present the unverified-app screen — which fires only on sensitive or restricted scopes |
 | Cost | Zero |
-| What verification buys | App name and logo on the consent screen. 2–3 days, per Cloud project |
+| What verification buys | App name and logo on the consent screen. Declined — see §4 |
 
 ---
 
@@ -97,34 +97,35 @@ another.
 - [ ] **Click Publish app**
 - [ ] Copy the Client ID into the setup wizard
 
-No test users. No cap. No review. No cost. The consent screen will not show a
-name or logo until brand verification (§4), which is optional and changes nothing
-about whether the app works.
+No test users. No cap. No review. No cost. The consent screen shows a project
+identifier rather than the product name, because brand verification was declined
+— see §4. That changes nothing about whether the app works.
 
 ---
 
-## 4. The branding track — optional
+## 4. Branding — declined
 
-Worth doing when an AFROTC HQ conversation makes 2–3 days worthwhile. Brand
-verification is **per Cloud project**, so with per-detachment Client IDs it does
-not scale — it becomes coherent only alongside a single shared client, which is a
-support-burden decision rather than a capacity one.
+**Decided 29 Aug 2026: not doing it.** Recorded here so it is not re-proposed.
 
-**The order matters, and getting it wrong wastes the work.** The rename blocks
-the domain, which blocks the privacy policy URL and Search Console verification.
-Doing either against the old origin has to be redone.
+Brand verification would put the app name and logo on the consent screen. It is
+per Cloud project, so with per-detachment Client IDs it does not scale anyway —
+it only becomes coherent alongside a single shared client, which is a
+support-burden decision nobody has needed to make.
 
-1. [ ] Settle the product and company name
-2. [ ] Stand up the domain and move off `dmg-arts.github.io`
-3. [ ] Publish `privacy.html` at the final domain
-4. [ ] Verify that domain in Search Console, under the account that will own the app
-5. [ ] Create the Cloud project and OAuth client under the new name
-6. [ ] Configure the consent screen: app name, logo, support email, home page,
-       privacy policy, authorised JavaScript origins
-7. [ ] Declare scopes matching the code exactly — check them against
-       `js/storage/drive.js` and `js/google-identity.js`, not against memory
-8. [ ] Submit for brand verification (2–3 business days)
-9. [ ] Regenerate every join link and QR code — see §6
+The instinct to verify was a habit from working inside the ecosystem rather than
+a requirement of this product: an open-source, niche tool tied to a seminar the
+company sells does not need a branded consent screen to be trusted by the one
+detachment running it. Revisit only if AFROTC HQ engages and asks for it.
+
+**No custom domain either.** The app stays on GitHub Pages. Two consequences,
+both accepted rather than pending:
+
+- **`frame-ancestors` cannot be set.** Pages serves no custom response headers.
+  `index.html` already refuses to run inside a frame in script, which is the
+  mitigation available; it is not the header.
+- **The origin is tied to the GitHub account.** Moving to a clean account is
+  still a move — see §6, which applies to that move exactly as it would have to a
+  custom domain.
 
 ---
 
@@ -140,17 +141,18 @@ outlived it; dated evidence is what stops that happening twice.*
 
 ---
 
-## 6. What breaks when the domain moves
+## 6. What breaks when the origin moves
 
-From the first live install. All of these are encoded against the origin:
+The app is moving to a **clean GitHub account dedicated to it**, so the origin
+changes from `dmg-arts.github.io/my-pwa/` even without a custom domain. All of
+these are encoded against the origin and break on the move:
 
-- **The OAuth authorised JavaScript origin** must be updated in Cloud, or nobody
-  can sign in.
+- **The OAuth authorised JavaScript origin** must be updated in each Cloud
+  project, or nobody can sign in.
 - **Every join link and QR code already handed out dies.** Regenerate and
   redistribute *after* the move, never before.
-- **The privacy policy URL** in the consent screen configuration.
+- **The privacy policy URL** in each consent screen configuration.
 
-A custom domain makes the origin stable for good, so a future host change never
-invalidates join links or the OAuth client again. It would also allow a host that
-can set real response headers, which GitHub Pages cannot — the reason
-`frame-ancestors` is currently absent.
+Because there is no custom domain, this cost recurs on any future host change.
+That is the trade accepted in §4: a custom domain would have made the origin
+stable for good, and was judged not worth it for one detachment.
