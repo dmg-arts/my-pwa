@@ -1400,7 +1400,7 @@ function mayReach(account, space) {
 function locateForm(root, formId) {
   var spaces = Object.keys(SPACE_FOLDERS);
   for (var i = 0; i < spaces.length; i++) {
-    var doc = readJsonAt(root, spacePath(spaces[i], 'forms'), formId + '.json');
+    var doc = readJson(root, spacePath(spaces[i], 'forms'), formId + '.json');
     if (doc) return { form: doc, space: spaces[i] };
   }
   return null;
@@ -1410,22 +1410,10 @@ function locateForm(root, formId) {
 function locateRequest(root, requestId) {
   var spaces = Object.keys(SPACE_FOLDERS);
   for (var i = 0; i < spaces.length; i++) {
-    var doc = readJsonAt(root, spacePath(spaces[i], 'requests'), requestId + '.json');
+    var doc = readJson(root, spacePath(spaces[i], 'requests'), requestId + '.json');
     if (doc) return { request: doc, space: spaces[i] };
   }
   return null;
-}
-
-function readJsonAt(root, segments, name) {
-  var folder = findFolder(root, segments);
-  if (!folder) return null;
-  var files = folder.getFilesByName(name);
-  if (!files.hasNext()) return null;
-  try {
-    return JSON.parse(files.next().getBlob().getDataAsString('UTF-8'));
-  } catch (err) {
-    return null;
-  }
 }
 
 /**

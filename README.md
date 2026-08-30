@@ -725,36 +725,44 @@ Roughly in dependency order. The first item gates several of the others.
 
 5. **Trends and per-instructor baselines**, described below.
 
-### Verification, and the single Client ID
+### Verification, and why it is not a gate
 
-**Today** each detachment creates its own Cloud project and its own Client ID, so
-the 100-user cap applies per detachment and never binds at ~50 people. Nothing
-needs verifying and nothing costs anything. Advice written for the usual
-multi-tenant shape does not describe this.
+**Each detachment creates its own Cloud project and its own Client ID**, and that
+continues through beta. Nothing needs verifying and nothing costs anything.
+Advice written for the usual multi-tenant shape does not describe this.
 
-**That ends at beta.** The fielded product uses **one Client ID owned by the
-maintainer**, created under the new name during the migration. Not because Google
-objects to 145 self-hosted instances — it does not — but because 145 detachments
-each standing up a Cloud project is an unsellable support burden, and AFROTC HQ
-cannot be handed a product that requires every detachment to be a developer.
+**Capacity is gated on publishing status, not on verification.** This was
+misunderstood here for a while, so it is worth stating precisely:
 
-What follows from one Client ID:
+- `drive.file` is **non-sensitive** ([Google's Drive scope list][s]), as are
+  `openid`, `email` and `profile`. Those are the only scopes this app requests.
+- An app using only non-sensitive scopes **does not need verification**
+  ([verification help][v]).
+- The 100-user cap applies to apps that **present the unverified-app screen**,
+  and that screen fires only on sensitive or restricted scopes
+  ([Manage App Audience][a]).
 
-- ~145 detachments x ~50 users pools well past the cap, forcing Production. With
-  the old `auth/drive` scope that forced verification and an annual CASA
-  assessment; on `drive.file` the review is free at worst, and may not be
-  required at all.
-- **The data posture is unaffected.** A Client ID identifies the *app*, not a
-  grant of data. Tokens are issued in each user's browser and reach only that
-  user's own Drive; the maintainer never receives one. What changes is
-  accountability, not access.
-- **A new single point of failure.** Suspension of that one Client ID would break
-  every detachment at once. Per-detachment clients failed independently.
+So a detachment with several hundred cadets does not need a review. It needs its
+project published to Production, which is a switch in the console with nothing
+behind it. Google calls the resulting state *Unverified Published*: any Google
+user can access, and the only cost is that the consent screen does not show an
+app name or logo until **brand verification** — a 2–3 day review that is optional
+and buys branding, not capacity.
 
-**Some Google accounts refuse unverified apps outright.** This is a standing
-limitation, not a misconfiguration, and it is why verification is not merely
-cosmetic: without it a fraction of cadets cannot use the app at all, and there is
-no way to know which in advance.
+[s]: https://developers.google.com/workspace/drive/api/guides/api-specific-auth
+[v]: https://support.google.com/cloud/answer/13463073?hl=en
+[a]: https://support.google.com/cloud/answer/15549945?hl=en
+
+**One Client ID owned by the maintainer** was decided on 24 Aug and has since been
+reversed. It would spare 145 detachments a Cloud setup each, which is a real
+support argument — but it is not a capacity argument, it puts the maintainer
+inside the auth path, and suspension of that one client would break every
+detachment at once where per-detachment clients fail independently. Revisit it if
+AFROTC HQ engages, on support-burden grounds alone.
+
+**The test-user list is what refused two ordinary Gmail accounts** during the
+first live install. That list exists only in Testing; publishing removes it. See
+`docs/GOOGLE-VERIFICATION.md`, which records what was actually observed.
 
 ### Removing the verification burden — done
 
@@ -862,19 +870,18 @@ These are the ones actually blocking or shaping work, not idle curiosities.
   access is disclosed to cadets.
 - **What the product and company are called.** Blocks the custom domain, which
   blocks the privacy policy URL and Google's brand verification.
-- **Whether the deployment record is collected manually or by the app** — see
-  item 2.
+- ~~**Whether the deployment record is collected manually or by the app.**~~
+  **Settled: neither.** Nothing is transmitted. The only record is what an
+  administrator supplies by contacting support.
 - ~~**Why Google refuses to add some accounts as test users.**~~ **Answered:**
   some Google accounts do not permit unverified apps at all. A standing
   limitation, not a fault to chase.
 - ~~**Whether all Drive access moves behind the proxy.**~~ **Done.** Cadre and
   cadets reach nothing in Drive; only the folder's owner holds a token, and only
   for files this app created.
-- ~~**Whether `drive.file` is non-sensitive or sensitive.**~~ **No longer
-  blocking.** The two answers differ only in whether a free review is required.
-  Free verification is acceptable for a product nobody is selling, so the scope
-  narrowed without waiting on the classification. Worth confirming before the
-  submission, but it changes paperwork rather than design.
+- ~~**Whether `drive.file` is non-sensitive or sensitive.**~~ **Answered:
+  non-sensitive**, per [Google's Drive scope list][s]. No verification is
+  required to publish, at any number of users.
 
 Not yet built:
 
