@@ -27,12 +27,13 @@ and no shared database, and writes only to storage the detachment controls.
 
 ## Documentation
 
-`docs/` holds four things. Start with `WHY.md` — everything else assumes it.
+`docs/` holds five things. Start with `WHY.md` — everything else assumes it.
 
 | File | For | Contents |
 |---|---|---|
 | `WHY.md` | Cadre and commanders | Why this exists: the centralized detachment model and what it costs, the cadet-instructor gap, how the app works in plain English, and the guarantees with their limits. **The argument the other documents are built on.** |
 | `STYLE.md` | Anyone writing copy | The content lexicon — terminology, object definitions, voice, and the claims that must not be softened. Applied by hand; there is no build step that reads it. |
+| `GOOGLE-VERIFICATION.md` | The maintainer | What Google actually requires, with sources. Verification is optional branding; capacity is gated on publishing status. Carries the controlled test that settles whether the setup guide's "do not publish" warning outlived its scope. |
 | `9ThirtyOne-Setup-Guide.pdf` | Whoever installs it | 26 pages: creating the detachment's Google account, the Cloud setup, publishing, the wizard, the submission server, the roster, join links, a verification checklist, and troubleshooting. |
 | `9ThirtyOne-Introduction.pdf` | Briefing cadre or a commander | 22 slides with speaker notes: why it exists, what it does, how each role uses it, and the anonymity and safety design. |
 
