@@ -1,12 +1,17 @@
 # The walkthrough video
 
-A ~5 minute screen recording of the real app, for a **detachment being
-onboarded** — so it is procedural. The viewer is going to do these things
-afterwards, not decide whether to buy them.
+A ~6:30 video in two halves. It **argues** before it demonstrates: four still
+cards make the case for why the app exists, then the recorded app shows what it
+does. The viewer is somebody deciding whether to care, and then somebody who
+will go and do these things.
 
-Everything is captured from the running app with seeded data, the same way the
-screenshots and both PDFs are. Nothing is mocked up, and nothing is faked in
-post.
+The app footage is captured from the running app with seeded data, the same way
+the screenshots and both PDFs are. Nothing is mocked up and nothing is faked in
+post. The opening cards are rendered HTML, because there is no screen in the app
+that shows "AFROTC uses a centralized detachment model".
+
+**The argument the cards make is `docs/WHY.md`.** If one changes, the other is
+wrong.
 
 ## Resuming this work in a later session
 
@@ -33,27 +38,30 @@ only open decision, and it is recorded here once made.
 |---|---|
 | Audience | A detachment being onboarded — procedural, not a pitch |
 | Narration | Synthesised, and **final** rather than a placeholder to be re-recorded |
-| Voice | **Daniel** (en_GB), the least robotic of the installed legacy voices |
+| Voice | **Allison (Enhanced)** (en_US) |
 | On-screen detachment | Fictional "AFROTC Detachment 025", invented cadet names |
 | Assembly | ffmpeg, installed |
-| Resolution | 1920×1080, except the student phone shots |
+| Resolution | 1920×1080, except the cadet phone shots |
+| Opening chapter | Rendered HTML cards, not app footage — `cards.mjs` |
 
-### The voice, and why it is worth a moment
+### The voice
 
-macOS only has its **legacy** voices installed here — Samantha, Daniel, Karen,
-Albert, plus novelty ones. Samantha is the best of them and still sounds like a
-2010 satnav. The modern *Enhanced* and *Premium* voices are free but have to be
-downloaded by hand:
+Was Daniel (en_GB), the best of the *legacy* voices and still audibly a 2010
+satnav. **Allison (Enhanced)** is installed now and is used instead — en_US,
+which suits an AFROTC audience anyway.
+
+`say -v '?'` lists what is available; Allison and Evan are the Enhanced voices
+here. The **Premium** voices are a further step up and download by hand:
 
 > System Settings → Accessibility → Spoken Content → System Voice → Manage
-> Voices → English → pick a **(Premium)** or **(Enhanced)** voice → download
+> Voices → English → pick a **(Premium)** voice → download
 
-Ava (Premium), Zoe (Premium), Tom (Enhanced) and Evan (Enhanced) are all a large
-step up. Once one is installed it appears in `say -v '?'` and `VOICE` in
-`build.mjs` can point at it — that is a one-line change and a rebuild, so
-upgrading later costs nothing.
+`VOICE` in `build.mjs` is then a one-line change and a rebuild.
 
-**Daniel is chosen for now** as the best of what is installed.
+**Allison speaks faster than Daniel did**, which matters more than it sounds: it
+opened about 78 seconds of footage playing under silence the first time the
+chapter was assembled. The fix was to put narration back rather than cut
+footage — see the note on section length below, where adding words was free.
 
 ## Progress
 
@@ -61,154 +69,100 @@ upgrading later costs nothing.
 - [x] Recorder — visible cursor, deliberate pacing, seeded detachment
 - [x] All eight clips recorded and reviewed
 - [x] `build.mjs` — title cards, voiceover, length-matched assembly
-- [x] **First cut: 5:09**
+- [x] First cut: 5:09, procedural only
+- [x] Re-recorded against the post-lexicon wording (cadet, spaces, Feedback requests)
+- [x] Why/how chapter, Allison (Enhanced)
+- [x] **Current cut: 6:42**
 
-The narration now lives in `script.mjs`, which is the source of truth — editing
-a line there changes that section's length and nothing else. This file describes
-the video; it does not repeat the words.
+The narration lives in `script.mjs`, which is the source of truth. This file
+describes the video; it does not repeat the words.
 
 ### Worth doing before this is final
 
-- **A better voice.** Daniel is the best of the legacy set and still sounds
-  synthetic. See the note above; it is a one-line change and a rebuild.
-- The instructor section races slightly at the analysis; another pass on holds
-  would help if a viewer says so.
+- A **Premium** voice would be a further step up on Allison. One line, one
+  rebuild — see above.
+- The four opening cards are dense. If a viewer says the chapter drags, cut a
+  consequence from *What that costs* rather than speeding the voice up.
 
 ## Structure
 
-Seven sections, ~300 seconds. Each is recorded separately so one can be re-shot
-without redoing the rest.
+Twelve sections, ~400 seconds: four **cards** that argue, then eight **clips**
+that demonstrate. Each clip is recorded separately so one can be re-shot without
+redoing the rest.
 
-| # | Section | Target | Recorded as |
+### How long a section is, which is the thing to understand before editing
+
+A **card** section lasts exactly as long as its narration.
+
+A **clip** section lasts `max(footage, narration)` — `build.mjs` holds the last
+frame when the words outrun the picture, and lets the picture play on under
+silence when they do not. Two consequences, both learned here:
+
+- Trimming a line only shortens the video where **narration** is the larger
+  number. Where footage dominates, the holds in `record.mjs` are the lever.
+- Where footage dominates, **adding narration is free** up to the length of the
+  footage. That is how the switch to a faster voice was absorbed: it left ~78
+  seconds of silent footage, and the fix was more words, not less film.
+
+`build.mjs` prints both numbers for every section. Read that output before
+changing anything.
+
+| # | Section | Kind | Shows |
 |---|---|---|---|
-| 1 | Overview | 45s | Home, storage picture, the folder in Drive |
-| 2 | Student | 45s | Join link → sign in → assigned list → filling a form (phone) |
-| 3 | Instructor | 60s | Create feedback → issue → responses & analysis → safety screen |
-| 4 | Cadre | 40s | Cadre Panel, the restricted badges, what an instructor sees instead |
-| 5 | Commander | 45s | Own area, By instructor, a withheld person |
-| 6 | Database admin | 40s | Roster and roles, join link and QR, activity log |
-| 7 | Close | 25s | Where the data lives, licence |
+| 0 | The detachment problem | card | Crosstown diagram, the causal chain to a Det Google Account |
+| 0b | What that costs | card | The four consequences, LLAB last |
+| 0c | Cadets instruct, uncertified | card | The second gap |
+| 0d | How it works | card | Ownership diagram, `drive.file`, the submission server |
+| 1 | Setting it up | 28s | The wizard, storage choice, the folder it creates |
+| 2 | Cadet | 45s | Join link → sign in → assigned list → filling a form (phone) |
+| 3 | Instructor | 45s | Create feedback → issue → responses & analysis → safety screen |
+| 4 | Cadre | 27s | Cadre Panel, the restricted badges, what an instructor sees instead |
+| 5 | Commander | 32s | Own space, By instructor, a withheld person |
+| 6 | Database admin | 37s | Roster and roles, join link and QR, activity log |
+| 7 | Close | 18s | Where the data lives, licence |
 
 ## Narration
 
-Timings are targets, not constraints — the recorder holds each shot for as long
-as its line takes, so the video follows the script rather than the other way
-round.
+**In `script.mjs`, not here.** This file used to carry a copy, and by the time
+the video was re-cut the copy said something the video did not — seven sections,
+an older voice, and lines that had already been rewritten. Two places for one
+set of words is a guarantee they drift, so there is now one.
 
-### 1 — Overview (45s)
-
-> This is 9ThirtyOne. It runs the feedback cycle for an AFROTC detachment:
-> cadets answer a short form, and the people who teach them get the results
-> analysed rather than stacked.
->
-> Everything it stores lives in one Google Drive folder your detachment owns.
-> There is no vendor database, no server in the middle, and no account with
-> anyone. If you stopped using this tomorrow, every response would still be
-> sitting in your Drive where you could read it.
->
-> Here is what each person sees.
-
-### 2 — Student (45s)
-
-> A cadet never sets anything up. They get a link, or scan a code on a
-> projector, and that is the whole installation.
->
-> They sign in with the Google account your detachment already mails them at,
-> and they see only what has been assigned to them — filtered by class, term and
-> due date.
->
-> Ratings are words rather than numbers, so nobody is averaging in their head
-> while they answer. And each form can be submitted once. The app records that
-> they took part separately from what they said, so completion can be chased
-> without anybody's answers being attached to their name.
-
-### 3 — Instructor (60s)
-
-> An instructor builds a form, chooses who receives it, and issues it. Question
-> sets can be saved and reused, which is what keeps one term comparable with the
-> next.
->
-> The results come back analysed. Not just an average — the app looks at the
-> shape of the responses, so when a class is genuinely split it says so instead
-> of reporting a middling score that describes nobody.
->
-> Written answers are read too. Every one is screened for language that needs a
-> person to see it quickly — hazing, harassment, a cadet in trouble — and
-> flagged for review. It finds words, not meaning, so it is a prompt to go and
-> read something, never a verdict.
-
-### 4 — Cadre (40s)
-
-> Cadre get the same screen again, pointed at a separate area.
->
-> Feedback filed here is visible to cadre and the commander, and to nobody else.
-> That is not a hidden tab or a setting on a record — it is a different folder,
-> and your detachment's own server is what decides who may open it. An
-> instructor does not see a filtered list. The folder is never opened for them,
-> and they cannot reach it through Drive either.
->
-> Anything restricted is badged wherever it appears, so nobody has to remember
-> which area they filed something into.
-
-### 5 — Commander (45s)
-
-> The commander sees both areas, plus one only they can read.
->
-> They also get a view of feedback grouped by the person it reflects on —
-> instructors, cadre, anybody feedback can be about.
->
-> And this is where the app refuses to answer. Below three responses, nothing is
-> shown: no average, no distribution, no written answers. With two responses
-> about somebody, showing anything would identify who wrote them. The count is
-> still there, so you know feedback exists. The content is not.
-
-### 6 — Database admin (40s)
-
-> The roster is a list of Google accounts and what each one is allowed to do.
-> There are no passwords in this app at all — access is decided by which
-> addresses are on the roster.
->
-> Adding somebody takes an email address. Getting them set up takes a link, or a
-> code you can put on a screen in front of a room.
->
-> And anything destructive is written down: who did it, when, and why. That log
-> cannot be edited from inside the app.
-
-### 7 — Close (25s)
-
-> That is the whole application. It installs into a Google account your
-> detachment already has, it costs nothing, and the data never leaves your
-> Drive.
->
-> The setup guide walks through the installation end to end. It takes about
-> forty-five minutes, once.
+`build.mjs` speaks what is in `script.mjs` and times each section against it.
+Read it there.
 
 ## Shot list
 
-What each section records, in order. `record.mjs` implements this.
+The four opening cards record nothing — they are drawn by `cards.mjs`. What
+follows is the app footage, in order. `record.mjs` implements this.
 
-**1 Overview** — Home signed out · the storage step of the wizard showing the
-three options · the created folder tree · back to Home.
+**1 Setting it up** — the wizard · the storage step showing the three options ·
+the created folder tree · the panels it lands on. It no longer tours the role
+cards at the end: the card chapter now closes on "here is what each person
+sees", and touring them said the same thing twice.
 
-**2 Student** — the join screen from a link · sign in · the assigned list ·
+**2 Cadet** — the join screen from a link · sign in · the assigned list ·
 switch to a phone viewport · open a form · the nine-point word scale · submit ·
 the list showing it as done.
 
 **3 Instructor** — Instructor Panel · Create Feedback · fill a form name, pick
 the class, add questions · issue it · Responses & analysis · the distribution
 chart · a split question called out · the written answers tab · the safety
-screen with a flagged answer.
+screen with a flagged answer. The completion table at the end was dropped when
+the narration stopped covering it.
 
 **4 Cadre** — Cadre Panel with the restricted notice · the badged list ·
 the switch button to the Instructor Panel · the same route as an instructor,
 landing on the sign-in gate.
 
-**5 Commander** — Cadre Panel showing the commander's own area badged · By
+**5 Commander** — Cadre Panel showing the commander's own space badged · By
 instructor · a person with enough responses · a person under the threshold
 showing the withholding notice.
 
 **6 Database admin** — the roster · adding an account and choosing roles · the
-invite screen · the QR code · the activity log.
+invite screen · the QR code · the activity log. The anonymised backup export
+came out with its line — a backup feature is not what a first-contact viewer
+needs, and unnarrated footage is worse than no footage.
 
 **7 Close** — the Drive folder tree · Home.
 
@@ -220,5 +174,10 @@ invite screen · the QR code · the activity log.
   screen claims otherwise.
 - **Sign-in is done the way the callback does it**, not through Google's popup,
   for the same reason. The sign-in *screen* is real and is shown.
-- The student section switches to a phone viewport mid-section. That is
-  deliberate — it is the device a cadet actually uses.
+- The cadet section switches to a phone viewport mid-section. That is
+  deliberate — it is the device a cadet actually uses. It is also why 2a and 2b
+  are two clips rather than one: a Playwright recording context has a single
+  viewport size, so desktop and phone cannot share a recording.
+- **The cards are rendered at build time, not recorded.** They cost nothing to
+  change and need no server — editing `cards.mjs` and re-running `build.mjs` is
+  enough. Only the app footage needs `record.mjs` and a running server.

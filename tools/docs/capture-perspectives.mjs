@@ -37,7 +37,7 @@ const CHROME = process.env.CHROME_PATH || [
 ].find((p) => fs.existsSync(p));
 
 /** A Client ID makes the sign-in screens render Google's real button. */
-const DEMO_CLIENT = '000000000000-topfeedbackdemo.apps.googleusercontent.com';
+const DEMO_CLIENT = '000000000000-nine31demo.apps.googleusercontent.com';
 
 const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
 const problems = [];
@@ -171,7 +171,7 @@ const PERSPECTIVES = [
   {
     id: '0-signed-out', as: null,
     allowed: [
-      ['join-link', '/join?c=000000000000-topfeedbackdemo&f=1A2b3C4d5E6f7G8h&n=AFROTC%20Detachment%20025&p=AKfycbxDEMO'],
+      ['join-link', '/join?c=000000000000-nine31demo&f=1A2b3C4d5E6f7G8h&n=AFROTC%20Detachment%20025&p=AKfycbxDEMO'],
       ['setup-wizard', '/setup?rerun=1'],
     ],
     refused: [['student', '/student'], ['instructor-panel', '/instructor'], ['cadre-panel', '/cadre'], ['admin', '/admin']],
@@ -189,8 +189,12 @@ const PERSPECTIVES = [
       ['panel-students', '/instructor?tab=students'],
       ['panel-database', '/instructor?tab=database'],
       ['create-feedback', '/instructor/create/new'],
+      // Open to them now, and narrowed to their own results — see
+      // js/people-scope.js. A filtered view is not a refusal, so what it
+      // contains is asserted in tests/proxy/behaviour.test.mjs, not here.
+      ['by-instructor-own', '/instructor?tab=people'],
     ],
-    refused: [['cadre-panel', '/cadre'], ['by-instructor-tab', '/instructor?tab=people'], ['admin', '/admin']],
+    refused: [['cadre-panel', '/cadre'], ['admin', '/admin']],
   },
   {
     id: '3-cadre', as: 'cadre',
@@ -198,15 +202,16 @@ const PERSPECTIVES = [
       ['instructor-panel', '/instructor?tab=requests'],
       ['cadre-panel', '/cadre?tab=requests'],
       ['cadre-responses-analysis', '/cadre?tab=analysis'],
-      ['create-feedback-in-cadre-area', '/instructor/create/new?panel=cadre'],
+      ['create-feedback-in-cadre-space', '/instructor/create/new?panel=cadre'],
+      ['by-instructor-instructors', '/instructor?tab=people'],
     ],
-    refused: [['by-instructor-tab', '/instructor?tab=people'], ['admin', '/admin']],
+    refused: [['admin', '/admin']],
   },
   {
     id: '4-commander', as: 'commander',
     allowed: [
       ['instructor-panel', '/instructor?tab=requests'],
-      ['cadre-panel-with-own-area', '/cadre?tab=requests'],
+      ['cadre-panel-with-own-space', '/cadre?tab=requests'],
       ['by-instructor', '/instructor?tab=people'],
       ['cadre-responses-analysis', '/cadre?tab=analysis'],
     ],
@@ -240,17 +245,39 @@ const signInAs = (page, person) => page.evaluate(async (p) => {
  * shown one of these instead, the run fails rather than quietly saving a
  * screenshot of a security regression that nobody opens.
  */
-const PANEL_CONTENT = /Feedback forms|Restricted area|Invite people|Question templates/;
+const PANEL_CONTENT = /Feedback requests|Restricted space|Invite people|Question templates/;
 
 /**
  * A refused *tab* is not a refused *panel*.
  *
- * Asking for `?tab=people` without the commander role lands on the panel's
- * default tab, which is correct and shows ordinary panel content. What must be
- * absent is the restricted view itself, so those entries name their own tell.
+ * Empty, and deliberately kept. It held `by-instructor-tab` while that view was
+ * commander-only: asking for `?tab=people` without the role landed on the
+ * panel's default tab, which is correct and shows ordinary panel content, so
+ * the entry named its own tell rather than relying on PANEL_CONTENT.
+ *
+ * By-instructor is open to every panel role now and narrowed by tier instead —
+ * a filtered view is not a refusal, and what it contains is asserted against
+ * the proxy in tests/proxy/behaviour.test.mjs, where the payload can be
+ * inspected rather than the pixels. The machinery stays for the next tab that
+ * needs it.
  */
-const REFUSAL_TELL = {
-  'by-instructor-tab': /grouped by the person it reflects on/,
+const REFUSAL_TELL = {};
+
+/**
+ * Positive control: did those patterns match anything at all this run?
+ *
+ * Both are wordings lifted out of the UI, so a copy change quietly unarms them.
+ * A stale pattern does not fail — it stops matching, `mustRefuse` passes on
+ * every screen, and the run reports success while checking nothing. That is a
+ * worse outcome than a red build, because it looks like a green one.
+ *
+ * So every permitted capture is tested too, and the run fails if a pattern never
+ * matched a screen that *did* open. Then a reworded heading breaks this loudly
+ * instead of hollowing it out.
+ */
+const seen = {
+  PANEL_CONTENT: false,
+  ...Object.fromEntries(Object.keys(REFUSAL_TELL).map((k) => [k, false])),
 };
 
 async function shoot(page, dir, name, route, { mobile = false, mustRefuse = false } = {}) {
@@ -262,6 +289,17 @@ async function shoot(page, dir, name, route, { mobile = false, mustRefuse = fals
   if (/Something went wrong/i.test(body)) problems.push(`${dir}/${name}: crash screen`);
   if (mustRefuse && (REFUSAL_TELL[name] || PANEL_CONTENT).test(body)) {
     problems.push(`${dir}/${name}: OPENED something it should have refused`);
+  }
+  // Every pattern is tried against every screen that opened, not just the one
+  // captured under the matching name — the permitted shot of a screen and its
+  // refused counterpart are named differently ('by-instructor' vs
+  // 'by-instructor-tab'), so keying on the name would only ever prove
+  // PANEL_CONTENT and quietly leave the tells unverified.
+  if (!mustRefuse) {
+    if (PANEL_CONTENT.test(body)) seen.PANEL_CONTENT = true;
+    for (const [key, re] of Object.entries(REFUSAL_TELL)) {
+      if (re.test(body)) seen[key] = true;
+    }
   }
 
   fs.mkdirSync(path.join(OUT, dir), { recursive: true });
@@ -337,12 +375,20 @@ different jobs, so \`admin\` implies no other role.
 | Folder | Signed in as |
 |---|---|
 | \`0-signed-out\` | nobody |
-| \`1-student\` | Alvarez, Mia — student (also captured on a phone) |
+| \`1-student\` | Alvarez, Mia — cadet (also captured on a phone) |
 | \`2-instructor\` | Lindqvist, Ana — instructor |
 | \`3-cadre\` | Okafor, Sam — cadre |
 | \`4-commander\` | Reyes, Maria — commander |
 | \`5-admin\` | Novak, Dee — database admin |
 `);
+
+for (const [key, matched] of Object.entries(seen)) {
+  if (!matched) {
+    problems.push(`${key} matched nothing on any screen that opened — the pattern is `
+      + 'stale, so every refusal check above passed without checking anything. '
+      + 'Re-read it against the current UI wording.');
+  }
+}
 
 console.log(`\n${count} screenshots in ${OUT}/`);
 if (problems.length) {

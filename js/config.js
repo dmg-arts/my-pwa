@@ -106,8 +106,21 @@ export function spacesFor(roles = []) {
   return [...out];
 }
 
+/**
+ * What each role is called on screen.
+ *
+ * `student` reads "Cadet" on purpose, and the mismatch is not a leftover. The
+ * key is a stored identifier — it is written into roster records, addressed by
+ * the `/student` route and by `students.json`, and persisted in
+ * `nine31.student.prefs.v1` — so renaming it is a migration. The label is what a
+ * person reads, AFROTC says cadet, and this is the seam that lets the two differ
+ * without one being wrong. See docs/STYLE.md §1, note 3.
+ *
+ * Read role names from here rather than writing them inline, so the next
+ * terminology decision is one edit instead of another sweep.
+ */
 export const ROLE_LABELS = {
-  student: 'Student',
+  student: 'Cadet',
   instructor: 'Instructor',
   cadre: 'Cadre',
   commander: 'Commander',

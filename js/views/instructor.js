@@ -19,7 +19,7 @@ import {
   confirmDialog, fmtDate, fmtRelative, pluralize, download, pickFile, readFileAsText,
   mount, remount } from '../util.js';
 import {
-  SEMESTERS, AS_CLASSES, REQUEST_STATUS, ROLES, schoolYears,
+  SEMESTERS, AS_CLASSES, REQUEST_STATUS, schoolYears,
 } from '../config.js';
 import { connection } from '../state.js';
 import { hasRole, currentUser, activeRoles, signOut, listStudents } from '../auth.js';
@@ -38,11 +38,14 @@ import { renderPeople } from './people.js';
 import { record, AUDIT } from '../audit.js';
 
 const TABS = [
-  { id: 'requests', label: 'Feedback forms', iconName: 'send' },
+  { id: 'requests', label: 'Feedback requests', iconName: 'send' },
   { id: 'analysis', label: 'Responses & analysis', iconName: 'chart' },
-  // Commanders only: the same records, grouped by the person they reflect on.
-  { id: 'people', label: 'By instructor', iconName: 'clipboard', role: ROLES.commander },
-  { id: 'students', label: 'Students', iconName: 'users' },
+  // The same records, grouped by the person they reflect on. Open to every
+  // panel role, because reviewing the instructors under you is an oversight
+  // function and cadre have one — but what it contains differs by role, and
+  // that narrowing is the server's, not this tab's. See js/people-scope.js.
+  { id: 'people', label: 'By instructor', iconName: 'clipboard' },
+  { id: 'students', label: 'Cadets', iconName: 'users' },
   { id: 'database', label: 'Database', iconName: 'database' },
 ];
 
@@ -107,10 +110,10 @@ export async function renderPanel(root, { query }, panel) {
       // What this panel holds, so nobody has to infer it from the title. The
       // cadre one especially: knowing instructors cannot see this list is the
       // difference between filing something here and filing it wrongly.
-      panel.id === PANELS.cadre.id && notice('info', 'Restricted area',
+      panel.id === PANELS.cadre.id && notice('info', 'Restricted space',
         el('p', {}, spaces.length > 1
           ? 'Feedback here is visible to cadre and the commander. The commander’s '
-            + 'own area is included below and marked. Instructors see none of it.'
+            + 'own space is included below and marked. Instructors see none of it.'
           : 'Feedback here is visible to cadre and the commander only. Instructors '
             + 'cannot see it, and cannot reach it through Drive either.')),
 
@@ -123,7 +126,7 @@ export async function renderPanel(root, { query }, panel) {
           el('span', { class: 'role-card__icon' }, icon('plus')),
           el('span', { class: 'role-card__title' }, 'Create Feedback'),
           el('span', { class: 'role-card__desc' },
-            'Build a standardized form, choose the class or event, and issue it to students.')),
+            'Build a standardized form, choose the class or event, and issue it to cadets.')),
         el('button', {
           type: 'button', class: 'role-card',
           onclick: () => navigate(`${panel.path}?tab=analysis`),
@@ -170,11 +173,11 @@ async function tabRequests(host, { panel, spaces } = {}) {
   const shown = spaces || view.spaces;
   const [catalog, counts] = await Promise.all([loadCatalog(), db.responseCounts()]);
   // The proxy already refused anything this account cannot read. This narrows
-  // what is left to the area the person is actually looking at.
+  // what is left to the space the person is actually looking at.
   const requests = catalog.requests.filter(inSpaces(shown));
   const { forms } = catalog;
   // Templates carry a space like any other form. A question set written for the
-  // cadre area stays there: the wording is the part worth protecting, and a
+  // cadre space stays there: the wording is the part worth protecting, and a
   // template is nothing but wording.
   const templates = forms.filter((f) => f.isTemplate).filter(inSpaces(shown));
   const state = { status: '', schoolYear: '', semester: '', asClass: '', search: '' };
@@ -193,8 +196,8 @@ async function tabRequests(host, { panel, spaces } = {}) {
     if (!visible.length) {
       mount(list, emptyState({
         iconName: 'send',
-        title: requests.length ? 'Nothing matches these filters' : 'No feedback forms yet',
-        message: requests.length ? null : 'Create one to put a form in front of your students.',
+        title: requests.length ? 'Nothing matches these filters' : 'No feedback requests yet',
+        message: requests.length ? null : 'Create one to put a form in front of your cadets.',
         action: el('button', {
           type: 'button', class: 'btn btn--primary',
           onclick: () => navigate(`/instructor/create/new?panel=${view.id}`),
@@ -241,7 +244,7 @@ async function tabRequests(host, { panel, spaces } = {}) {
   const years = schoolYears();
   remount(host, 
     el('div', { class: 'row row--between row--wrap', style: { marginBottom: 'var(--sp-4)' } },
-      el('h2', { class: 'section-title', style: { margin: '0' } }, 'Feedback forms'),
+      el('h2', { class: 'section-title', style: { margin: '0' } }, 'Feedback requests'),
       el('button', {
         type: 'button', class: 'btn btn--primary',
         onclick: () => navigate(`/instructor/create/new?panel=${view.id}`),
@@ -332,9 +335,9 @@ async function tabStudents(host) {
     if (!rows.length) {
       remount(table, emptyState({
         iconName: 'users',
-        title: students.length ? 'No students match' : 'No student accounts yet',
+        title: students.length ? 'No cadets match' : 'No cadet accounts yet',
         message: students.length ? 'Try a different filter.'
-          : 'A database administrator creates student accounts and usernames.',
+          : 'A database administrator creates cadet accounts and usernames.',
         action: el('button', {
           type: 'button', class: 'btn btn--primary', onclick: () => navigate('/admin'),
         }, icon('database'), 'Open Database Administration'),
@@ -360,11 +363,11 @@ async function tabStudents(host) {
 
   remount(host, 
     el('div', { class: 'row row--between row--wrap', style: { marginBottom: 'var(--sp-4)' } },
-      el('h2', { class: 'section-title', style: { margin: '0' } }, `Students (${students.length})`),
+      el('h2', { class: 'section-title', style: { margin: '0' } }, `Cadets (${students.length})`),
       el('button', { type: 'button', class: 'btn btn--sm', onclick: () => navigate('/admin') },
         icon('database'), 'Manage accounts')),
-    notice('info', 'Usernames are how students identify themselves',
-      el('p', {}, 'A student types their username on the feedback form. It is checked against this '
+    notice('info', 'Usernames are how cadets identify themselves',
+      el('p', {}, 'A cadet types their username on the feedback form. It is checked against this '
         + 'list at submission, and each username can submit a given form only once.')),
     el('div', { class: 'card', style: { padding: 'var(--sp-4)', margin: 'var(--sp-4) 0' } },
       el('div', { class: 'filters' },

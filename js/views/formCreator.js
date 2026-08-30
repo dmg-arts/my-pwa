@@ -227,7 +227,7 @@ async function drawCreator(root, params, panel) {
           placeholder: 'e.g. AS200 Leadership Lab — Drill Block 3',
           oninput: (e) => { draft.eventName = e.target.value; },
         }),
-        { required: true, hint: 'What students will see at the top of their list.' }),
+        { required: true, hint: 'What cadets will see at the top of their list.' }),
 
       spacePicker(draft),
       subjectPicker(draft, staff),
@@ -248,7 +248,7 @@ async function drawCreator(root, params, panel) {
         field('Opens', el('input', {
           class: 'input', type: 'date', value: toDateInput(draft.opensAt),
           onchange: (e) => { draft.opensAt = fromDateInput(e.target.value); },
-        }), { hint: 'Hidden from students until this date.' }),
+        }), { hint: 'Hidden from cadets until this date.' }),
         field('Due', el('input', {
           class: 'input', type: 'date', value: toDateInput(draft.dueAt),
           onchange: (e) => { draft.dueAt = fromDateInput(e.target.value, true); },
@@ -268,7 +268,7 @@ async function drawCreator(root, params, panel) {
         el('span', {},
           el('span', { class: 'check__text' }, 'Keep responses anonymous'),
           el('span', { class: 'check__desc', style: { display: 'block' } },
-            'Students are signed in, so the app can check them off and stop a second submission — '
+            'Cadets are signed in, so the app can check them off and stop a second submission — '
             + 'but their name is written to a separate receipt file, never beside their answers.'))));
   }
 
@@ -318,14 +318,14 @@ async function drawCreator(root, params, panel) {
       mount(warningHost, notice('warn', 'This form will never show results',
         el('p', {}, `It is anonymous and goes to ${pluralize(size, 'student')}, but anonymous `
           + `results stay hidden until ${PRIVACY.minResponsesToShow} people have responded — `
-          + 'otherwise a single answer can be traced back by elimination. Add more students, or '
+          + 'otherwise a single answer can be traced back by elimination. Add more cadets, or '
           + 'turn off anonymity so the feedback is attributed and visible.')));
     }
 
     mount(card,
       el('div', { class: 'choice-list' },
-        choice('all', 'Everyone at this AS level', 'Any student matching the AS level above.'),
-        choice('some', 'Selected students', 'Choose individually. At least one is required.')),
+        choice('all', 'Everyone at this AS level', 'Any cadet matching the AS level above.'),
+        choice('some', 'Selected cadets', 'Choose individually. At least one is required.')),
       picker,
       warningHost);
 
@@ -355,7 +355,7 @@ async function drawCreator(root, params, panel) {
 
       if (!rows.length) {
         mount(list, el('p', { class: 'muted', style: { padding: 'var(--sp-3)' } },
-          students.length ? 'No students match.' : 'No student accounts yet — create them in Database Administration.'));
+          students.length ? 'No cadets match.' : 'No cadet accounts yet — create them in Database Administration.'));
       }
 
       for (const student of rows) {
@@ -491,7 +491,7 @@ async function drawCreator(root, params, panel) {
         el('span', { class: 'mono faint' }, String(n))));
     }
     return el('div', {},
-      el('div', { class: 'field__label' }, 'What students will see'),
+      el('div', { class: 'field__label' }, 'What cadets will see'),
       row,
       el('div', { class: 'field__hint' },
         'Cadets choose a word. The number is stored for analysis and is never shown to them.'));
@@ -522,7 +522,7 @@ async function drawCreator(root, params, panel) {
       el('button', { type: 'button', class: 'btn', onclick: preview }, icon('eye'), 'Preview'),
       el('button', { type: 'button', class: 'btn', onclick: () => save('draft') }, 'Save draft'),
       el('button', { type: 'button', class: 'btn btn--primary', onclick: () => save('open') },
-        icon('send'), 'Issue to students'));
+        icon('send'), 'Issue to cadets'));
   }
 
   /** Stores just the questions, for reuse next term. */
@@ -584,7 +584,7 @@ async function drawCreator(root, params, panel) {
     const blank = draft.questions.findIndex((q) => !q.label.trim());
     if (blank >= 0) return `Question ${blank + 1} has no text.`;
     if (draft.audience === 'some' && !draft.assignedUsernames.length) {
-      return 'Select at least one student, or switch to everyone.';
+      return 'Select at least one cadet, or switch to everyone.';
     }
     return null;
   }
@@ -647,7 +647,7 @@ async function drawCreator(root, params, panel) {
       }, { expectRev: draft.requestRev });
       resetFormDraft();
       toast(status === 'open'
-        ? `${request.feedbackId} issued to students.`
+        ? `${request.feedbackId} issued to cadets.`
         : `${request.feedbackId} saved as a draft.`, 'ok');
       return navigate(`${panel.path}?tab=requests`);
     } catch (err) {

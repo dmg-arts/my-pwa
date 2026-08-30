@@ -23,11 +23,14 @@ import { connection } from './state.js';
 import { db } from './storage/index.js';
 import {
   fetchBundle, fetchCatalog, fetchResponses, fetchAllResponses, fetchRoster, fetchAudit,
+  fetchPeople,
   saveFormViaProxy, saveRequestViaProxy, deleteFormViaProxy, deleteRequestViaProxy,
   deleteResponseViaProxy, createAccountViaProxy, updateAccountViaProxy,
   deleteAccountViaProxy, rolloverViaProxy, recordAuditViaProxy,
 } from './storage/proxy.js';
 import { currentIdToken, currentUser, IDENTITY_CHANGED } from './session.js';
+import { ROLES } from './config.js';
+import { peopleScope } from './people-scope.js';
 import { recent as recentAudit, record as recordAuditDirect } from './audit.js';
 
 /** True when this detachment routes people through the submission proxy. */
@@ -234,6 +237,36 @@ export async function loadOverview() {
     return fetchOverview(proxyUrl(), token());
   }
   return { org: await db.getOrg(), stats: await db.stats() };
+}
+
+/**
+ * The By-instructor view, narrowed to what this account may see.
+ *
+ * In proxy mode the server does the narrowing and this is one call. In direct
+ * mode there is no server to do it, so the same rule runs here over the local
+ * reads — a lens, not a boundary, which is the same thing direct mode already
+ * means for every other read. `js/people-scope.js` says so at more length.
+ */
+export async function loadPeople() {
+  if (usingProxy()) return fetchPeople(proxyUrl(), token());
+
+  const me = currentUser();
+  const [catalog, responses, roster] = await Promise.all([
+    loadCatalog(), db.listAllResponses(), loadRoster(),
+  ]);
+  const staffAll = roster.filter((a) => (a.roles || []).some((r) => r !== ROLES.student));
+  const scope = peopleScope(me?.roles || [], me?.username || '',
+    new Map(roster.map((a) => [a.username, a])));
+
+  const requests = catalog.requests.filter((r) => scope.allows(r));
+  const keep = new Set(requests.map((r) => r.id));
+  return {
+    requests,
+    forms: catalog.forms,
+    responses: responses.filter((r) => keep.has(r.requestId)),
+    staff: staffAll.filter((a) => scope.allowsSubject(a.username)),
+    tier: scope.tier,
+  };
 }
 
 export async function loadRoster() {

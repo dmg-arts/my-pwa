@@ -33,14 +33,23 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { SECTIONS, spoken } from './script.mjs';
+import { CARDS } from './cards.mjs';
 
 const OUT = path.resolve('tools/video/out');
 const RAW = path.join(OUT, 'raw');
 const WORK = path.join(OUT, 'work');
 const FINAL = path.join(OUT, '9thirtyone-walkthrough.mp4');
 
-/** Chosen from the voices installed here. See PLAN.md on upgrading it. */
-const VOICE = process.env.VOICE || 'Daniel';
+/**
+ * Chosen from the voices installed here.
+ *
+ * Was Daniel (en_GB), the best of the *legacy* voices and still audibly a 2010
+ * satnav. Allison is one of Apple's Enhanced voices, and en_US, which suits an
+ * AFROTC audience better anyway. `say -v '?'` lists what is installed; the
+ * Premium voices are a further step up and download by hand from System
+ * Settings → Accessibility → Spoken Content → System Voice → Manage Voices.
+ */
+const VOICE = process.env.VOICE || 'Allison (Enhanced)';
 
 /** System Chrome, as the recorder uses — Playwright's own build is not installed. */
 const CHROME = process.env.CHROME_PATH || [
@@ -88,9 +97,25 @@ for (const section of SECTIONS) {
  * ------------------------------------------------------------------ */
 
 const titled = SECTIONS.filter((s) => s.title);
-if (titled.length) {
+const carded = SECTIONS.filter((s) => s.card);
+if (titled.length || carded.length) {
   const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   const page = await (await browser.newContext({ viewport: { width: W, height: H } })).newPage();
+
+  // The why chapter's stills. Same browser, same canvas as the title cards —
+  // the only difference is that these are held for as long as the line takes
+  // rather than a fixed beat, because they carry text a viewer has to read.
+  for (const section of carded) {
+    const html = CARDS[section.card];
+    if (!html) {
+      console.error(`  unknown card: "${section.card}" — see tools/video/cards.mjs`);
+      process.exit(1);
+    }
+    await page.setContent(html, { waitUntil: 'load' });
+    await page.screenshot({ path: path.join(WORK, `${section.id}-card.png`) });
+  }
+  if (carded.length) console.log(`Cards: ${carded.length}`);
+
   for (const section of titled) {
     await page.setContent(`
       <style>
@@ -120,8 +145,8 @@ if (titled.length) {
 
 const parts = [];
 for (const section of SECTIONS) {
-  const clip = path.join(RAW, `${section.clip}.webm`);
-  if (!fs.existsSync(clip)) {
+  const clip = section.clip ? path.join(RAW, `${section.clip}.webm`) : null;
+  if (clip && !fs.existsSync(clip)) {
     console.error(`  missing clip: ${clip} — run record.mjs first`);
     process.exit(1);
   }
@@ -134,6 +159,18 @@ for (const section of SECTIONS) {
       '-t', String(TITLE_SECONDS), '-r', '30',
       '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', card]);
     parts.push(card);
+  }
+
+  // A card section is a still under its own narration: no footage to fit, so
+  // the length is simply how long the line takes to say.
+  if (section.card) {
+    const body = path.join(WORK, `${section.id}-body.mp4`);
+    ff(['-loop', '1', '-i', path.join(WORK, `${section.id}-card.png`), '-i', section.audio,
+      '-t', section.spokenFor.toFixed(2), '-r', '30',
+      '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', body]);
+    parts.push(body);
+    console.log(`  ${section.id.padEnd(19)} card              narration ${section.spokenFor.toFixed(1)}s`);
+    continue;
   }
 
   // The phone clip is a tall sliver; centre it on the same canvas as the rest
@@ -178,7 +215,11 @@ const total = seconds(FINAL);
 const mins = Math.floor(total / 60);
 console.log(`\n${FINAL}`);
 console.log(`${mins}:${String(Math.round(total % 60)).padStart(2, '0')}  (${total.toFixed(1)}s)`);
-if (total < 270 || total > 330) {
-  console.log('Not close to five minutes — adjust the narration in script.mjs, which is what');
-  console.log('drives the length, rather than the holds in record.mjs.');
+// ~6:30: the why chapter, then the walkthrough. Widened from the old 4:30–5:30
+// when the opening chapter was added.
+if (total < 360 || total > 420) {
+  console.log('Not close to six and a half minutes. Read the per-section lines above before');
+  console.log('editing anything: a clip section lasts max(footage, narration), so where footage');
+  console.log('is the larger number, trimming a sentence changes nothing and the holds in');
+  console.log('record.mjs are the lever. Card sections are narration-length by definition.');
 }

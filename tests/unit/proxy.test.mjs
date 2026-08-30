@@ -258,7 +258,7 @@ check('a request cannot be filed into a space the caller cannot reach', () => {
   if (!/mayReach\(account, space\)/.test(fn)) {
     throw new Error('the target space is not checked against the caller');
   }
-  if (!/cannot be moved between areas/.test(fn)) {
+  if (!/cannot be moved between spaces/.test(fn)) {
     throw new Error('an existing request can be moved between spaces, carrying its responses');
   }
 });

@@ -3,14 +3,14 @@
  *
  * Cadets sign in with the Google account their detachment already mails them
  * at. That sign-in is what makes a submission receipt mean something: without
- * it, "one submission per student" is only as good as the honesty of whoever
+ * it, "one submission per cadet" is only as good as the honesty of whoever
  * typed the name, and anyone could burn a classmate's single submission.
  *
  * On anonymity: signing in identifies the cadet well enough to write a
  * submission *receipt* and to stop a second attempt. The identity is then
  * dropped — an anonymous response record carries no name and no email, so
  * nothing links an answer to a person. Receipts live in a different folder from
- * responses, and are filed under the roster handle rather than the email.
+ * responses, and are filed under the roster username rather than the email.
  */
 
 import {
@@ -40,7 +40,7 @@ import { renderForm, collectAnswers, showMissing } from '../forms.js';
 function requireStudent(root, render) {
   const session = currentUser();
   if (session?.roles?.includes(ROLES.student)) return render(session);
-  return renderLogin(root, ROLES.student, 'Student sign-in', render);
+  return renderLogin(root, ROLES.student, 'Cadet sign-in', render);
 }
 
 /* ------------------------------------------------------------------ *

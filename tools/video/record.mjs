@@ -296,7 +296,7 @@ async function seedDetachment(page, { withResponses = true } = {}) {
       // Deliberately skipping the first cadet: she is the one the student
       // section signs in as, and if she has already answered, her list opens on
       // the cadre and commander requests instead of the ordinary one. Both are
-      // correct — a cadet answers requests from every area — but it is a
+      // correct — a cadet answers requests from every space — but it is a
       // confusing first thing to show in a walkthrough about who sees what.
       for (const [email] of cadets.slice(1, 6)) {
         await m.db.addReceipt('req_demo', (await a.findByEmail(email)).username);
@@ -362,9 +362,9 @@ const SECTIONS = [
 
       // The three places a detachment's records can live.
       await page.waitForSelector('.choice-list');
-      await hold(page, 2.4);
+      await hold(page, 1.8);
       await moveTo(page, '.choice-list label', { nth: 0 });
-      await hold(page, 1.4);
+      await hold(page, 1.2);
       await click(page, 'input[value="local"]');
       await click(page, '.wizard .btn--primary');
 
@@ -374,18 +374,14 @@ const SECTIONS = [
 
       // The folder structure it creates: the database, in plain files.
       await page.waitForSelector('.tree');
-      await hold(page, 3.4);
+      await hold(page, 3.0);
       await scroll(page, 220);
-      await hold(page, 2.0);
-      await click(page, '.wizard .btn--lg', { settle: 2.0 });
+      await hold(page, 2.4);
+      await click(page, '.wizard .btn--lg', { settle: 1.8 });
 
       await page.waitForSelector('.role-grid', { timeout: 15000 });
       await cursor(page);
-      await hold(page, 3.4);
-      await moveTo(page, '.role-card', { nth: 0 });
-      await hold(page, 2.2);
-      await moveTo(page, '.role-card', { nth: 1 });
-      await hold(page, 2.0);
+      await hold(page, 1.6);
     },
   },
   {
@@ -395,19 +391,19 @@ const SECTIONS = [
       await prepare(page);
       // What a cadet actually receives: a link, and nothing to configure.
       await go(page, '/join?c=000000000000-9thirtyonedemo&f=demo&n=AFROTC%20Detachment%20025&p=AKfycbxDEMO',
-        { settle: 3.2 });
+        { settle: 2.6 });
       await scroll(page, 180);
-      await hold(page, 2.2);
+      await hold(page, 1.8);
 
       // The sign-in gate, with Google's own button.
-      await go(page, '/student', { settle: 2.6 });
+      await go(page, '/student', { settle: 2.2 });
       await signInAs(page, PEOPLE.student);
-      await go(page, '/student', { settle: 2.4 });
+      await go(page, '/student', { settle: 2.0 });
       // Only what is assigned to them, filtered.
       await moveTo(page, '.filters');
-      await hold(page, 2.6);
-      await moveTo(page, '.list__item');
       await hold(page, 2.0);
+      await moveTo(page, '.list__item');
+      await hold(page, 1.8);
     },
   },
   {
@@ -427,10 +423,10 @@ const SECTIONS = [
       await scroll(page, 300, 1.8);
       await hold(page, 2.6);
       await click(page, '.scale__opt', { nth: 12, settle: 1.8 });
-      await scroll(page, 340, 2.0);
-      await hold(page, 3.4);
-      await scroll(page, 320, 2.0);
-      await hold(page, 3.0);
+      await scroll(page, 340, 1.8);
+      await hold(page, 2.8);
+      await scroll(page, 320, 1.8);
+      await hold(page, 2.6);
     },
   },
   {
@@ -450,18 +446,16 @@ const SECTIONS = [
       await hold(page, 2.6);
 
       // The analysis, which is the part worth watching.
-      await go(page, '/instructor?tab=analysis', { settle: 4.0 });
-      await hold(page, 2.6);
-      await scroll(page, 400, 2.2);
-      await hold(page, 4.0);          // the distribution
-      await scroll(page, 480, 2.2);
-      await hold(page, 4.2);          // the split called out
-      await scroll(page, 520, 2.2);
-      await hold(page, 4.0);          // written answers
-      await scroll(page, 560, 2.2);
-      await hold(page, 4.2);          // the safety screen
-      await scroll(page, 520, 2.2);
-      await hold(page, 3.4);          // who still owes feedback
+      await go(page, '/instructor?tab=analysis', { settle: 3.0 });
+      await hold(page, 1.8);
+      await scroll(page, 400, 1.8);
+      await hold(page, 3.0);          // the distribution
+      await scroll(page, 480, 1.8);
+      await hold(page, 3.4);          // the split called out
+      await scroll(page, 520, 1.8);
+      await hold(page, 3.0);          // written answers
+      await scroll(page, 560, 1.8);
+      await hold(page, 3.6);          // the safety screen
     },
   },
   {
@@ -494,16 +488,16 @@ const SECTIONS = [
     async run(page) {
       await prepare(page);
       await signInAs(page, PEOPLE.commander);
-      await go(page, '/cadre?tab=requests', { settle: 2.8 });
-      await scroll(page, 380, 2.0);
-      await hold(page, 3.0);          // the commander's own area, badged
+      await go(page, '/cadre?tab=requests', { settle: 2.4 });
+      await scroll(page, 380, 1.8);
+      await hold(page, 2.2);          // the commander's own space, badged
 
-      await go(page, '/instructor?tab=people', { settle: 3.4 });
-      await hold(page, 2.4);
+      await go(page, '/instructor?tab=people', { settle: 2.6 });
+      await hold(page, 1.8);
       // Somebody with enough responses to be summarised.
-      await click(page, 'tbody tr', { nth: 0, settle: 3.2 });
-      await scroll(page, 300, 1.8);
-      await hold(page, 2.4);
+      await click(page, 'tbody tr', { nth: 0, settle: 2.6 });
+      await scroll(page, 300, 1.6);
+      await hold(page, 1.8);
 
       // And somebody under the threshold, where it refuses to answer.
       await page.evaluate(() => window.scrollTo(0, 0));
@@ -522,21 +516,19 @@ const SECTIONS = [
     async run(page) {
       await prepare(page);
       await signInAs(page, PEOPLE.admin);
-      await go(page, '/admin', { settle: 3.0 });
-      await scroll(page, 320, 2.0);
-      await hold(page, 3.0);          // the roster, and what each person may do
+      await go(page, '/admin', { settle: 2.6 });
+      await scroll(page, 320, 1.8);
+      await hold(page, 2.4);          // the roster, and what each person may do
 
       // Getting people set up: one link, or a code on a screen.
-      await go(page, '/admin/invite', { settle: 3.4 });
-      await scroll(page, 300, 2.0);
-      await hold(page, 3.4);
+      await go(page, '/admin/invite', { settle: 2.6 });
+      await scroll(page, 300, 1.8);
+      await hold(page, 2.6);
 
       // The activity log.
-      await go(page, '/instructor?tab=database', { settle: 2.6 });
-      await scroll(page, 620, 2.4);
-      await hold(page, 3.6);          // the activity log
-      await scroll(page, 520, 2.2);
-      await hold(page, 4.0);          // the anonymised backup export
+      await go(page, '/instructor?tab=database', { settle: 2.4 });
+      await scroll(page, 620, 2.0);
+      await hold(page, 3.2);          // the activity log
     },
   },
   {
@@ -545,11 +537,11 @@ const SECTIONS = [
     async run(page) {
       await prepare(page);
       await signInAs(page, PEOPLE.commander);
-      await go(page, '/settings', { settle: 3.2 });
-      await scroll(page, 360, 2.2);
-      await hold(page, 3.4);
-      await go(page, '/home', { settle: 4.5 });
-      await hold(page, 4.0);
+      await go(page, '/settings', { settle: 2.4 });
+      await scroll(page, 360, 1.8);
+      await hold(page, 2.0);
+      await go(page, '/home', { settle: 3.0 });
+      await hold(page, 2.4);
     },
   },
 ];

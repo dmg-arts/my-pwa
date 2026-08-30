@@ -807,7 +807,7 @@ check('an instructor cannot delete a form they cannot see', () => {
   }
 });
 
-check('a form cannot be pulled out of its area by overwriting it', () => {
+check('a form cannot be pulled out of its space by overwriting it', () => {
   const proxy = detachment();
   proxy.post({ action: 'saveForm', idToken: as('commander'), form: {
     id: 'form_locked', name: 'Review', space: 'commander', sections: [] } });
@@ -817,7 +817,7 @@ check('a form cannot be pulled out of its area by overwriting it', () => {
   if (out.ok) throw new Error('a form was moved into the shared area by an instructor');
 });
 
-check('a cadet still gets the form for a request in any area', () => {
+check('a cadet still gets the form for a request in any space', () => {
   // The scoping must not break the one reader who legitimately spans spaces.
   const proxy = detachment();
   proxy.post({ action: 'saveForm', idToken: as('commander'), form: {
@@ -909,6 +909,112 @@ check('the local pre-check never replaces the real one', () => {
 
   const out = proxy.post({ action: 'roster', idToken: jwt });
   if (out.ok) throw new Error('a locally well-formed but unverified token was accepted');
+});
+
+/* ------------------------------------------------------------------ *
+ * the By-instructor tiers
+ *
+ * An instructor sees their own results, cadre see the instructors they
+ * oversee, a commander sees everyone. The narrowing happens in `readPeople`
+ * before anything is returned, so these assert the *payload* — a check on what
+ * the screen renders would pass just as happily with a client-side filter over
+ * everybody's records, which is the thing this must not be.
+ * ------------------------------------------------------------------ */
+
+/** Two instructors, a cadre member and a commander, each with feedback about them. */
+function oversight(extraAccounts = [], extraRequests = []) {
+  const people = [
+    account('teachone', 'one@x.edu', ['instructor']),
+    account('teachtwo', 'two@x.edu', ['instructor']),
+    account('cadre', 'cadre@x.edu', ['cadre']),
+    account('commander', 'commander@x.edu', ['commander']),
+    ...extraAccounts,
+  ];
+  const tokens = {};
+  for (const person of people) tokens[`tok-${person.username}`] = validToken(person.email);
+  const proxy = createProxy({ tokens });
+  seedRoster(proxy.root, people);
+
+  // subject is who the feedback is about; createdBy is who issued it.
+  for (const [id, subject, createdBy] of [
+    ['req_one', 'teachone', 'teachone'],
+    ['req_two', 'teachtwo', 'teachtwo'],
+    ['req_cadre_subject', 'cadre', 'commander'],
+    ['req_issued_by_one', 'teachtwo', 'teachone'],
+    ...extraRequests,
+  ]) {
+    proxy.root.put(['requests'], `${id}.json`, {
+      id, formId: 'form_1', title: id, status: 'open', asClass: 'AS200',
+      anonymous: true, space: 'shared', subject, createdBy, assignedUsernames: [],
+    });
+  }
+  proxy.root.put(['forms'], 'form_1.json', { id: 'form_1', name: 'Form', sections: [] });
+  return proxy;
+}
+
+const peopleIds = (proxy, who) =>
+  (proxy.post({ action: 'people', idToken: as(who) }).people?.requests || [])
+    .map((r) => r.id).sort().join(',');
+
+const peopleStaff = (proxy, who) =>
+  (proxy.post({ action: 'people', idToken: as(who) }).people?.staff || [])
+    .map((a) => a.username).sort().join(',');
+
+check('an instructor gets only what is about them, or what they issued', () => {
+  const seen = peopleIds(oversight(), 'teachone');
+  if (seen !== 'req_issued_by_one,req_one') throw new Error(`saw ${seen}`);
+});
+
+check('an instructor does not get another instructor\'s results', () => {
+  const seen = peopleIds(oversight(), 'teachone');
+  if (seen.includes('req_two')) throw new Error('req_two came back');
+});
+
+check('cadre get every instructor, and themselves', () => {
+  const seen = peopleIds(oversight(), 'cadre');
+  // req_cadre_subject is about the cadre member, so it is theirs to see.
+  if (seen !== 'req_cadre_subject,req_issued_by_one,req_one,req_two') {
+    throw new Error(`saw ${seen}`);
+  }
+});
+
+check('a commander gets everything, cadre subjects included', () => {
+  const seen = peopleIds(oversight(), 'commander');
+  if (seen !== 'req_cadre_subject,req_issued_by_one,req_one,req_two') {
+    throw new Error(`saw ${seen}`);
+  }
+});
+
+check('cadre are not treated as instructor subjects by another cadre member', () => {
+  // The trap: ROLE_IMPLIES makes cadre imply instructor, so a tier computed on
+  // effective roles would hand every cadre member each other's results. Two
+  // cadre, and neither may see the other.
+  const proxy = oversight(
+    [account('cadretwo', 'cadretwo@x.edu', ['cadre'])],
+    [['req_cadre_two', 'cadretwo', 'commander']],
+  );
+
+  const seen = peopleIds(proxy, 'cadre');
+  if (seen.includes('req_cadre_two')) throw new Error('a cadre member saw another cadre member');
+});
+
+check('the staff list is narrowed too, so it cannot enumerate the excluded', () => {
+  const proxy = oversight();
+  if (peopleStaff(proxy, 'teachone') !== 'teachone') {
+    throw new Error(`instructor saw staff: ${peopleStaff(proxy, 'teachone')}`);
+  }
+  if (peopleStaff(proxy, 'cadre') !== 'cadre,teachone,teachtwo') {
+    throw new Error(`cadre saw staff: ${peopleStaff(proxy, 'cadre')}`);
+  }
+  if (peopleStaff(proxy, 'commander') !== 'cadre,commander,teachone,teachtwo') {
+    throw new Error(`commander saw staff: ${peopleStaff(proxy, 'commander')}`);
+  }
+});
+
+check('a cadet cannot call the people action at all', () => {
+  const proxy = detachment();
+  const out = proxy.post({ action: 'people', idToken: as('cadet') });
+  if (out.ok) throw new Error('a cadet reached the By-instructor data');
 });
 
 console.log(failures ? `\n${failures} behaviour check(s) failed.` : '\nAll proxy behaviour checks passed.');

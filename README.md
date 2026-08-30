@@ -1,19 +1,23 @@
 # 9ThirtyOne
 
-A progressive web app for the student ↔ instructor feedback cycle, built for
+A progressive web app for the cadet ↔ instructor feedback cycle, built for
 AFROTC detachments. Every organization owns its own data: the app has no server
 and no shared database, and writes only to storage the detachment controls.
 
-- **Student** — signs in with their Google account, then sees the feedback
+- **Cadet** — signs in with their Google account, then sees the feedback
   assigned to them, filtered by school year, semester, class and due date.
 - **Instructor Panel** — behind an instructor sign-in. **Create Feedback**
   builds a standardized form; **Feedback Response and Analysis** filters
   responses, runs statistics on the ratings, reads the written answers, and
   screens everything for safety concerns.
 - **Cadre Panel** — the same screen, pointed at the restricted folders. Cadre
-  see feedback instructors cannot; a commander also sees their own area inside
+  see feedback instructors cannot; a commander also sees their own space inside
   it. Not a filtered list: the folders are separate, and the detachment's own
   server decides who may open which.
+- **By instructor** — the same records grouped by the person they reflect on, in
+  either panel. An instructor sees their own results, cadre see the instructors
+  they oversee, a commander sees everyone. `js/people-scope.js` holds the rule
+  and is explicit about where it stops being a boundary.
 - **Database Administration** — behind an admin sign-in. Keeps the roster of
   Google accounts that may use the app, and what each one is allowed to do.
 - **Settings** — where the database lives, plus light/dark, color-vision
@@ -23,19 +27,21 @@ and no shared database, and writes only to storage the detachment controls.
 
 ## Documentation
 
-Two documents live in `docs/`, generated from the real app:
+`docs/` holds four things. Start with `WHY.md` — everything else assumes it.
 
 | File | For | Contents |
 |---|---|---|
+| `WHY.md` | Cadre and commanders | Why this exists: the centralized detachment model and what it costs, the cadet-instructor gap, how the app works in plain English, and the guarantees with their limits. **The argument the other documents are built on.** |
+| `STYLE.md` | Anyone writing copy | The content lexicon — terminology, object definitions, voice, and the claims that must not be softened. Applied by hand; there is no build step that reads it. |
 | `9ThirtyOne-Setup-Guide.pdf` | Whoever installs it | 26 pages: creating the detachment's Google account, the Cloud setup, publishing, the wizard, the submission server, the roster, join links, a verification checklist, and troubleshooting. |
-| `9ThirtyOne-Introduction.pdf` | Briefing cadre or a commander | 21 slides with speaker notes: what it does, how each role uses it, and the anonymity and safety design. |
+| `9ThirtyOne-Introduction.pdf` | Briefing cadre or a commander | 22 slides with speaker notes: why it exists, what it does, how each role uses it, and the anonymity and safety design. |
 
 `privacy.html` ships alongside the app and deploys to the same domain, which is
 where Google's OAuth verification requires it to be.
 
-Both are rebuilt by the scripts in `tools/docs/` — see the README there. Every
-screenshot in them is the live app with seeded data, nothing mocked up, so the
-documents cannot quietly drift from what the app does.
+The two PDFs are rebuilt by the scripts in `tools/docs/` — see the README there.
+Every screenshot in them is the live app with seeded data, nothing mocked up, so
+the documents cannot quietly drift from what the app does.
 
 ---
 
@@ -103,10 +109,10 @@ The chosen folder becomes the database. Each record is one JSON document.
 ```
 9ThirtyOne/
 ├── config/      org profile and shared settings
-├── users/       accounts — students, instructors, admins
+├── users/       accounts — cadets, instructors, admins
 ├── roster/      legacy roster (migrated into users/ automatically)
 ├── forms/       feedback form definitions
-├── requests/    feedback issued to students, each with a feedback ID
+├── requests/    feedback issued to cadets, each with a feedback ID
 ├── responses/   submitted feedback, one folder per form
 ├── receipts/    who submitted (kept apart from what they said)
 ├── reports/     exported reports
@@ -158,7 +164,7 @@ sharing settings.
 
 ---
 
-## The submission proxy
+## The submission server
 
 Optional, and the setting that decides whether "anonymous" means anonymous from
 *other cadets*. Deployment instructions are in `tools/proxy/README.md`.
@@ -220,7 +226,7 @@ here is a code that looks perfect and does not scan. Masks are forced rather
 than auto-chosen: mask *selection* legitimately differs between implementations
 and only changes which of eight valid codes you get.
 
-It carries the Google Client ID, the Drive folder, and the submission proxy if
+It carries the Google Client ID, the Drive folder, and the submission server if
 the detachment has one — so a cadet taps it, signs in once, and lands on their
 feedback with nothing typed. The proxy travels in the link because a cadet in
 proxy mode has no Drive access and therefore cannot read a shared setting to
@@ -281,7 +287,7 @@ Database Administration → **Add person** takes a name and the Google account
 email. **Import roster CSV** takes the same list the det already uses to mail
 cadets: a `name` column and an `email` column, optionally `class`.
 
-Each account also carries a lowercase **handle** (`alvarez.mia`), derived from
+Each account also carries a lowercase **username** (`alvarez.mia`), derived from
 the name. It is internal: submission receipts are filed under it, so it stays
 fixed when someone's email changes and their submission history survives a move
 between schools.
@@ -330,7 +336,7 @@ build refuses to load rather than being silently downgraded. Add one in
   cadet well enough to write a *receipt*, then is discarded. The response record
   carries no name, so nothing links an answer to a person. Receipts live in
   `receipts/`, a different folder from `responses/`.
-- **Student identity is authenticated.** Cadets sign in, so a submission receipt
+- **Cadet identity is authenticated.** Cadets sign in, so a submission receipt
   records a verified person rather than a typed claim, and nobody can burn a
   classmate's single submission.
 - **No device-local flag grants access.** There used to be one — development
@@ -373,7 +379,7 @@ attached, so withholding would cost visibility and buy nothing.
 Three different problems, handled three different ways.
 
 **Submissions cannot collide at all.** Each writes only its own response file
-and its own receipt file. This is why receipts are one file per student rather
+and its own receipt file. This is why receipts are one file per cadet rather
 than one array per form: a shared array meant read-modify-write races that could
 silently drop a receipt, letting that cadet submit twice while showing as
 outstanding — and a lost receipt is the one loss nothing can rebuild, because an
@@ -391,7 +397,7 @@ from; if storage has moved on, the write is refused and the form creator shows
 both versions with an explicit choice — discard yours, or overwrite theirs.
 Account edits use the same revision but retry automatically, expressing the
 change rather than a precomputed list, so two admins editing *different*
-students both succeed instead of one erasing the other.
+cadets both succeed instead of one erasing the other.
 
 A per-path lock serialises all of this within one browser tab. That matters more
 than it sounds: without it, two operations in the same tab both read the old
@@ -566,7 +572,7 @@ js/
   forms.js              renders form templates and collects answers
   storage/
     index.js            facade — every view talks to this
-    proxy.js            the submission proxy client
+    proxy.js            the submission server client
     queue.js            offline write queue, replayed on reconnect
     drive.js            Google Drive REST + OAuth
     folder.js           File System Access API
@@ -578,7 +584,7 @@ js/
   qr.js                 QR encoder and SVG renderer, no dependencies
   data-source.js        one place that decides: proxy bundle, or read Drive direct
   panels.js             the two panels, and which folders each one shows
-  spaces.js             how the restricted areas are described to people
+  spaces.js             how the restricted spaces are described to people
   session.js            the signed-in session and the token proving it
   export-anon.js        the anonymised backup export
   audit.js              the activity log, append-only from the app's side
@@ -595,7 +601,7 @@ js/
     sign-in.js          the Google sign-in gate, shared by all three roles
     home.js             the three entry points + settings
     student.js          username filter, fill-out, one-submission guard
-    instructor.js       panel shell (both panels), forms, students, database
+    instructor.js       panel shell (both panels), forms, cadets, database
     formCreator.js      the standardized form builder
     analysis.js         filtering, statistics, completion tracking
     people.js           the commander's review, grouped by person
@@ -674,7 +680,7 @@ Roughly in dependency order. The first item gates several of the others.
    this is the largest change the project has had, and it is deliberately its
    own release. Two roles above instructor:
 
-   - **Cadre** — everything the Instructor Panel does, plus a cadre-only area
+   - **Cadre** — everything the Instructor Panel does, plus a cadre-only space
      instructors cannot see. A superset of instructor. Not automatically a
      Database admin; the two are separate and may be held together.
    - **Commander** — a superuser with no separate panel, but a locked space
@@ -709,7 +715,7 @@ Roughly in dependency order. The first item gates several of the others.
    1. Proxy serves cadre **reads**. Nothing user-visible; the foundation.
    2. Proxy serves cadre **writes** — at which point Drive OAuth leaves the app
       entirely and the verification problem goes with it.
-   3. Roles and locked folders — cadre area, commander area, the cap of two.
+   3. Roles and locked folders — cadre space, commander space, the cap of two.
 
    **All three shipped** as 0.7.0, 0.8.0 and 0.9.0.
 
@@ -757,7 +763,7 @@ Drive access moved behind the proxy, and the scope narrowed to `drive.file`.
 What follows is the reasoning, kept because it explains why setup creates the
 folder.
 
-The submission proxy already proved the pattern: Apps Script runs as the folder's
+The submission server already proved the pattern: Apps Script runs as the folder's
 owner, so cadets need no Drive access — only `openid email profile`, which is
 non-sensitive. **If cadre reads and writes also went through the proxy, nobody
 would need Drive OAuth at all**, and the app would request non-sensitive scopes
@@ -848,7 +854,7 @@ are filtered out of every proxy read.
 
 These are the ones actually blocking or shaping work, not idle curiosities.
 
-- **Is the submission proxy deployed for beta?** Until it is, every cadet needs
+- **Is the submission server deployed for beta?** Until it is, every cadet needs
   Editor access to the Drive folder and can therefore read every response in it.
   This decides whether feedback can honestly be described as private from other
   cadets.
@@ -904,7 +910,7 @@ Anyone picking this up should not build a "you said, we did" feature here.
 
 ### The rating scale
 
-**Students pick a word. The number behind it is what gets averaged, and they
+**Cadets pick a word. The number behind it is what gets averaged, and they
 never see it.** `SCALE_ANCHORS` in `js/config.js` defines both at once:
 
 ```

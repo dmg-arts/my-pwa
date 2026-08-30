@@ -1,7 +1,9 @@
 # Regenerating the documents
 
-Both files in `docs/` are generated from the running app, so every screenshot
-shows real behaviour with seeded data rather than a mock-up.
+The two **PDFs** in `docs/` are generated from the running app, so every
+screenshot shows real behaviour with seeded data rather than a mock-up. The two
+Markdown files beside them — `WHY.md` and `STYLE.md` — are written by hand and
+are not built by anything here.
 
 These scripts are for maintainers and are **not** needed to run 9ThirtyOne.
 They have dependencies the app itself does not: Playwright with a Chrome
@@ -97,7 +99,11 @@ reaching the PDF.
 
 ## Keeping them honest
 
-Both documents state how sign-in works, the three-response disclosure threshold,
-and the limits of the safety screen. If any of those change in `js/config.js`,
-update the documents in the same commit — a setup guide that contradicts the app
-is worse than none.
+The guide, the deck, `WHY.md` and `privacy.html` all state how sign-in works, the
+three-response disclosure threshold, and the limits of the safety screen. If any
+of those change in `js/config.js`, update all four in the same commit — a setup
+guide that contradicts the app is worse than none.
+
+`WHY.md` is the argument the other three are built on, and `STYLE.md` §4 lists
+the claims none of them may soften. Read both before rewording anything a
+detachment relies on.

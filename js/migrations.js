@@ -126,7 +126,7 @@ export const MIGRATIONS = [
 
   {
     to: 3,
-    describe: 'Receipts split into one file per student',
+    describe: 'Receipts split into one file per cadet',
     async run({ db, report }) {
       // v2 kept every receipt for a form in a single array. A whole flight
       // submitting at once meant concurrent read-modify-writes on that one
@@ -179,7 +179,7 @@ export const MIGRATIONS = [
       //
       // Second, an account with no email can no longer sign in — there is
       // nothing for a token to match. Those are flagged rather than deleted or
-      // deactivated: the record still carries a name, an AS level and the handle
+      // deactivated: the record still carries a name, an AS level and the username
       // its receipts are filed under, all of which an admin needs in order to
       // fix it by adding the address. `needsEmail` is what the admin console
       // lists under "cannot sign in yet".

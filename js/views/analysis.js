@@ -868,8 +868,8 @@ export async function renderAnalysis(host, { spaces = null } = {}) {
           !known
             ? el('div', { class: 'muted' },
               request.asClass
-                ? `No active student accounts at ${request.asClass}, so completion cannot be measured.`
-                : 'No active student accounts, so completion cannot be measured.')
+                ? `No active cadet accounts at ${request.asClass}, so completion cannot be measured.`
+                : 'No active cadet accounts, so completion cannot be measured.')
             : outstanding.length
               ? el('details', {},
                 el('summary', { class: 'muted' }, `${pluralize(outstanding.length, 'student')} outstanding`),

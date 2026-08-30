@@ -125,9 +125,9 @@ await page.reload({ waitUntil: 'networkidle' });
 // just for this screenshot and removed straight after. It is not a working
 // client; only the rendered button is wanted.
 await page.evaluate(() => import('/js/state.js').then(({ connection }) =>
-  connection.set({ clientId: '000000000000-topfeedbackdemo.apps.googleusercontent.com' })));
+  connection.set({ clientId: '000000000000-nine31demo.apps.googleusercontent.com' })));
 await page.reload({ waitUntil: 'networkidle' });
-await page.waitForSelector('.page-title:has-text("Student sign-in")');
+await page.waitForSelector('.page-title:has-text("Cadet sign-in")');
 await page.waitForTimeout(2500);
 await shot('student-signin');
 await page.evaluate(() => import('/js/state.js').then(({ connection }) =>
@@ -157,7 +157,7 @@ await shot('instructor-panel');
 
 /* ---------- cadre panel ---------- */
 // The same screen pointed at the restricted folders. Captured as a commander so
-// the commander's own area appears alongside the cadre one, badged — which is
+// the commander's own space appears alongside the cadre one, badged — which is
 // the whole point of the picture.
 await page.evaluate(async () => {
   const m = await import('/js/storage/index.js');
@@ -302,7 +302,7 @@ await page.evaluate(async () => {
   session.roles = ['admin', 'instructor'];
   sessionStorage.setItem('nine31.session.v1', JSON.stringify(session));
   connection.set({
-    clientId: '000000000000-topfeedbackdemo.apps.googleusercontent.com',
+    clientId: '000000000000-nine31demo.apps.googleusercontent.com',
     folderId: '1DemoFolderIdForTheScreenshotsOnly',
   });
 });

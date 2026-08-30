@@ -144,12 +144,12 @@ await step('a cadet is added to the roster by email', async () => {
   }
 });
 
-await step('a handle is derived so receipts have something stable to key on', async () => {
-  const handle = await page.evaluate(async ([email]) => {
+await step('a username is derived so receipts have something stable to key on', async () => {
+  const username = await page.evaluate(async ([email]) => {
     const a = await import('/js/auth.js');
     return (await a.findByEmail(email))?.username;
   }, [STUDENT_EMAIL]);
-  if (handle !== 'alvarez.mia') throw new Error(`handle was "${handle}"`);
+  if (username !== 'alvarez.mia') throw new Error(`username was "${username}"`);
 });
 
 await step('the same email cannot be added twice', async () => {
@@ -191,7 +191,7 @@ await step('a deactivated account cannot sign in', async () => {
   }, [STUDENT_EMAIL]);
 });
 
-await step('changing an email keeps the handle their receipts are filed under', async () => {
+await step('changing an email keeps the username their receipts are filed under', async () => {
   const after = await page.evaluate(async ([email]) => {
     const a = await import('/js/auth.js');
     const account = await a.findByEmail(email);
@@ -200,7 +200,7 @@ await step('changing an email keeps the handle their receipts are filed under', 
     return { moved: moved.username, back: back.username };
   }, [STUDENT_EMAIL]);
   if (after.moved !== 'alvarez.mia' || after.back !== 'alvarez.mia') {
-    throw new Error(`handle changed with the email: ${JSON.stringify(after)}`);
+    throw new Error(`username changed with the email: ${JSON.stringify(after)}`);
   }
 });
 if (shots) await page.screenshot({ path: `${shots}/m1-admin.png`, fullPage: true });
@@ -224,16 +224,16 @@ await step('a feedback form is issued', async () => {
   }
   await page.fill('input[placeholder^="e.g. AS200 Leadership"]', 'AS200 Drill Block 3');
   await page.selectOption('.filters select', 'AS200');
-  await page.click('.btn--primary:has-text("Issue to students")');
+  await page.click('.btn--primary:has-text("Issue to cadets")');
   await page.waitForSelector('.list__item', { timeout: 10000 });
 });
 
-/* ---------- student sign-in ---------- */
+/* ---------- cadet sign-in ---------- */
 await step('the student page requires a sign-in', async () => {
   await page.evaluate(() => sessionStorage.clear());
   await page.goto(`${BASE}#/student`, { waitUntil: 'networkidle' });
   await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForSelector('.page-title:has-text("Student sign-in")', { timeout: 8000 });
+  await page.waitForSelector('.page-title:has-text("Cadet sign-in")', { timeout: 8000 });
   if (await page.$('.list__item')) throw new Error('feedback was listed without a sign-in');
 });
 
@@ -400,7 +400,7 @@ await step('a v1 folder is migrated forward on load', async () => {
   }
   if (!result.migratedUser) throw new Error('roster student not converted to an account');
   // v4 leaves an account with no email flagged rather than deleted: it still
-  // carries the handle its receipts are filed under, which an admin needs.
+  // carries the username its receipts are filed under, which an admin needs.
   if (!result.migratedUser.needsEmail) throw new Error('emailless account not flagged by v4');
   if ('password' in result.migratedUser) throw new Error('a password field survived v4');
   console.log(`       ${result.ran[0]}`);
@@ -445,7 +445,7 @@ await step('home shows all three entries', async () => {
   await page.goto(`${BASE}#/home`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.role-grid', { timeout: 8000 });
   const text = await page.textContent('.role-grid');
-  for (const want of ['Student', 'Instructor Panel', 'Database Administration']) {
+  for (const want of ['Cadet', 'Instructor Panel', 'Database Administration']) {
     if (!text.includes(want)) throw new Error(`missing "${want}"`);
   }
 });
@@ -535,7 +535,7 @@ await step('an instructor cannot open the Cadre Panel', async () => {
   await page.waitForTimeout(1000);
   const text = await page.textContent('#view');
   // The sign-in gate, not the panel.
-  if (/Restricted area/.test(text)) throw new Error('an instructor reached the cadre panel');
+  if (/Restricted space/.test(text)) throw new Error('an instructor reached the cadre panel');
 });
 
 await step('the two panels show different feedback', async () => {
@@ -845,39 +845,48 @@ await step('cadre reads go to the proxy when one is configured, with the right a
 
 /* ---------- the commander's by-instructor review ---------- */
 
-await step('the By instructor tab is offered to commanders only', async () => {
+await step('the By instructor tab is offered to every panel role', async () => {
+  // It was commander-only. Reviewing the instructors under you is an oversight
+  // function and cadre have one, so the tab is open to all three and what it
+  // *contains* is narrowed by tier instead — which is asserted against the
+  // proxy payload in tests/proxy/behaviour.test.mjs, not from the pixels here.
   await signInAs(ADMIN_EMAIL, 'Capt Reyes', 'instructor');
-  await page.goto(`${BASE}#/instructor`, { waitUntil: 'networkidle' });
-  await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForSelector('[role=tablist]', { timeout: 12000 });
 
-  const asInstructor = await page.$$eval('[role=tab]', (n) => n.map((t) => t.textContent));
-  if (asInstructor.some((t) => /By instructor/.test(t))) {
-    throw new Error('an instructor was offered the commander tab');
-  }
-
-  await page.evaluate(() => {
-    const s = JSON.parse(sessionStorage.getItem('nine31.session.v1'));
-    s.roles = ['commander'];
-    sessionStorage.setItem('nine31.session.v1', JSON.stringify(s));
-  });
-  await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForSelector('[role=tablist]', { timeout: 12000 });
-  const asCommander = await page.$$eval('[role=tab]', (n) => n.map((t) => t.textContent));
-  if (!asCommander.some((t) => /By instructor/.test(t))) {
-    throw new Error('a commander was not offered the tab');
+  for (const roles of [['instructor'], ['cadre'], ['commander']]) {
+    await page.evaluate((next) => {
+      const s = JSON.parse(sessionStorage.getItem('nine31.session.v1'));
+      s.roles = next;
+      sessionStorage.setItem('nine31.session.v1', JSON.stringify(s));
+    }, roles);
+    await page.goto(`${BASE}#/instructor`, { waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForSelector('[role=tablist]', { timeout: 12000 });
+    const tabs = await page.$$eval('[role=tab]', (n) => n.map((t) => t.textContent));
+    if (!tabs.some((t) => /By instructor/.test(t))) {
+      throw new Error(`${roles.join('+')} was not offered the tab`);
+    }
   }
 });
 
-await step('asking for the tab by URL without the role lands elsewhere', async () => {
-  // Hiding it from the bar is not the same as refusing it.
+await step('an instructor opening the tab is told it is only their own', async () => {
+  // The tab no longer refuses anyone, so the guard that matters moved: the
+  // server narrows what comes back, and the screen has to say so rather than
+  // presenting one row as though it were the detachment's whole picture.
   await signInAs(ADMIN_EMAIL, 'Capt Reyes', 'instructor');
+  await page.evaluate(() => {
+    const s = JSON.parse(sessionStorage.getItem('nine31.session.v1'));
+    s.roles = ['instructor'];
+    sessionStorage.setItem('nine31.session.v1', JSON.stringify(s));
+  });
   await page.goto(`${BASE}#/instructor?tab=people`, { waitUntil: 'networkidle' });
   await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(1400);
   const text = await page.textContent('#view');
-  if (/By instructor|grouped by the person/.test(text)) {
-    throw new Error('an instructor reached the commander view by URL');
+  if (!/grouped by the person/.test(text)) {
+    throw new Error('an instructor could not open their own By-instructor view');
+  }
+  if (!/Your own results/.test(text)) {
+    throw new Error('the view did not say whose results these are');
   }
 });
 
@@ -1926,7 +1935,7 @@ await step('with the flag on, the panels still refuse a signed-out visitor', asy
     await page.waitForTimeout(700);
     const text = await page.textContent('#view');
     // The sign-in gate, not the panel.
-    if (/Feedback forms|Restricted area|Invite people/.test(text)) {
+    if (/Feedback requests|Restricted space|Invite people/.test(text)) {
       throw new Error(`${path} opened without a sign-in`);
     }
   }

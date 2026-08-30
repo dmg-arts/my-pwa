@@ -220,6 +220,18 @@ export async function fetchRoster(url, idToken) {
   return (await ask(url, idToken, { action: 'roster' })).users;
 }
 
+/**
+ * The By-instructor view, already narrowed to this account's people tier.
+ *
+ * Deliberately not assembled from `fetchCatalog` and `fetchAllResponses` with a
+ * filter over the top: that would put every instructor's records in every
+ * instructor's browser and hide them behind a predicate. The server decides
+ * what comes back — see `readPeople` in tools/proxy/Code.gs.
+ */
+export async function fetchPeople(url, idToken) {
+  return (await ask(url, idToken, { action: 'people' })).people;
+}
+
 export async function fetchAudit(url, idToken, months = 6) {
   return (await ask(url, idToken, { action: 'audit', months })).entries;
 }

@@ -260,7 +260,7 @@ def s01_title():
     block(s, M, Inches(2.85), Inches(11), Inches(1.25),
           [("9ThirtyOne", 58, True, WHITE, 0)], shrink=False)
     block(s, M, Inches(4.2), Inches(9.8), Inches(1.1),
-          [("The student and instructor feedback cycle,", 22, False, WHITE, 5),
+          [("The cadet and instructor feedback cycle,", 22, False, WHITE, 5),
            ("owned entirely by your detachment.", 22, False, WHITE, 0)], shrink=False)
     rect(s, M, Inches(5.72), Inches(1.15), Emu(28575), WHITE)
     block(s, M, Inches(6.0), Inches(10), Inches(0.45),
@@ -305,25 +305,60 @@ def s02_what():
 def s03_problem():
     s = slide()
     eyebrow(s, "Why it exists")
-    title(s, "Feedback nobody can act on")
+    title(s, "A detachment cannot run on a university's system",
+          "Which is the whole reason none of the ordinary tooling fits.")
 
-    points(s, M, Inches(2.3), Inches(5.9), Inches(3.9), [
-        "Paper forms get collected, stacked, and never counted.",
-        "Survey tools put cadet feedback on a company's servers.",
-        "An average hides the very thing you needed to see.",
-        "A disclosure of hazing can sit unread in a pile for weeks.",
-    ], size=18, gap=22)
+    points(s, M, Inches(2.5), Inches(5.9), Inches(3.9), [
+        "AFROTC is a centralized detachment model.",
+        "-One host facility, cadets from several Crosstown universities.",
+        "So no one university's IT system can serve the detachment.",
+        "-It has cadets at schools that system has never heard of.",
+        "So the detachment stands up a Det Google Account.",
+        "-Which solves communications, and loses everything else.",
+    ], size=17, gap=17)
 
-    rect(s, Inches(7.25), Inches(2.2), Inches(5.2), Inches(3.5), TINT, radius=0.04)
-    block(s, Inches(7.7), Inches(2.62), Inches(4.3), Inches(2.7),
-          [("What it replaces", 16, True, NAVY, 12),
-           ("One app that issues the form, collects the responses, runs the statistics, "
-            "reads the written answers, and flags anything a person needs to see today.",
-            15, False, INK, 12),
-           ("On a phone. Offline. At no cost.", 15, True, INK, 0)])
+    rect(s, Inches(7.25), Inches(2.2), Inches(5.2), Inches(3.9), TINT, radius=0.04)
+    block(s, Inches(7.7), Inches(2.55), Inches(4.3), Inches(3.2),
+          [("What that costs", 16, True, NAVY, 12),
+           ("No feedback system standardized across detachments.", 15, False, INK, 9),
+           ("Aerospace Studies runs through host university systems, "
+            "with varying degrees of return.", 15, False, INK, 9),
+           ("Leadership Laboratory has no capture at all.", 15, True, INK, 9),
+           ("Upperclassmen improvise on personal accounts — no oversight, "
+            "no archive, gone at graduation.", 15, False, INK, 0)])
     page_no(s)
-    notes(s, "Frame the problem before the product. The last bullet is the one a commander cares "
-             "about most.")
+    notes(s, "This is the slide that earns the rest. A university system comes with a course "
+             "platform, a survey tool, somewhere evaluations live; a Google account comes with "
+             "none of it. LLAB is the line to slow down on — it is where cadets lead cadets, the "
+             "part most worth measuring and the part with no instrumentation at all.")
+
+
+def s03b_instructors():
+    s = slide()
+    eyebrow(s, "Why it exists")
+    title(s, "Cadets are required to instruct. Nothing certifies them to.",
+          "The second gap, and the one feedback actually closes.")
+
+    points(s, M, Inches(2.5), Inches(5.9), Inches(3.7), [
+        "AFROTC requires upperclassmen to instruct lowerclassmen.",
+        "It provides no formal certification process for doing it.",
+        "-No baseline, no structured feedback on their teaching, no record "
+        "of improvement across a term.",
+        "Cadre are accountable for the outcome, working without instruments.",
+    ], size=17, gap=20)
+
+    rect(s, Inches(7.25), Inches(2.2), Inches(5.2), Inches(3.6), TINT, radius=0.04)
+    block(s, Inches(7.7), Inches(2.6), Inches(4.3), Inches(2.9),
+          [("Where feedback stops being admin", 16, True, NAVY, 12),
+           ("A cadet instructor who can see how a block landed — and see it again next "
+            "term, measured the same way — is being developed.", 15, False, INK, 10),
+           ("One who cannot is being assigned.", 15, True, INK, 10),
+           ("Paired with the Teaching on Purpose seminar, that turns feedback into a "
+            "path to certification rather than a survey.", 15, False, MUTED, 0)])
+    page_no(s)
+    notes(s, "The contrast in the panel is the point: developed versus assigned. Teaching on "
+             "Purpose belongs here and only here — it is pitch-level material, and the setup "
+             "guide and WHY.md deliberately leave it out.")
 
 
 def s04_data():
@@ -378,18 +413,22 @@ def s05_roles():
         "Instructor",
         "-Creates feedback, reads responses, runs the analysis.",
         "Cadre",
-        "-All of that, plus an area instructors cannot see.",
+        "-All of that, plus a space instructors cannot see, and oversight of "
+        "every instructor's results.",
         "Commander",
-        "-Sees every area, including one only they can read.",
+        "-Sees every space, including one only they can read, and everyone's "
+        "results including cadre.",
         "Database admin",
         "-Keeps the roster. A separate job, often held alongside.",
     ], size=15, gap=9)
     page_no(s)
     notes(s, "The point of this slide is that access follows rank, and that it is enforced rather "
-             "than assumed. Cadre and commander areas are separate folders on the detachment's "
+             "than assumed. Cadre and commander spaces are separate folders on the detachment's "
              "Drive, not hidden screens — an instructor cannot reach commander feedback by opening "
              "Drive directly, because the server will not open that folder for them. "
-             "At most two commanders at a time, so a change of command overlaps.")
+             "At most two commanders at a time, so a change of command overlaps. "
+             "The By-instructor view follows the same chain: an instructor sees their own "
+             "results, cadre see the instructors they oversee, a commander sees everyone.")
 
 
 def s06_student_list():
@@ -447,22 +486,22 @@ def s09_panel():
     picture(s, "instructor-panel.png", M, Inches(2.4), Inches(11.5), Inches(4.15))
     page_no(s)
     notes(s, "Create Feedback and Feedback Response and Analysis are the headline actions. The "
-             "tabs underneath hold forms, students and database tools.")
+             "tabs underneath hold forms, cadets and database tools.")
 
 
 def s09b_cadre():
     s = slide()
     eyebrow(s, "For cadre and the commander")
     title(s, "The same screen, pointed at the locked folders",
-          "Cadre feedback instructors cannot see \u2014 and the commander's own area inside it.")
+          "Cadre feedback instructors cannot see \u2014 and the commander's own space inside it.")
     picture(s, "cadre-panel.png", M, Inches(2.55), Inches(11.5), Inches(4.0))
     page_no(s)
     notes(s, "Worth being precise here, because this is the feature senior people ask about. "
              "It is not a hidden tab and not a permission flag on a record: the cadre and "
-             "commander areas are separate folders, and the detachment's own server is what "
+             "commander spaces are separate folders, and the detachment's own server is what "
              "decides who may open which. An instructor does not see a filtered list \u2014 the "
              "folder is never opened for them, and they cannot reach it through Drive either. "
-             "The badges mark which area each item belongs to. At most two commanders at a "
+             "The badges mark which space each item belongs to. At most two commanders at a "
              "time, so a change of command overlaps rather than cutting over.")
 
 
@@ -712,7 +751,7 @@ def s17_start():
              "guide PDF rather than this deck.")
 
 
-for build in [s01_title, s02_what, s03_problem, s04_data, s05_roles, s06_student_list,
+for build in [s01_title, s02_what, s03_problem, s03b_instructors, s04_data, s05_roles, s06_student_list,
               s07_scale, s08_phone, s09_panel, s09b_cadre, s10_create, s11_ratings, s12_split,
               s13_written, s14_safety, s15_anonymity, s16_admin, s16b_invite,
               s16c_commander, s16d_privacy, s17_start]:

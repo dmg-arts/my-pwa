@@ -98,7 +98,7 @@ async function renderConsole(root) {
         el('label', { class: 'check' }, activeBox,
           el('span', { class: 'check__text' }, 'Active')),
         !isNew ? el('p', { class: 'field__hint' },
-          `Internal handle: ${existing.username} — used to file their submission receipts, and left alone `
+          `Internal username: ${existing.username} — used to file their submission receipts, and left alone `
           + 'when the email changes.') : null),
       actions: [{ label: 'Cancel', value: null }, { label: 'Save', value: 'save', variant: 'primary' }],
     });
@@ -331,7 +331,7 @@ async function renderConsole(root) {
               { key: 'name', label: 'name' }, { key: 'email', label: 'email' },
               { key: 'roles', label: 'roles', get: (a) => (a.roles || []).join(' ') },
               { key: 'asClass', label: 'class' }, { key: 'section', label: 'section' },
-              { key: 'username', label: 'handle' },
+              { key: 'username', label: 'username' },
             ]), 'text/csv'),
           }, icon('download'), 'Export CSV'),
           el('button', { type: 'button', class: 'btn btn--primary btn--sm', onclick: () => editAccount() },
@@ -524,7 +524,7 @@ function rolloverCard(reload) {
     remount(host);
 
     if (!students.length) {
-      mount(host, el('p', { class: 'muted' }, 'No active student accounts to advance.'));
+      mount(host, el('p', { class: 'muted' }, 'No active cadet accounts to advance.'));
       return;
     }
     if (!moves.length) {
@@ -741,7 +741,7 @@ async function schemaCard() {
 }
 
 const ROLE_HINTS = {
-  student: 'Can be targeted by feedback forms, and submits them once.',
+  student: 'Can be targeted by feedback requests, and submits them once.',
   instructor: 'Opens the Instructor Panel to create feedback and read responses.',
   cadre: 'Everything an instructor can do, plus a cadre-only area instructors cannot '
     + 'see — a separate folder, not a hidden screen.',
