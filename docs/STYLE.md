@@ -1,6 +1,6 @@
 # 9ThirtyOne Content Lexicon
 
-*Source of truth for terminology and voice: what the setup guide, README, `privacy.html`, the introduction deck, the video narration and the app's own screens are checked against, so they stop independently rewording the same facts. This file is meant to be read mechanically, not argued with.*
+*Source of truth for terminology and voice: what the setup guide, README, `privacy.html`, the introduction deck and the app's own screens are checked against, so they stop independently rewording the same facts. This file is meant to be read mechanically, not argued with.*
 
 *Applied by hand. There is no build step that reads it and no shared copy module — if the same wording drifts apart again in more than a couple of places, that is the argument for building one, and `ROLE_LABELS` in `js/config.js` is where it would start.*
 
