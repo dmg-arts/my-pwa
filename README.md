@@ -67,20 +67,28 @@ does not.
 
 ## Running it
 
-There is no build step and no dependencies. Any static HTTPS host will serve it.
+There is no build step and no dependencies — a folder of static files, which is
+why one published copy can serve every detachment.
 
 ```bash
 python3 serve.py            # http://localhost:8000
 python3 serve.py --https    # self-signed TLS, for testing on a phone
-python3 tools/make_icons.py # regenerate the PNG icon set
+npm run icons               # regenerate the PNG icon set
 ```
 
 A service worker, the folder picker, and Google sign-in all require a **secure
 context**. `localhost` counts; a bare LAN IP over http does not — hence
 `--https` for phone testing.
 
-To deploy: upload the folder to GitHub Pages, Netlify, Cloudflare Pages, or an
-internal web server. Nothing else to run.
+**Deployment is this repository.** Pushing to `main` publishes
+<https://dmg-arts.github.io/9thirtyone/> through GitHub Pages, and that one
+address is what every detachment opens. Nothing else to run.
+
+Detachments are not asked to host their own copy. A second copy would mean
+another OAuth origin to register with Google and another thing to keep patched,
+for no gain — the app holds no data, so a shared address costs a detachment
+nothing in privacy or control. The setup guide gives them the address and says
+nothing about hosting; keep it that way.
 
 ---
 

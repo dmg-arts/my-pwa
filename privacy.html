@@ -97,7 +97,7 @@
 <header class="masthead">
   <h1>9ThirtyOne Privacy Policy</h1>
   <p class="sub">How this application handles your information.</p>
-  <p class="updated">Last updated: <!--DATE-->26 August 2026<!--/DATE--> &middot; Applies to: 9ThirtyOne</p>
+  <p class="updated">Last updated: <!--DATE-->31 August 2026<!--/DATE--> &middot; Applies to: 9ThirtyOne</p>
 </header>
 
 <div class="callout callout--ok">
@@ -127,9 +127,10 @@
   </tr>
   <tr>
     <td><strong>Us</strong><br>(<!--PUBLISHER-->[YOUR COMPANY OR NAME]<!--/PUBLISHER-->, publisher of the software)</td>
-    <td>Writes and publishes the software, and operates the Google OAuth client that lets it sign
-    you in. We do not host your data, do not receive it, and cannot access it. Our role is the
-    source code.</td>
+    <td>Writes the software and serves its files from a public web address. Your organisation
+    creates and operates <strong>its own</strong> Google OAuth client, so even signing you in runs
+    on its credentials rather than ours. We do not host your data, do not receive it, and cannot
+    access it.</td>
   </tr>
 </table>
 </div>
@@ -285,7 +286,8 @@ submission server. 9ThirtyOne sets <strong>no cookies</strong>.</p>
     Google's sign-in service, Google Drive (your organisation's account), and — if your organisation
     deployed one — a submission server running inside your organisation's own Google account. There
     is no fourth destination. There are no analytics, no error reporting services, no advertising
-    networks, and no third-party components of any kind.
+    networks, and no third-party components of any kind. (Fetching the app's own files from where
+    they are published is a separate matter — see section 10.)
   </p>
 </div>
 
@@ -392,7 +394,16 @@ submission server. 9ThirtyOne sets <strong>no cookies</strong>.</p>
 <p>
   In your organisation's Google account, on Google's infrastructure, subject to
   <a href="https://policies.google.com/privacy" rel="noopener">Google's own privacy policy</a>. We
-  operate no servers and store nothing.
+  operate no servers and store none of it.
+</p>
+<p>
+  The app's own files — the page, its code and its icons — are served to your browser from GitHub
+  Pages. Loading any web page reveals your IP address and browser to whoever serves it, and that is
+  true here too; those request logs belong to GitHub, are outside our control, and are subject to
+  <a href="https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement" rel="noopener">GitHub's
+  privacy statement</a>. <strong>No feedback, roster or Drive content travels that path.</strong>
+  Once the page has loaded it talks directly to Google, so what you write never passes through the
+  address that served it.
 </p>
 
 <h2>11. Changes to this policy</h2>

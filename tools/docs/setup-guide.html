@@ -160,14 +160,15 @@
   <h2>What this guide covers</h2>
   <p class="lead">
     9ThirtyOne is a web app that runs in a browser and stores every record in a Google Drive
-    folder your detachment owns. There is no vendor, no server and no shared database — which is
-    why setup involves your own Google account rather than an account with us.
+    folder your detachment owns. You get the app from us, at one fixed address; your records
+    never come to us. There is no server and no shared database — which is why setup involves
+    your own Google account rather than an account with us.
   </p>
 
   <ol class="toc">
     <li><span class="n">1</span><span><strong>Decide where your data will live</strong><span class="d"> — three options, and how to choose</span></span></li>
     <li><span class="n">2</span><span><strong>Prepare the Google account</strong><span class="d"> — folder, Cloud project, Drive API, OAuth client</span></span></li>
-    <li><span class="n">3</span><span><strong>Publish the app</strong><span class="d"> — free hosting, or run it from one computer</span></span></li>
+    <li><span class="n">3</span><span><strong>Open the app</strong><span class="d"> — one address, nothing to install or host</span></span></li>
     <li><span class="n">4</span><span><strong>Run the setup wizard</strong><span class="d"> — connect the app to your folder</span></span></li>
     <li><span class="n">5</span><span><strong>Claim the folder</strong><span class="d"> — the first Google sign-in, and the access setting</span></span></li>
     <li><span class="n">6</span><span><strong>Deploy the submission server</strong><span class="d"> — 15 minutes, and it changes what everything below costs</span></span></li>
@@ -183,7 +184,7 @@
     <tr><td>A new Google account, created for the detachment</td><td>Holds every record. Create a fresh one — Part 2a explains why a school or university account is the wrong choice here.</td></tr>
     <tr><td>Permission to create a Google Cloud project</td><td>Required once, to let the app talk to that account's Drive. A new personal Google account can always do this.</td></tr>
     <tr><td>About 45 minutes, once</td><td>Most of it is the Google Cloud console in Part 2 and the submission server in Part 6. The app itself takes a few minutes.</td></tr>
-    <tr><td>Somewhere to publish the app</td><td>Any static web host. Several free options are listed in Part 3.</td></tr>
+    <tr><td>The app's address</td><td>Part 3. The app is already published and maintained for you — there is nothing to download, deploy or keep running.</td></tr>
     <tr><td>A current browser</td><td>Chrome, Edge, Safari or Firefox, on any device.</td></tr>
   </table>
 
@@ -192,6 +193,9 @@
     <p>9ThirtyOne has no accounts with a vendor, no subscription and no data-processing
     agreement to sign, because no data ever reaches anyone but you. Everything below sets up
     <em>your</em> Google account to hold <em>your</em> detachment's feedback.</p>
+    <p>That holds even though the app itself comes from us. What you load from our address is
+    the program, not a service: it runs entirely in your browser and writes only to the Drive
+    folder you connect in Part 4. Nobody who publishes the app can read that folder.</p>
   </div>
 </section>
 
@@ -342,9 +346,12 @@
       <ul>
         <li>Go to <em>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</em>.</li>
         <li>Application type: <strong>Web application</strong>.</li>
-        <li>Under <strong>Authorised JavaScript origins</strong>, add the exact address the app will
-        be served from — see Part 3 if you do not have it yet. For example
-        <code>https://det025.github.io</code>. Include the scheme, exclude any path or trailing slash.</li>
+        <li>Under <strong>Authorised JavaScript origins</strong>, add exactly
+        <code>https://dmg-arts.github.io</code> — the same entry for every detachment, because
+        every detachment opens the same published app. Type the host and nothing else:
+        <strong>no</strong> <code>/9thirtyone/</code> path and no trailing slash. Google matches
+        origins by scheme and host alone and will refuse the entry if you paste the full address
+        from Part 3.</li>
         <li>Leave <em>Authorised redirect URIs</em> empty. The app does not use them.</li>
         <li>Click <strong>Create</strong> and copy the <strong>Client ID</strong>. It ends in
         <code>.apps.googleusercontent.com</code>.</li>
@@ -404,49 +411,49 @@
   </div>
 
   <div class="note note--warn">
-    <strong class="title">If you change where the app is hosted</strong>
-    <p>You must add the new address to <strong>Authorised JavaScript origins</strong> or sign-in will
-    fail with a redirect error. Changes can take a few minutes to take effect.</p>
+    <strong class="title">The origin never changes</strong>
+    <p>The app is published at one fixed address, so this is the only origin you will ever enter.
+    If sign-in fails with a redirect or <code>origin_mismatch</code> error, the entry is almost
+    always mistyped — check it reads <code>https://dmg-arts.github.io</code> exactly, with no path
+    and no trailing slash. A correction can take a few minutes to take effect.</p>
   </div>
 </section>
 
 <!-- ============================= PART 3 ============================= -->
 <section>
-  <h2><span class="num">3</span>Publish the app</h2>
+  <h2><span class="num">3</span>Open the app</h2>
   <p class="lead">
-    9ThirtyOne is a folder of files with no build step and no backend, so it can be served from
-    anywhere that serves static files.
+    There is nothing to download, install or host. 9ThirtyOne is published at one address, and
+    every detachment uses that same address.
   </p>
 
-  <div class="note note--warn">
-    <strong class="title">HTTPS is required</strong>
-    <p>Offline support, installation to a home screen, and Google sign-in all require a secure
-    connection. Every hosting option below provides HTTPS automatically. Opening the files directly
-    from a hard drive will <em>not</em> work.</p>
+  <pre>https://dmg-arts.github.io/9thirtyone/</pre>
+
+  <p>Open it in any current browser and go on to Part 4. What makes the install <em>yours</em> is
+  not a copy of the app — it is the Client ID from Part 2 and the Drive folder behind it, both of
+  which sit on your own Google account and neither of which anyone else can reach.</p>
+
+  <div class="note note--ok">
+    <strong class="title">The same address for everyone, cadets included</strong>
+    <p>Cadre, cadets and administrators all open this one address. Nobody needs a copy of their
+    own, and the join links and QR codes in Part 8 are built from it for you — so this is the
+    last time you will need to type it.</p>
   </div>
 
-  <h3>Option A — free static hosting (recommended)</h3>
-  <table>
-    <tr><th style="width:26%">Host</th><th>Notes</th></tr>
-    <tr><td>GitHub Pages</td><td>Free. Push the folder to a repository and enable Pages in the settings. Address looks like <code>https://yourname.github.io/9thirtyone</code>.</td></tr>
-    <tr><td>Netlify or Cloudflare Pages</td><td>Free tier. Drag the folder onto their dashboard — no command line needed.</td></tr>
-    <tr><td>Your institution's web server</td><td>Copy the folder into any directory served over HTTPS.</td></tr>
-  </table>
-
-  <h3>Option B — run it from one computer</h3>
-  <p>Useful for a trial, or where the detachment cannot publish to the web. Requires Python 3,
-  which is pre-installed on macOS and Linux.</p>
-  <pre>cd 9thirtyone
-python3 serve.py              # then open http://localhost:8000
-
-python3 serve.py --https      # needed to reach it from a phone</pre>
-  <p>The <code>--https</code> option generates a self-signed certificate and prints an address on
-  your local network. Phones will warn that the certificate is untrusted; accept it once. This is
-  fine for testing, but use Option A for real use.</p>
-
   <div class="note">
-    <strong class="title">Whichever you choose, note the exact address</strong>
-    <p>You need it for <em>Authorised JavaScript origins</em> in Part 2, step 5.</p>
+    <strong class="title">Why you do not host it yourself</strong>
+    <p>A detachment-hosted copy would mean registering a second origin with Google, keeping that
+    copy patched, and repeating both at every update — for no gain, because <strong>the app holds
+    no data</strong>. Every record belongs to the Drive folder on your account, so sharing an
+    address with other detachments gives up nothing in privacy or control. They cannot see your
+    folder and you cannot see theirs.</p>
+  </div>
+
+  <div class="note note--warn">
+    <strong class="title">Updates arrive on their own</strong>
+    <p>Because everyone loads the same published copy, fixes reach the detachment with nothing to
+    install. If a device seems to be showing an old version, close every tab of the app and open
+    the address again.</p>
   </div>
 </section>
 
@@ -465,8 +472,8 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
       shows <code>/u/1/</code> or higher, you are not on your default account.
     </p>
   </div>
-  <p class="lead">Open the app's address in a browser. On a folder that has never been set up, the
-  wizard starts automatically.</p>
+  <p class="lead">Open <code>https://dmg-arts.github.io/9thirtyone/</code> in a browser. On a folder
+  that has never been set up, the wizard starts automatically.</p>
 
   <ol class="steps">
     <li><strong>Name the detachment.</strong> This appears in the app header and on exported reports.</li>
@@ -791,7 +798,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
   <p class="lead">Work through this before letting cadets use the app for real.</p>
 
   <ul class="checklist">
-    <li><strong>The app opens over HTTPS</strong> at the address you published.</li>
+    <li><strong>The app opens</strong> at <code>https://dmg-arts.github.io/9thirtyone/</code>.</li>
     <li><strong>Settings → Access reads "Google sign-in only"</strong> — the email sign-in is off.</li>
     <li><strong>At least two people hold the Database admin role</strong>, so losing one account does not lock the detachment out.</li>
     <li><strong>The submission server answers</strong> — Settings &rarr; Submission server &rarr; <em>Save and test</em> reports a version.</li>
@@ -829,7 +836,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     <tr><th style="width:38%">What you see</th><th>What to do</th></tr>
     <tr>
       <td>"Could not connect" when signing in to Google</td>
-      <td>The app's address is not listed under <em>Authorised JavaScript origins</em>. Add it exactly, including <code>https://</code> and with no trailing slash. Wait a few minutes.</td>
+      <td><em>Authorised JavaScript origins</em> does not list <code>https://dmg-arts.github.io</code>. Add it exactly — host only, no <code>/9thirtyone/</code> path and no trailing slash. Wait a few minutes.</td>
     </tr>
     <tr>
       <td>Google shows "app is not verified" or blocks sign-in</td>
@@ -853,7 +860,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     </tr>
     <tr>
       <td>Sign-in popup closes immediately, or <code>origin_mismatch</code></td>
-      <td>The address the app is served from is not listed under <em>Authorised JavaScript origins</em>. It must match exactly: scheme included, no path, no trailing slash. Changes can take a few minutes to take effect.</td>
+      <td><code>https://dmg-arts.github.io</code> is not listed under <em>Authorised JavaScript origins</em>, or is listed with the path attached. It must read scheme and host only — no path, no trailing slash. Changes can take a few minutes to take effect.</td>
     </tr>
     <tr>
       <td>The home-screen icon opens the setup wizard again</td>
@@ -943,6 +950,7 @@ python3 serve.py --https      # needed to reach it from a phone</pre>
     screen. The submission server and join links removed all three. If you are reading an older copy
     of this guide, replace it.</p>
   </div>
+</section>
 
 <!-- ============================= REFERENCE ============================= -->
 <section>
