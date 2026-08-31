@@ -13,7 +13,7 @@
  * Bump CACHE_VERSION on release to roll users onto new assets.
  */
 
-const CACHE_VERSION = 'v29';
+const CACHE_VERSION = 'v30';
 const CACHE_NAME = `nine31-shell-${CACHE_VERSION}`;
 
 const SHELL = [
@@ -21,6 +21,7 @@ const SHELL = [
   './index.html',
   './manifest.json',
   './privacy.html',
+  './terms.html',
   './css/styles.css',
   './js/analysis/lexicon.js',
   './js/analysis/stats.js',

@@ -585,7 +585,10 @@ function aboutSection() {
       // not only from a listing. This is the durable place for it.
       el('a', {
         class: 'btn btn--sm', href: './privacy.html', target: '_blank', rel: 'noopener',
-      }, icon('lock'), 'Privacy policy')));
+      }, icon('lock'), 'Privacy policy'),
+      el('a', {
+        class: 'btn btn--sm', href: './terms.html', target: '_blank', rel: 'noopener',
+      }, icon('clipboard'), 'Terms of service')));
 }
 
 function row(label, value) {

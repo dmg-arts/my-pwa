@@ -86,7 +86,9 @@ export async function renderLogin(root, role, title, onSuccess) {
       el('p', { class: 'field__hint' },
         'Your feedback stays in your detachment\'s own Google Drive. Nothing is sent to '
         + 'whoever makes this app. ',
-        el('a', { href: './privacy.html', target: '_blank', rel: 'noopener' }, 'Privacy policy')),
+        el('a', { href: './privacy.html', target: '_blank', rel: 'noopener' }, 'Privacy policy'),
+        ' \u00b7 ',
+        el('a', { href: './terms.html', target: '_blank', rel: 'noopener' }, 'Terms of service')),
       hint),
 
     el('div', { class: 'row', style: { justifyContent: 'center' } },
