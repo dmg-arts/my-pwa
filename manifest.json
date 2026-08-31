@@ -2,7 +2,7 @@
   "name": "9ThirtyOne",
   "short_name": "9ThirtyOne",
   "id": "./",
-  "description": "Student and cadre feedback for AFROTC detachments. Each organization keeps its data in its own Google Drive.",
+  "description": "Cadet and cadre feedback for AFROTC detachments. Each detachment keeps its data in its own Google Drive.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -22,8 +22,8 @@
   ],
   "shortcuts": [
     {
-      "name": "Student feedback",
-      "short_name": "Student",
+      "name": "Cadet feedback",
+      "short_name": "Cadet",
       "description": "See open feedback requests",
       "url": "./index.html#/student",
       "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]

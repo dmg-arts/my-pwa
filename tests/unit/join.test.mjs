@@ -18,7 +18,7 @@ import { validateProxyUrl } from '../../js/storage/proxy.js';
 
 const CLIENT = '724504040762-rrq3q51dip6rib0g8lof5pq5r6da2g03.apps.googleusercontent.com';
 const FOLDER = '1Te9Pc7JgOSUluq3tc0FCK4IqbKm1MTIM';
-const BASE = 'https://dmg-arts.github.io/my-pwa/';
+const BASE = 'https://dmg-arts.github.io/9thirtyone/';
 
 let failures = 0;
 const check = (label, fn) => {
@@ -217,7 +217,7 @@ check('the mail draft warns about the unverified-app screen', () => {
 
 check('the base url drops any route but keeps the subpath', () => {
   // GitHub Pages serves from /repo/, so dropping the path would break the link.
-  const fake = { origin: 'https://dmg-arts.github.io', pathname: '/my-pwa/' };
+  const fake = { origin: 'https://dmg-arts.github.io', pathname: '/9thirtyone/' };
   if (appBaseUrl(fake) !== BASE) throw new Error(appBaseUrl(fake));
 });
 

@@ -45,9 +45,9 @@ const VECTORS = [
     digests: ['703384ad7cc7b967', '477e98e614a6fca3', 'fcbe155b3e1bf4aa', '3a82fdf9d2bfa37c', 'e0dfad36fe2bf4c3', '08cc066942eb3c97', 'd68672704f51bab3', '31df5c5fe1e67db1'],
   },
   {
-    text: "https://dmg-arts.github.io/my-pwa/#/join?c=724504040762-rrq3q51dip6rib0g8lof5pq5r6da2g03&f=1Te9Pc7JgOSUluq3tc0FCK4IqbKm1MTIM&n=Det+025",
+    text: "https://dmg-arts.github.io/9thirtyone/#/join?c=724504040762-rrq3q51dip6rib0g8lof5pq5r6da2g03&f=1Te9Pc7JgOSUluq3tc0FCK4IqbKm1MTIM&n=Det+025",
     version: 8, size: 49,
-    digests: ['9ccf5a50234110e4', '66b352bb49efbb2f', 'b27c56ab4c7491fb', '3abf2497b6d25869', '6c82e2cddce62381', '61609852975ff20b', 'da3ab938601bf431', '4c19142f090e44a0'],
+    digests: ['5aa5a63e565340ef', 'd92c82f988d8ca58', '76d85bed51528c34', '9d58aa8e81b8c62a', '10e8f2535d16443d', 'd7b32fa54a428e74', 'fb3a552197e04187', '6f9e30af86964aeb'],
   },
   {
     text: "Det 025 \u2014 Wilkes & Misericordia",
@@ -191,7 +191,7 @@ check('input beyond the supported versions is refused with the length', () => {
 });
 
 check('a real join link fits well inside the supported range', () => {
-  const link = 'https://dmg-arts.github.io/my-pwa/#/join'
+  const link = 'https://dmg-arts.github.io/9thirtyone/#/join'
     + '?c=724504040762-rrq3q51dip6rib0g8lof5pq5r6da2g03'
     + '&f=1Te9Pc7JgOSUluq3tc0FCK4IqbKm1MTIM'
     + '&p=AKfycbwEXAMPLEdeploymentid0123456789&n=Det+025';

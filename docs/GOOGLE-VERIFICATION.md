@@ -123,9 +123,9 @@ both accepted rather than pending:
 - **`frame-ancestors` cannot be set.** Pages serves no custom response headers.
   `index.html` already refuses to run inside a frame in script, which is the
   mitigation available; it is not the header.
-- **The origin is tied to the GitHub account.** Moving to a clean account is
-  still a move — see §6, which applies to that move exactly as it would have to a
-  custom domain.
+- **The origin is tied to the GitHub account**, which stays `dmg-arts`. So the
+  origin is settled: `https://dmg-arts.github.io`. Only paths move under it —
+  see §6.
 
 ---
 
@@ -141,18 +141,34 @@ outlived it; dated evidence is what stops that happening twice.*
 
 ---
 
-## 6. What breaks when the origin moves
+## 6. What breaks when the path moves
 
-The app is moving to a **clean GitHub account dedicated to it**, so the origin
-changes from `dmg-arts.github.io/my-pwa/` even without a custom domain. All of
-these are encoded against the origin and break on the move:
+The repository is renamed `my-pwa` → `9thirtyone`, so the published address goes
+from `https://dmg-arts.github.io/my-pwa/` to `https://dmg-arts.github.io/9thirtyone/`.
 
-- **The OAuth authorised JavaScript origin** must be updated in each Cloud
-  project, or nobody can sign in.
-- **Every join link and QR code already handed out dies.** Regenerate and
-  redistribute *after* the move, never before.
+**The origin does not change.** `dmg-arts.github.io` is the origin either way,
+and that is the difference between this and an account move:
+
+- **The OAuth authorised JavaScript origin needs no change.** Google's authorised
+  origins are scheme + host with no path, so `https://dmg-arts.github.io` already
+  covers any repository on the account. Nothing in the Cloud console moves. This
+  is the item that would have broken sign-in, and it is simply not in play.
+- **localStorage and IndexedDB survive**, being per-origin. A device that used
+  the old path keeps its connection settings at the new one.
+
+What does break, because it carries the full path:
+
+- **Every join link and QR code already generated.** Regenerate and redistribute
+  *after* the rename, never before. Only the test install is affected.
 - **The privacy policy URL** in each consent screen configuration.
+- **The old address stops resolving.** GitHub redirects *git operations* after a
+  repository rename; Pages does not. `…/my-pwa/` 404s.
 
-Because there is no custom domain, this cost recurs on any future host change.
-That is the trade accepted in §4: a custom domain would have made the origin
-stable for good, and was judged not worth it for one detachment.
+One residue worth knowing: **a device that installed from the old path keeps its
+service worker** at that scope and will serve a cached app until site data is
+cleared. The rename cannot reach it. Treat the old path as dead rather than
+merely moved.
+
+Because there is no custom domain, a future host change would move the origin
+properly and cost all of the above plus the OAuth origin. That is the trade
+accepted in §4.
