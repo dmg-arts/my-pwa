@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About 9ThirtyOne</title>
+<meta name="description" content="9ThirtyOne is a free, open-source feedback system for AFROTC detachments. Build a form, issue it, collect responses, analyse them, and keep the record — in a Google Drive folder the detachment owns.">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #f4f6f9;
+    --ink: #14181f;
+    --ink-2: #4d5866;
+    --ink-3: #626b78;
+    --rule: #d8dee8;
+    --accent: #1c4f8b;
+    --accent-soft: #eef3fa;
+    --ok-line: #1c6b3f;
+    --ok-bg: #e8f4ed;
+    --warn-line: #8a5a05;
+    --warn-bg: #fdf6e6;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --ink: #e8edf4;
+      --ink-2: #9aa6b4;
+      --ink-3: #808b99;
+      --rule: #2a3038;
+      --accent: #4d94e0;
+      --accent-soft: #16283d;
+      --ok-line: #4cc07d;
+      --ok-bg: #10291b;
+      --warn-line: #d9a441;
+      --warn-bg: #2c2210;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 3rem 1.25rem 6rem; }
+
+  header.masthead { border-bottom: 2px solid var(--accent); padding-bottom: 1.5rem; margin-bottom: 2.5rem; }
+  h1 { font-size: 2rem; line-height: 1.15; margin: 0 0 .5rem; letter-spacing: -0.02em; }
+  .sub { color: var(--ink-2); margin: 0; }
+  .updated { font-family: var(--mono); font-size: .82rem; color: var(--ink-3); margin-top: 1rem; }
+
+  h2 {
+    font-size: 1.25rem; margin: 2.75rem 0 .75rem; letter-spacing: -0.01em;
+    padding-top: 1.25rem; border-top: 1px solid var(--rule);
+  }
+  h3 { font-size: 1rem; margin: 1.75rem 0 .4rem; color: var(--ink); }
+  p { margin: 0 0 1rem; }
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .5rem; }
+  a { color: var(--accent); }
+  code {
+    font-family: var(--mono); font-size: .85em;
+    background: var(--surface); border: 1px solid var(--rule);
+    padding: .1em .35em; border-radius: 4px;
+  }
+  strong { font-weight: 650; }
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 1rem 1.15rem;
+    margin: 0 0 1.25rem;
+    border-radius: 0 6px 6px 0;
+  }
+  .callout--ok { border-color: var(--ok-line); background: var(--ok-bg); }
+  .callout--warn { border-color: var(--warn-line); background: var(--warn-bg); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .t { display: block; font-weight: 650; margin-bottom: .35rem; }
+
+  table { width: 100%; border-collapse: collapse; margin: 0 0 1.25rem; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { background: var(--surface); font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2); }
+  .scroll { overflow-x: auto; }
+
+  footer { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: .9rem; }
+</style></head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <h1>9ThirtyOne</h1>
+  <p class="sub">Cadet and instructor feedback for AFROTC detachments.</p>
+  <p class="updated">Free and open source &middot; No account with us &middot; Your records stay in your own Google Drive</p>
+</header>
+
+<div class="callout callout--ok">
+  <span class="t">What it is</span>
+  <p>
+    A free, open-source feedback management system that covers the whole cycle:
+    <strong>build a form, issue it, collect responses, analyse them, keep the record.</strong>
+    It runs in a browser, and every record it creates lives in a Google Drive folder the
+    detachment owns.
+  </p>
+</div>
+
+<h2>The problem it solves</h2>
+
+<p>
+  AFROTC runs a <strong>centralized detachment model</strong>: one host facility serving cadets
+  from several Crosstown universities. That is the point of the model, and it is also why the
+  ordinary tooling does not fit — a detachment has cadets at schools its host university's IT
+  system has never heard of.
+</p>
+
+<p>
+  So detachments stand up a Det Google Account to centralize communications, which solves the
+  mail problem and creates a second one. A university IT system arrives with a course platform,
+  a survey tool, a gradebook, somewhere for evaluations to live. A Google account arrives with
+  none of that. The detachment gets the communications and loses the tooling.
+</p>
+
+<ul>
+  <li><strong>Aerospace Studies runs through the host university's system</strong>, with varying
+  degrees of return — and whatever evaluation exists at one school is not what exists at another.</li>
+  <li><strong>Leadership Laboratory has no feedback capture at all.</strong> LLAB is where cadets
+  lead cadets: the part of the program most worth measuring, and the part with the least
+  instrumentation.</li>
+  <li><strong>Upperclassmen improvise.</strong> A cadet builds something in a consumer form tool to
+  get feedback on a lab. It works, sometimes well — and it has no oversight, no archive, and no
+  continuity past the term that cadet graduates.</li>
+</ul>
+
+<p>
+  That last one is the sharpest. It is not a tooling gap so much as a <strong>records and
+  oversight gap</strong> that a tooling gap produced.
+</p>
+
+<h2>What it does, day to day</h2>
+
+<ul>
+  <li>An instructor or cadet instructor builds a <strong>form</strong> — a reusable set of
+  questions — and issues it as a <strong>feedback request</strong> to a class, an event, or named
+  cadets, with an open date and a due date.</li>
+  <li>Cadets open a link, sign in with the Google account the detachment already mails them at,
+  and answer. Once each. On a phone, offline, in the field if that is where they are.</li>
+  <li>Whoever owns that feedback opens a <strong>panel</strong> and gets the ratings analysed
+  rather than stacked: distributions rather than averages, questions where the room genuinely
+  split called out instead of averaged into the middle, written answers grouped and searchable.</li>
+  <li>Every written answer is screened for safety concerns, and a match is put in front of cadre
+  quickly.</li>
+  <li>It all stays in the detachment's Drive folder, term after term, as a record that outlasts
+  the cadets who created it.</li>
+</ul>
+
+<h2>How it works</h2>
+
+<h3>It is a web page, not an installation</h3>
+<p>
+  9ThirtyOne is a progressive web app: a browser opens it, and it can be added to a phone's home
+  screen. There is no software to install on a detachment machine, no server to maintain, and no
+  account with anyone. The app is served from a web host and the <em>data</em> lives in Drive.
+  Keeping those two separate is what lets the detachment own the half that matters.
+</p>
+
+<h3>The database is a Drive folder</h3>
+<p>
+  Forms, feedback requests, responses, receipts, the roster, the activity log — ordinary files in
+  one folder in the Det Google Account, readable in Drive with no special software. If a
+  detachment stopped using 9ThirtyOne tomorrow, every response would still be sitting there.
+  That is not an export feature; it is the storage format.
+</p>
+
+<h3>The app can only reach files it made</h3>
+<p>
+  It asks Google for a permission called <code>drive.file</code>, which covers files the app
+  created itself and nothing else. The rest of the account was never granted — not withheld by
+  policy, never granted. The app could not reach the rest of that Drive even if it were
+  compromised entirely.
+</p>
+
+<h3>Cadets get no Drive access at all</h3>
+<p>
+  A small script the detachment deploys inside its <em>own</em> Google account receives answers,
+  verifies who sent them, and writes the file. Without it, every cadet would need direct access
+  to the folder to file an answer — and anyone with folder access can read the folder, so
+  "anonymous" would mean anonymous on screen while readable by any cadet who opened Drive.
+</p>
+
+<p>
+  It also works <strong>offline</strong> — answers written with no signal are held on the device
+  and sent when the connection returns — and it has no third-party dependencies, no build step
+  and no vendor libraries. The only external code it loads is Google's own sign-in script, from
+  Google.
+</p>
+
+<h2>What it guarantees, and the limits</h2>
+
+<p>Stated as narrowly as possible, because a narrow claim is one a detachment's IT reviewer can check.</p>
+
+<div class="callout callout--ok">
+  <span class="t">The guarantees</span>
+  <p>
+    <strong>Nothing reaches the people who publish this software.</strong> There is no server of
+    ours, no database of ours, and no account with us. This is a property of the design, not a
+    policy — there is no channel for data to travel down.
+  </p>
+  <p>
+    <strong>Anonymous results are withheld below three responses.</strong> Not "enough", not
+    "several" — three. Below that line only the count of who has taken part is shown, so a single
+    answer cannot be picked out by elimination.
+  </p>
+  <p>
+    <strong>Taking part is recorded separately from what was said.</strong> A receipt lives in a
+    different file from the response, which is what lets the app say two cadets still owe feedback
+    without attaching anyone's answers to their name.
+  </p>
+</div>
+
+<div class="callout callout--warn">
+  <span class="t">And the limits that keep those honest</span>
+  <p>
+    <strong>Removing names cannot change what someone wrote.</strong> An answer describing a role
+    only one person holds, or an incident only one person witnessed, identifies its author no
+    matter what fields were stored. Treat anonymous feedback as feedback, not as statistics.
+  </p>
+  <p>
+    <strong>The safety screen matches words, never meaning.</strong> It checks written answers
+    against word lists for hazing, harassment, discrimination, violence, self-harm, substance
+    misuse and integrity concerns. It cannot read context, sarcasm or quotation. It raises some
+    matches that are nothing, and <strong>a clear screen is never proof that nothing was
+    reported.</strong> It exists to get a real disclosure in front of a person faster, not to
+    decide whether one happened. A match means read that answer now, and follow the detachment's
+    own reporting procedures.
+  </p>
+</div>
+
+<h2>Not an official system</h2>
+
+<div class="callout callout--warn">
+  <span class="t">Read this one properly</span>
+  <p>
+    9ThirtyOne is an independent, open-source project. It is <strong>not</strong> endorsed by,
+    affiliated with, or an official system of the United States Air Force, the Air Force ROTC, or
+    any university. Nothing recorded in it is an official record, and using it does not satisfy any
+    reporting, retention or records-management obligation your unit may have.
+  </p>
+  <p>
+    It is <strong>not</strong> a channel for reporting anything that requires official reporting.
+    Nobody monitors submissions in real time. If someone is in danger, contact emergency services;
+    use your detachment's designated channels for everything else.
+  </p>
+</div>
+
+<h2>Using it</h2>
+
+<p>
+  A detachment needs a Google account it owns, and about an hour once. The app is published at a
+  single address that every detachment opens — there is nothing to download, host or keep running.
+  Records belong to the detachment from the first response onward.
+</p>
+
+<p>
+  The software is licensed under the
+  <a href="https://www.apache.org/licenses/LICENSE-2.0" rel="noopener">Apache License 2.0</a>, and
+  the source is public. You are free to read it and satisfy yourself that everything claimed on
+  this page is true.
+</p>
+
+<p>
+  <a href="./index.html">Open the app</a> &middot;
+  <a href="https://github.com/dmg-arts/9thirtyone" rel="noopener">Source on GitHub</a> &middot;
+  <a href="./privacy.html">Privacy policy</a> &middot;
+  <a href="./terms.html">Terms of service</a>
+</p>
+
+<footer>
+  9ThirtyOne is software your organisation runs in its own Google account.
+  &middot; <a href="./privacy.html">Privacy policy</a>
+  &middot; <a href="./terms.html">Terms of service</a>
+  &middot; <a href="./index.html">Open the app</a>
+</footer>
+
+</div>
+</body>
+</html>
