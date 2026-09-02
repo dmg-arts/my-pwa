@@ -347,11 +347,10 @@
         <li>Go to <em>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</em>.</li>
         <li>Application type: <strong>Web application</strong>.</li>
         <li>Under <strong>Authorised JavaScript origins</strong>, add exactly
-        <code>https://dmg-arts.github.io</code> — the same entry for every detachment, because
-        every detachment opens the same published app. Type the host and nothing else:
-        <strong>no</strong> <code>/9thirtyone/</code> path and no trailing slash. Google matches
-        origins by scheme and host alone and will refuse the entry if you paste the full address
-        from Part 3.</li>
+        <code>https://9thirtyone.app</code> — the same entry for every detachment, because
+        every detachment opens the same published app. Scheme and host only, with
+        <strong>no trailing slash</strong>: Google matches origins by scheme and host alone and
+        will refuse an entry that carries a path.</li>
         <li>Leave <em>Authorised redirect URIs</em> empty. The app does not use them.</li>
         <li>Click <strong>Create</strong> and copy the <strong>Client ID</strong>. It ends in
         <code>.apps.googleusercontent.com</code>.</li>
@@ -414,7 +413,7 @@
     <strong class="title">The origin never changes</strong>
     <p>The app is published at one fixed address, so this is the only origin you will ever enter.
     If sign-in fails with a redirect or <code>origin_mismatch</code> error, the entry is almost
-    always mistyped — check it reads <code>https://dmg-arts.github.io</code> exactly, with no path
+    always mistyped — check it reads <code>https://9thirtyone.app</code> exactly, with no path
     and no trailing slash. A correction can take a few minutes to take effect.</p>
   </div>
 </section>
@@ -427,7 +426,7 @@
     every detachment uses that same address.
   </p>
 
-  <pre>https://dmg-arts.github.io/9thirtyone/</pre>
+  <pre>https://9thirtyone.app/</pre>
 
   <p>Open it in any current browser and go on to Part 4. What makes the install <em>yours</em> is
   not a copy of the app — it is the Client ID from Part 2 and the Drive folder behind it, both of
@@ -472,7 +471,7 @@
       shows <code>/u/1/</code> or higher, you are not on your default account.
     </p>
   </div>
-  <p class="lead">Open <code>https://dmg-arts.github.io/9thirtyone/</code> in a browser. On a folder
+  <p class="lead">Open <code>https://9thirtyone.app/</code> in a browser. On a folder
   that has never been set up, the wizard starts automatically.</p>
 
   <ol class="steps">
@@ -798,7 +797,7 @@
   <p class="lead">Work through this before letting cadets use the app for real.</p>
 
   <ul class="checklist">
-    <li><strong>The app opens</strong> at <code>https://dmg-arts.github.io/9thirtyone/</code>.</li>
+    <li><strong>The app opens</strong> at <code>https://9thirtyone.app/</code>.</li>
     <li><strong>Settings → Access reads "Google sign-in only"</strong> — the email sign-in is off.</li>
     <li><strong>At least two people hold the Database admin role</strong>, so losing one account does not lock the detachment out.</li>
     <li><strong>The submission server answers</strong> — Settings &rarr; Submission server &rarr; <em>Save and test</em> reports a version.</li>
@@ -836,7 +835,7 @@
     <tr><th style="width:38%">What you see</th><th>What to do</th></tr>
     <tr>
       <td>"Could not connect" when signing in to Google</td>
-      <td><em>Authorised JavaScript origins</em> does not list <code>https://dmg-arts.github.io</code>. Add it exactly — host only, no <code>/9thirtyone/</code> path and no trailing slash. Wait a few minutes.</td>
+      <td><em>Authorised JavaScript origins</em> does not list <code>https://9thirtyone.app</code>. Add it exactly — scheme and host only, with no trailing slash. Wait a few minutes.</td>
     </tr>
     <tr>
       <td>Google shows "app is not verified" or blocks sign-in</td>
@@ -860,7 +859,7 @@
     </tr>
     <tr>
       <td>Sign-in popup closes immediately, or <code>origin_mismatch</code></td>
-      <td><code>https://dmg-arts.github.io</code> is not listed under <em>Authorised JavaScript origins</em>, or is listed with the path attached. It must read scheme and host only — no path, no trailing slash. Changes can take a few minutes to take effect.</td>
+      <td><code>https://9thirtyone.app</code> is not listed under <em>Authorised JavaScript origins</em>, or is listed with a path attached. It must read scheme and host only — no path, no trailing slash. Changes can take a few minutes to take effect.</td>
     </tr>
     <tr>
       <td>The home-screen icon opens the setup wizard again</td>

@@ -6,7 +6,7 @@ from qrcode.util import QRData, MODE_8BIT_BYTE
 
 CASES = [
     "A", "hello world", "https://example.org/",
-    "https://dmg-arts.github.io/9thirtyone/#/join?c=724504040762-rrq3q51dip6rib0g8lof5pq5r6da2g03&f=1Te9Pc7JgOSUluq3tc0FCK4IqbKm1MTIM&n=Det+025",
+    "https://9thirtyone.app/#/join?c=724504040762-rrq3q51dip6rib0g8lof5pq5r6da2g03&f=1Te9Pc7JgOSUluq3tc0FCK4IqbKm1MTIM&n=Det+025",
     "Det 025 — Wilkes & Misericordia", "x" * 100, "y" * 300, "z" * 600,
     "0123456789" * 12, "~!@#$%^&*()_+`-={}|[]\\:\";'<>?,./",
 ]

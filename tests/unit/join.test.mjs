@@ -18,7 +18,7 @@ import { validateProxyUrl } from '../../js/storage/proxy.js';
 
 const CLIENT = '724504040762-rrq3q51dip6rib0g8lof5pq5r6da2g03.apps.googleusercontent.com';
 const FOLDER = '1Te9Pc7JgOSUluq3tc0FCK4IqbKm1MTIM';
-const BASE = 'https://dmg-arts.github.io/9thirtyone/';
+const BASE = 'https://9thirtyone.app/';
 
 let failures = 0;
 const check = (label, fn) => {
@@ -215,10 +215,19 @@ check('the mail draft warns about the unverified-app screen', () => {
 
 /* ---------- base url ---------- */
 
-check('the base url drops any route but keeps the subpath', () => {
-  // GitHub Pages serves from /repo/, so dropping the path would break the link.
-  const fake = { origin: 'https://dmg-arts.github.io', pathname: '/9thirtyone/' };
+check('the base url drops any route, at the domain root', () => {
+  // Where the app actually lives since the move to its own domain.
+  const fake = { origin: 'https://9thirtyone.app', pathname: '/' };
   if (appBaseUrl(fake) !== BASE) throw new Error(appBaseUrl(fake));
+});
+
+check('the base url still keeps a subpath when there is one', () => {
+  // Kept after the move to 9thirtyone.app, where the app sits at the root and this
+  // case stopped being the live one. appBaseUrl still supports it — a copy served
+  // from a subdirectory would produce join links that 404 without it — so the
+  // guard outlives the deployment that motivated it.
+  const fake = { origin: 'https://example.org', pathname: '/9thirtyone/' };
+  if (appBaseUrl(fake) !== 'https://example.org/9thirtyone/') throw new Error(appBaseUrl(fake));
 });
 
 /* ---------- the submission server named in a link ---------- */

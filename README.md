@@ -83,8 +83,10 @@ context**. `localhost` counts; a bare LAN IP over http does not — hence
 `--https` for phone testing.
 
 **Deployment is this repository.** Pushing to `main` publishes
-<https://dmg-arts.github.io/9thirtyone/> through GitHub Pages, and that one
-address is what every detachment opens. Nothing else to run.
+<https://9thirtyone.app/> through GitHub Pages, and that one address is what
+every detachment opens. Nothing else to run. `CNAME` at the repo root is what
+points Pages at the domain; the apex carries A records and `www` is a CNAME that
+redirects to it.
 
 Detachments are not asked to host their own copy. A second copy would mean
 another OAuth origin to register with Google and another thing to keep patched,
@@ -660,10 +662,13 @@ Roughly in dependency order. The first item gates several of the others.
    is load-bearing: the OAuth authorised JavaScript origin has to follow it, and
    **every join link and QR code already handed out stops working**, because the
    origin is encoded in them. Regenerate and redistribute after the move.
-   - Worth settling at the same time: a **custom domain**, which would fix the
-     origin permanently so no future host change breaks anything again, and
-     would allow a host that can set real response headers — the only route to
-     `frame-ancestors`, currently absent because GitHub Pages cannot set one.
+   - **Settled ahead of the move: the custom domain.** `9thirtyone.app` is live,
+     so the origin is now fixed independently of where it is hosted — an account
+     move no longer changes it, and this whole item shrinks to moving the repo.
+     It does **not** buy `frame-ancestors`: that needs a host which can set
+     response headers, and Pages still cannot, custom domain or not. What the
+     domain buys is that such a move becomes possible without breaking the
+     origin a second time.
    - Also the moment to replace the branch-build deploy with a GitHub Actions
      workflow. Branch builds have silently failed to trigger twice.
 
@@ -878,8 +883,9 @@ These are the ones actually blocking or shaping work, not idle curiosities.
   cadets.
 - **Privacy policy specifics:** contact address, retention period, and how cadre
   access is disclosed to cadets.
-- **What the product and company are called.** Blocks the custom domain, which
-  blocks the privacy policy URL and Google's brand verification.
+- **What the company is called.** No longer blocks anything technical: the
+  domain is bought and the privacy policy and terms are published under it. It
+  remains open for the publisher line in `NOTICE` and `privacy.html`.
 - ~~**Whether the deployment record is collected manually or by the app.**~~
   **Settled: neither.** Nothing is transmitted. The only record is what an
   administrator supplies by contacting support.
