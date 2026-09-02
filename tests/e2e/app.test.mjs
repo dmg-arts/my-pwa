@@ -1831,11 +1831,16 @@ await step('an instructor cannot delete flagged feedback', async () => {
   if (!opened) throw new Error('could not open the flagged response');
 
   await page.click('dialog .btn--danger');
-  await page.waitForSelector('dialog.modal:has-text("cannot be deleted")', { timeout: 8000 });
-  const refusal = await page.textContent('dialog.modal');
+  // Scope every read to the refusal dialog itself. util.js removes a dialog on its
+  // asynchronous `close` event, so the detail dialog this one replaced can still be
+  // in the DOM — and a bare `dialog.modal` returns whichever comes first, which was
+  // intermittently the stale one. The wait passed and the read then missed.
+  const REFUSAL = 'dialog.modal:has-text("cannot be deleted")';
+  await page.waitForSelector(REFUSAL, { timeout: 8000 });
+  const refusal = await page.textContent(REFUSAL);
   if (!/cannot be deleted/.test(refusal)) throw new Error('deletion was not refused');
   if (!/database administrator/i.test(refusal)) throw new Error('no route to escalate offered');
-  await page.click('dialog .btn');
+  await page.click(`${REFUSAL} .btn`);
   await page.waitForTimeout(400);
 
   const still = await page.evaluate(async () => {
