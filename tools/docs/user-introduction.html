@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>9ThirtyOne — User Introduction</title>
+<style>
+  @page { size: 13.333in 7.5in; margin: 0; }
+  :root {
+    --navy: #1c4f8b; --navy-d: #143a68;
+    --ink: #14181f; --ink-2: #4d5866; --ink-3: #7b8593;
+    --rule: #d8dee8; --tint: #eef3fa;
+    --ok-bg: #e8f4ed; --ok-line: #1c6b3f;
+    --warn-bg: #fdf6e6; --warn-line: #c9992e;
+    --danger-line: #a02724;
+    --sans: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: var(--sans); color: var(--ink); line-height: 1.45;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .slide {
+    width: 13.333in; height: 7.5in; padding: 11mm 14mm 9mm;
+    page-break-after: always; overflow: hidden; position: relative;
+    display: flex; flex-direction: column; font-size: 12.6pt;
+  }
+  .slide:last-child { page-break-after: auto; }
+
+  .eyebrow {
+    font-size: 8.4pt; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--navy); font-weight: 700; margin-bottom: 2mm;
+  }
+  h2 { font-size: 23pt; margin: 0 0 5mm; letter-spacing: -0.022em; line-height: 1.1; }
+  h3 { font-size: 12.5pt; margin: 0 0 2mm; }
+  p { margin: 0 0 3mm; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; flex: 1; min-height: 0; }
+  .cols--wide { grid-template-columns: 1.05fr 1fr; }
+  ul { margin: 0; padding-left: 5mm; }
+  li { margin-bottom: 2.4mm; }
+  li strong { font-weight: 680; }
+  .mono { font-family: var(--mono); font-size: .88em; color: var(--navy); font-weight: 600; }
+
+  figure {
+    margin: 0; min-height: 0; min-width: 0; display: flex;
+    flex-direction: column; justify-content: center; align-items: center;
+  }
+  figure img {
+    max-width: 100%; max-height: calc(100% - 9mm); width: auto; height: auto; object-fit: contain;
+    border: 1px solid var(--rule); border-radius: 2mm; display: block;
+    box-shadow: 0 1mm 3mm rgba(20,24,31,.09);
+  }
+  figcaption { font-size: 9.6pt; color: var(--ink-3); margin-top: 2mm; }
+
+  .card { background: var(--tint); border-left: 3px solid var(--navy);
+          padding: 3mm 4mm; border-radius: 0 2mm 2mm 0; margin-top: 3mm; }
+  .card--ok { background: var(--ok-bg); border-color: var(--ok-line); }
+  .card--warn { background: var(--warn-bg); border-color: var(--warn-line); }
+  .card .t { display: block; font-weight: 700; margin-bottom: 1mm; }
+  .card p { margin: 0; font-size: 11.4pt; }
+
+  /* cover */
+  .cover { background: var(--navy); color: #fff; justify-content: center; }
+  .cover h1 { font-size: 46pt; margin: 0 0 3mm; letter-spacing: -0.03em; }
+  .cover .sub { font-size: 15pt; opacity: .95; margin: 0 0 12mm; max-width: 8.6in; }
+  .cover .who { font-size: 10.5pt; opacity: .85; font-family: var(--mono); }
+  .cover img.mark { width: 26mm; margin-bottom: 8mm; }
+
+  .num {
+    position: absolute; bottom: 6mm; right: 14mm;
+    font-family: var(--mono); font-size: 8.4pt; color: var(--ink-3);
+  }
+  .foot {
+    position: absolute; bottom: 6mm; left: 14mm;
+    font-size: 8.4pt; color: var(--ink-3);
+  }
+</style>
+</head>
+<body>
+
+<!-- 1. cover -->
+<section class="slide cover">
+  <img class="mark" src="APP_ICON" alt="">
+  <h1>9ThirtyOne</h1>
+  <p class="sub">Cadet and instructor feedback for AFROTC detachments — built, issued, answered
+  and analysed, in a Google Drive folder your detachment owns.</p>
+  <p class="who">For cadets, instructors, cadre and commanders · Alpha 0.18</p>
+</section>
+
+<!-- 2. WHY + HOW, one slide, as asked -->
+<section class="slide">
+  <h2>Why it exists, and how it works</h2>
+  <div class="cols">
+    <div>
+      <div class="eyebrow">Why</div>
+      <p>A detachment serves cadets from several Crosstown universities, so it cannot run on any
+      one university's IT system. It stands up a Det Google Account for mail — and that account
+      arrives with no course platform, no survey tool, and nowhere for evaluations to live.</p>
+      <p><strong>Leadership Laboratory has no feedback capture at all</strong>, and LLAB is where
+      cadets lead cadets: the part of the program most worth measuring and the part with the
+      least instrumentation.</p>
+      <p>So upperclassmen improvise in consumer form tools. It works, sometimes well — and it has
+      no oversight, no archive, and no continuity past the term that cadet graduates. That is a
+      <strong>records and oversight gap</strong> that a tooling gap produced.</p>
+    </div>
+    <div>
+      <div class="eyebrow">How</div>
+      <p><strong>A web page, not an installation.</strong> A browser opens it; a phone can add it
+      to the home screen. Nothing to install, no server to maintain, no account with anyone.</p>
+      <p><strong>The database is a Drive folder</strong> in the Det Google Account. Forms,
+      responses, receipts, the roster and the activity log are ordinary files, readable in Drive
+      with no special software. If the detachment stopped using 9ThirtyOne tomorrow, every
+      response would still be sitting there.</p>
+      <div class="card card--ok">
+        <span class="t">The app can only reach files it made</span>
+        <p>It asks Google for <span class="mono">drive.file</span> — files this app created, and
+        nothing else in that Drive. The rest was never granted, not merely withheld.</p>
+      </div>
+    </div>
+  </div>
+  <span class="foot">9ThirtyOne — User Introduction</span><span class="num">2</span>
+</section>
+
+<!-- 3. instructor -->
+<section class="slide">
+  <div class="eyebrow">For instructors and cadet instructors</div>
+  <h2>Build a form, issue it, read what comes back</h2>
+  <div class="cols cols--wide">
+    <div>
+      <ul>
+        <li><strong>A form is reusable.</strong> Build a set of questions once, save it as a
+        template, and the wording stops drifting term to term.</li>
+        <li><strong>Issue it as a feedback request</strong> to a class, an event, or named
+        cadets, with an open date and a due date.</li>
+        <li><strong>Ratings are analysed, not stacked.</strong> Distributions rather than
+        averages, and a question where the room genuinely split is called out instead of
+        averaged into the middle.</li>
+        <li><strong>Written answers are grouped and searchable</strong>, and every one is
+        screened for safety concerns so a match reaches cadre quickly.</li>
+        <li><strong>Nothing important sits unread.</strong> The panel opens on what needs
+        attention rather than on a list to work through.</li>
+      </ul>
+    </div>
+    <figure>
+      <img src="SHOT[analysis-question.png]" alt="Responses and analysis tab of the Instructor Panel">
+      <figcaption>One question, analysed — the split named rather than averaged away.</figcaption>
+    </figure>
+  </div>
+  <span class="foot">9ThirtyOne — User Introduction</span><span class="num">3</span>
+</section>
+
+<!-- 4. cadre + commander -->
+<section class="slide">
+  <div class="eyebrow">For cadre and commanders</div>
+  <h2>The same screen, pointed at folders instructors cannot open</h2>
+  <div class="cols cols--wide">
+    <div>
+      <ul>
+        <li><strong>The Cadre Panel is the Instructor Panel.</strong> Same tabs, same filters,
+        same form creator — the difference is which folder the records come out of, so there is
+        no second interface to learn.</li>
+        <li><strong>Cadre material is a different folder, not a badge.</strong> "Locked" means
+        locked: the server decides what an account may read at all, so the detachment list never
+        contains anything a cadet could not see.</li>
+        <li><strong>Commanders reach their own area</strong> in the same panel, for feedback only
+        they can read.</li>
+        <li><strong>By&#8209;instructor</strong> answers "how is this instructor doing?" — an
+        instructor sees their own results, cadre see the instructors they oversee, and a
+        commander sees everyone, cadre included.</li>
+      </ul>
+      <div class="card">
+        <span class="t">What By-instructor is</span>
+        <p>A view that narrows to the subjects your role oversees. It is not a confidentiality
+        boundary between instructors — the panel's own Responses &amp; analysis still shows the
+        detachment's shared feedback to any instructor.</p>
+      </div>
+    </div>
+    <figure>
+      <img src="SHOT[4-commander/by-instructor.png]" alt="By-instructor view as a commander sees it">
+      <figcaption>By&#8209;instructor, as a commander sees it — every instructor, cadre included.</figcaption>
+    </figure>
+  </div>
+  <span class="foot">9ThirtyOne — User Introduction</span><span class="num">4</span>
+</section>
+
+<!-- 5. cadet -->
+<section class="slide">
+  <div class="eyebrow">For cadets</div>
+  <h2>Only what is assigned to you, and once each</h2>
+  <div class="cols cols--wide">
+    <div>
+      <ul>
+        <li><strong>Getting in is a link.</strong> Tap a join link or scan a QR code from a
+        projector, sign in with the Google account the detachment already mails you at, and you
+        are in — nothing to configure, nothing to paste.</li>
+        <li><strong>Your screen lists your requests</strong> — what is open, what is due, and
+        what you have already submitted. Nobody else's work appears there.</li>
+        <li><strong>You choose a word, not a number.</strong> The scale is worded; the maths runs
+        on the number underneath it.</li>
+        <li><strong>Once each.</strong> A second attempt at the same request is refused at the
+        form, so a busy room cannot double-count anyone.</li>
+        <li><strong>It works offline.</strong> An answer written with no signal is held on the
+        device and sent when the connection returns.</li>
+      </ul>
+      <div class="card card--ok">
+        <span class="t">A cadet is never asked for Drive access</span>
+        <p>Sign-in identifies you. It grants this app nothing in your own Google Drive, and gives
+        you no access to the detachment's folder.</p>
+      </div>
+    </div>
+    <figure>
+      <img src="SHOT[1-student/my-feedback.png]" alt="A cadet's feedback list">
+      <figcaption>What a cadet opens: their own assigned feedback, and nothing else.</figcaption>
+    </figure>
+  </div>
+  <span class="foot">9ThirtyOne — User Introduction</span><span class="num">5</span>
+</section>
+
+<!-- 6. answering -->
+<section class="slide">
+  <div class="eyebrow">For cadets</div>
+  <h2>Answering, on the walk out of the classroom</h2>
+  <div class="cols cols--wide">
+    <div>
+      <ul>
+        <li><strong>Built for a phone first.</strong> The scale is thumb-sized and anchored, so a
+        rating is one tap rather than a slider fought with.</li>
+        <li><strong>Written answers are optional</strong> unless the instructor marked them
+        required, and they are where the useful detail lives.</li>
+        <li><strong>You get a receipt</strong> — the record that you took part. On an anonymous
+        form that receipt is stored in a <em>different file</em> from your answer, which is what
+        lets the detachment chase the people who still owe feedback without attaching anyone's
+        words to their name.</li>
+      </ul>
+      <div class="card card--warn">
+        <span class="t">Anonymous, and what it cannot do</span>
+        <p>Removing names cannot change what you wrote. An answer describing a role only one
+        person holds, or an incident only one person witnessed, identifies its author whatever
+        the system stored. Treat anonymous feedback as feedback, not as statistics.</p>
+      </div>
+    </div>
+    <figure>
+      <img src="SHOT[1-student/filling-a-form-phone.png]" alt="Filling in a feedback form on a phone">
+      <figcaption>The same form on a phone.</figcaption>
+    </figure>
+  </div>
+  <span class="foot">9ThirtyOne — User Introduction</span><span class="num">6</span>
+</section>
+
+<!-- 7. the data flow -->
+<section class="slide">
+  <div class="eyebrow">Where your answer goes</div>
+  <h2>Your answer, and who can read it</h2>
+  <svg viewBox="0 0 900 368" style="width:100%;height:auto;margin:2mm 0 4mm" role="img" aria-label="A cadet's answer travels to the detachment's own submission server, which writes the response and the receipt as separate files into the detachment's Drive folder. Instructors and cadre read through the panel. Nothing travels to the people who publish the software.">
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="#1c4f8b"/>
+      </marker>
+    </defs>
+    <rect x="4" y="70" width="170" height="74" rx="8" fill="#eef3fa" stroke="#1c4f8b" stroke-width="2"/>
+    <text x="89" y="102" text-anchor="middle" font-size="19" font-weight="700" fill="#14181f">You</text>
+    <text x="89" y="124" text-anchor="middle" font-size="14" fill="#4d5866">answer on your phone</text>
+
+    <line x1="178" y1="107" x2="248" y2="107" stroke="#1c4f8b" stroke-width="2.6" marker-end="url(#ar)"/>
+
+    <rect x="252" y="58" width="220" height="98" rx="8" fill="#e8f4ed" stroke="#1c6b3f" stroke-width="2"/>
+    <text x="362" y="88" text-anchor="middle" font-size="18" font-weight="700" fill="#14181f">Submission server</text>
+    <text x="362" y="110" text-anchor="middle" font-size="13.5" fill="#4d5866">a script inside the detachment's</text>
+    <text x="362" y="128" text-anchor="middle" font-size="13.5" fill="#4d5866">own Google account</text>
+    <text x="362" y="146" text-anchor="middle" font-size="12.5" font-style="italic" fill="#1c6b3f">it verifies you, then writes the files</text>
+
+    <path d="M476 88 C540 88 540 52 606 52" fill="none" stroke="#1c4f8b" stroke-width="2.6" marker-end="url(#ar)"/>
+    <path d="M476 126 C540 126 540 166 606 166" fill="none" stroke="#1c4f8b" stroke-width="2.6" marker-end="url(#ar)"/>
+
+    <rect x="610" y="22" width="286" height="62" rx="8" fill="#fff" stroke="#1c4f8b" stroke-width="2"/>
+    <text x="753" y="48" text-anchor="middle" font-size="17" font-weight="700" fill="#14181f">The response</text>
+    <text x="753" y="70" text-anchor="middle" font-size="13.5" fill="#4d5866">what you wrote — carries no name</text>
+
+    <rect x="610" y="136" width="286" height="62" rx="8" fill="#fff" stroke="#1c4f8b" stroke-width="2"/>
+    <text x="753" y="162" text-anchor="middle" font-size="17" font-weight="700" fill="#14181f">The receipt</text>
+    <text x="753" y="184" text-anchor="middle" font-size="13.5" fill="#4d5866">that you took part — a separate file</text>
+
+    <text x="896" y="214" text-anchor="end" font-size="13.5" font-style="italic" fill="#4d5866">both in the detachment's own Drive folder</text>
+
+    <rect x="610" y="232" width="286" height="46" rx="6" fill="#eef3fa" stroke="#1c4f8b" stroke-width="1.6"/>
+    <text x="753" y="260" text-anchor="middle" font-size="15" fill="#14181f">Instructors and cadre read here</text>
+    <line x1="606" y1="255" x2="470" y2="255" stroke="#1c4f8b" stroke-width="2.6" marker-end="url(#ar)"/>
+    <text x="538" y="245" text-anchor="middle" font-size="13.5" fill="#4d5866">through the panel</text>
+
+    <line x1="4" y1="292" x2="896" y2="292" stroke="#d8dee8" stroke-width="1.5"/>
+    <text x="4" y="316" font-size="16" font-weight="700" fill="#a02724">✕  Nothing travels to whoever publishes this app.</text>
+    <text x="4" y="340" font-size="14" fill="#4d5866">No server of theirs, no account with them. It is a property of the design, not a policy —</text>
+    <text x="4" y="358" font-size="14" fill="#4d5866">there is no channel for it to travel down.</text>
+  </svg>
+  <span class="foot">9ThirtyOne — User Introduction</span><span class="num">7</span>
+</section>
+
+<!-- 8. guarantees and limits -->
+<section class="slide">
+  <div class="eyebrow">Stated narrowly, so it can be checked</div>
+  <h2>What holds, and what it cannot do</h2>
+  <div class="cols">
+    <div>
+      <h3>The guarantees</h3>
+      <div class="card card--ok">
+        <span class="t">Nothing reaches the publisher</span>
+        <p>No server of theirs, no database of theirs, no account with them.</p>
+      </div>
+      <div class="card card--ok">
+        <span class="t">Anonymous results are withheld below three responses</span>
+        <p>Not "enough", not "several" — three. Below that line only the count of who took part is
+        shown, so a single answer cannot be picked out by elimination.</p>
+      </div>
+      <div class="card card--ok">
+        <span class="t">Taking part is recorded apart from what was said</span>
+        <p>Which is what lets the app say two cadets still owe feedback without attaching anyone's
+        answers to their name.</p>
+      </div>
+    </div>
+    <div>
+      <h3>And the limits that keep them honest</h3>
+      <div class="card card--warn">
+        <span class="t">Removing names cannot change what someone wrote</span>
+        <p>An answer describing a role only one person holds identifies its author no matter what
+        fields were stored.</p>
+      </div>
+      <div class="card card--warn">
+        <span class="t">The safety screen matches words, never meaning</span>
+        <p>It cannot read context, sarcasm or quotation. It raises some matches that are nothing,
+        and <strong>a clear screen is never proof that nothing was reported.</strong> It exists to
+        get a real disclosure in front of a person faster — never to decide whether one happened.</p>
+      </div>
+      <div class="card card--warn">
+        <span class="t">Not an official system, and not a reporting channel</span>
+        <p>Nothing here is an official record. If something requires official reporting, use the
+        detachment's designated channels. If someone is in danger, contact emergency services.</p>
+      </div>
+    </div>
+  </div>
+  <span class="foot">9ThirtyOne — User Introduction</span><span class="num">8</span>
+</section>
+
+</body>
+</html>

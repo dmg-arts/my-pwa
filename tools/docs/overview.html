@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>9ThirtyOne — Overview</title>
+<style>
+  @page { size: 13.333in 7.5in; margin: 0; }
+  :root {
+    --navy: #1c4f8b; --navy-d: #143a68;
+    --ink: #14181f; --ink-2: #4d5866; --ink-3: #7b8593;
+    --rule: #d8dee8; --tint: #eef3fa;
+    --ok-bg: #e8f4ed; --ok-line: #1c6b3f;
+    --warn-bg: #fdf6e6; --warn-line: #c9992e;
+    --sans: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; width: 13.333in; height: 7.5in; overflow: hidden;
+    font-family: var(--sans); color: var(--ink); font-size: 10pt; line-height: 1.42;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    display: flex; flex-direction: column;
+  }
+
+  header {
+    background: var(--navy); color: #fff; padding: 6mm 10mm 5mm;
+    display: flex; align-items: baseline; gap: 6mm;
+  }
+  header h1 { margin: 0; font-size: 21pt; letter-spacing: -0.02em; }
+  header .tag { font-size: 11pt; opacity: .93; }
+  header .meta { margin-left: auto; font-family: var(--mono); font-size: 8.4pt; opacity: .8; }
+
+  .why-how { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-bottom: 1px solid var(--rule); }
+  .why-how > div { padding: 4mm 10mm 4mm; }
+  .why-how > div + div { border-left: 1px solid var(--rule); }
+  .eyebrow {
+    font-size: 7.6pt; text-transform: uppercase; letter-spacing: .09em;
+    color: var(--navy); font-weight: 700; margin-bottom: 1.5mm;
+  }
+  .why-how p { margin: 0 0 2mm; }
+  .why-how p:last-child { margin-bottom: 0; }
+
+  main { display: grid; grid-template-columns: 1fr 1fr 1.25fr; flex: 1; }
+  main > section { padding: 4mm 8mm; }
+  main > section + section { border-left: 1px solid var(--rule); }
+  main h2 { font-size: 11.5pt; margin: 0 0 3mm; letter-spacing: -0.01em; }
+  ul { margin: 0; padding-left: 4.6mm; }
+  li { margin-bottom: 1.6mm; }
+  li strong { font-weight: 650; }
+  .role { font-family: var(--mono); font-size: 8pt; color: var(--navy); font-weight: 600; }
+
+  .card {
+    background: var(--tint); border-left: 3px solid var(--navy);
+    padding: 2.5mm 3.5mm; margin-top: 3mm; border-radius: 0 1.5mm 1.5mm 0;
+  }
+  .card--ok { background: var(--ok-bg); border-color: var(--ok-line); }
+  .card--warn { background: var(--warn-bg); border-color: var(--warn-line); }
+  .card .t { display: block; font-weight: 700; margin-bottom: 1mm; font-size: 9.2pt; }
+  .card p { margin: 0; font-size: 8.8pt; }
+
+  svg { display: block; width: 100%; height: auto; }
+  .cap { font-size: 8pt; color: var(--ink-3); margin-top: 2mm; }
+
+  footer {
+    background: var(--tint); border-top: 1px solid var(--rule);
+    padding: 2mm 10mm; font-size: 8.3pt; color: var(--ink-2);
+    display: flex; gap: 8mm;
+  }
+  footer b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>9ThirtyOne</h1>
+  <span class="tag">Cadet and instructor feedback, in a Drive folder your detachment owns.</span>
+  <span class="meta">dmg-arts.github.io/9thirtyone</span>
+</header>
+
+<div class="why-how">
+  <div>
+    <div class="eyebrow">Why</div>
+    <p>A detachment serves cadets from several Crosstown universities, so it cannot run on any one
+    university's IT system. It stands up a Det Google Account for mail — and that account arrives
+    with no course platform, no survey tool, nowhere for evaluations to live.</p>
+    <p><strong>Leadership Laboratory has no feedback capture at all</strong>, and it is where cadets
+    lead cadets. Upperclassmen improvise in consumer form tools: no oversight, no archive, nothing
+    that outlasts the cadet who built it. That is a records gap, not a tooling gap.</p>
+  </div>
+  <div>
+    <div class="eyebrow">How</div>
+    <p>A web page, not an installation. Cadets open a link, sign in with the Google account the
+    detachment already mails them at, and answer — once each, on a phone, offline if need be.</p>
+    <p><strong>The database is a Drive folder</strong> in the detachment's own Google account:
+    ordinary files, readable without this app. If 9ThirtyOne stopped tomorrow, every response
+    would still be sitting there. The app asks only for <span class="role">drive.file</span> —
+    files it created itself, and nothing else in that Drive.</p>
+  </div>
+</div>
+
+<main>
+  <section>
+    <h2>Instructors, cadre and commanders</h2>
+    <ul>
+      <li><strong>Build a form</strong> — a reusable set of questions — and issue it to a class, an
+      event, or named cadets, with an open and a due date.</li>
+      <li><strong>Read the analysis, not a stack.</strong> Distributions rather than averages, and
+      questions where the room genuinely split are called out instead of averaged into the middle.</li>
+      <li><strong>Chase without unmasking.</strong> Receipts are stored apart from answers, so the
+      app can say who still owes feedback on an anonymous form.</li>
+      <li><strong>Cadre get a second panel</strong> — the same screen pointed at folders an
+      instructor cannot reach at all. <span class="role">Commanders</span> also reach their own
+      area there.</li>
+      <li><strong>By&#8209;instructor</strong> shows an instructor their own results, cadre the
+      instructors they oversee, and a commander everyone.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>What a cadet sees</h2>
+    <ul>
+      <li><strong>A link, or a QR code on a projector.</strong> Tap it, sign in, done — nothing to
+      configure and nothing to paste.</li>
+      <li><strong>Only what is assigned to them.</strong> The cadet screen lists their open
+      feedback requests and what is already submitted.</li>
+      <li><strong>Words, not numbers.</strong> Ratings are chosen as words; the maths runs on the
+      number underneath.</li>
+      <li><strong>Once each.</strong> A second attempt at the same request is refused at the form.</li>
+      <li><strong>No Drive access at all.</strong> A cadet is never asked for permission to their
+      own Google Drive, and never gets access to the detachment's folder.</li>
+    </ul>
+    <div class="card card--ok">
+      <span class="t">Written answers are screened</span>
+      <p>Written answers are checked for wording that may need a person's attention. It matches
+      <em>words, never meaning</em> — so a clear screen is never proof that nothing was
+      reported, and this is not a reporting channel.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where an answer actually goes</h2>
+    <svg viewBox="0 0 460 206" role="img" aria-label="A cadet's answer travels to the detachment's submission server, which writes the response and the receipt as separate files in the detachment's Drive folder. Nothing travels to the people who publish the software.">
+      <defs>
+        <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#1c4f8b"/>
+        </marker>
+      </defs>
+      <!-- cadet -->
+      <rect x="2" y="30" width="96" height="42" rx="5" fill="#eef3fa" stroke="#1c4f8b" stroke-width="1.2"/>
+      <text x="50" y="48" text-anchor="middle" font-size="11" font-weight="700" fill="#14181f">Cadet</text>
+      <text x="50" y="62" text-anchor="middle" font-size="9" fill="#4d5866">answers on a phone</text>
+      <!-- arrow 1 -->
+      <line x1="100" y1="51" x2="146" y2="51" stroke="#1c4f8b" stroke-width="1.6" marker-end="url(#a)"/>
+      <!-- server -->
+      <rect x="148" y="24" width="120" height="54" rx="5" fill="#e8f4ed" stroke="#1c6b3f" stroke-width="1.2"/>
+      <text x="208" y="42" text-anchor="middle" font-size="11" font-weight="700" fill="#14181f">Submission server</text>
+      <text x="208" y="55" text-anchor="middle" font-size="8.6" fill="#4d5866">inside the detachment's</text>
+      <text x="208" y="66" text-anchor="middle" font-size="8.6" fill="#4d5866">own Google account</text>
+      <!-- split arrows -->
+      <path d="M270 44 C300 44 300 26 328 26" fill="none" stroke="#1c4f8b" stroke-width="1.6" marker-end="url(#a)"/>
+      <path d="M270 58 C300 58 300 84 328 84" fill="none" stroke="#1c4f8b" stroke-width="1.6" marker-end="url(#a)"/>
+      <!-- two files -->
+      <rect x="330" y="8" width="126" height="38" rx="5" fill="#fff" stroke="#1c4f8b" stroke-width="1.2"/>
+      <text x="393" y="24" text-anchor="middle" font-size="10" font-weight="700" fill="#14181f">The response</text>
+      <text x="393" y="37" text-anchor="middle" font-size="8.6" fill="#4d5866">what was said — no name</text>
+      <rect x="330" y="66" width="126" height="38" rx="5" fill="#fff" stroke="#1c4f8b" stroke-width="1.2"/>
+      <text x="393" y="82" text-anchor="middle" font-size="10" font-weight="700" fill="#14181f">The receipt</text>
+      <text x="393" y="95" text-anchor="middle" font-size="8.6" fill="#4d5866">who took part — separate file</text>
+      <!-- folder bracket -->
+      <path d="M462 8 L462 104" stroke="#7b8593" stroke-width="0" />
+      <text x="456" y="120" text-anchor="end" font-size="8.6" font-style="italic" fill="#4d5866">both files, in the detachment's Drive folder</text>
+      <!-- read back -->
+      <line x1="330" y1="140" x2="270" y2="140" stroke="#1c4f8b" stroke-width="1.6" marker-end="url(#a)"/>
+      <rect x="330" y="128" width="126" height="26" rx="4" fill="#eef3fa" stroke="#1c4f8b" stroke-width="1"/>
+      <text x="393" y="145" text-anchor="middle" font-size="9" fill="#14181f">Instructors and cadre read</text>
+      <text x="266" y="144" text-anchor="end" font-size="9" fill="#4d5866">through the panel</text>
+      <!-- nothing to publisher -->
+      <line x1="8" y1="168" x2="456" y2="168" stroke="#d8dee8" stroke-width="1"/>
+      <text x="8" y="186" font-size="9.4" fill="#a02724" font-weight="700">✕ Nothing travels to whoever publishes this software.</text>
+      <text x="8" y="200" font-size="9" fill="#4d5866">There is no server of theirs in this picture.</text>
+    </svg>
+
+    <div class="card card--warn">
+      <span class="t">Anonymous, and what that cannot do</span>
+      <p>Anonymous results stay hidden until <strong>three</strong> responses exist — below that,
+      only the count of who took part is shown. But removing names cannot change what someone
+      wrote: an answer describing a role only one person holds identifies its author anyway.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span><b>Free and open source</b> · Apache 2.0</span>
+  <span><b>No account with us</b> · nothing is sold, shared, or analysed for advertising</span>
+  <span><b>Not an official Air Force system</b> · and never a channel for reporting anything that requires official reporting</span>
+</footer>
+
+</body>
+</html>

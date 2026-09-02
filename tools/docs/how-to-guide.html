@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>9ThirtyOne — How-To Guide</title>
+<style>
+  @page {
+    size: Letter;
+    margin: 18mm 16mm 20mm;
+    @bottom-center { content: counter(page); }
+  }
+  @page :first { margin: 0; }
+
+  :root {
+    --navy: #1c4f8b; --ink: #14181f; --ink-2: #4d5866; --ink-3: #7b8593;
+    --rule: #d8dee8; --tint: #eef3fa;
+    --warn-bg: #fdf6e6; --warn-line: #c9992e;
+    --danger-bg: #fdeceb; --danger-line: #a02724;
+    --ok-bg: #e8f4ed; --ok-line: #1c6b3f;
+    --mono: "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: var(--sans); color: var(--ink);
+    font-size: 10.2pt; line-height: 1.5;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+
+  .cover { height: 279mm; padding: 44mm 24mm 24mm; page-break-after: always; }
+  .cover__mark { width: 26mm; margin-bottom: 12mm; }
+  .cover h1 { font-size: 32pt; margin: 0 0 2mm; letter-spacing: -0.025em; }
+  .cover .sub { font-size: 14pt; color: var(--ink-2); margin: 0 0 1mm; }
+  .cover .who { font-size: 11pt; color: var(--ink-3); margin: 0; }
+  .cover .meta {
+    margin-top: 16mm; border-left: 3px solid var(--navy); background: var(--tint);
+    padding: 5mm 6mm; border-radius: 0 2mm 2mm 0; font-size: 10pt; max-width: 128mm;
+  }
+  .cover .meta strong { display: block; margin-bottom: 1.5mm; }
+
+  section { page-break-before: always; }
+  h2 {
+    font-size: 17pt; margin: 0 0 4mm; letter-spacing: -0.015em;
+    padding-bottom: 2.5mm; border-bottom: 2px solid var(--navy); page-break-after: avoid;
+  }
+  h2 .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 8mm; height: 8mm; border-radius: 50%; background: var(--navy); color: #fff;
+    font-size: 10pt; font-family: var(--mono); margin-right: 3mm; vertical-align: 1mm;
+  }
+  h3 { font-size: 11.8pt; margin: 7mm 0 2mm; page-break-after: avoid; }
+  h4 { font-size: 10.4pt; margin: 4mm 0 1.5mm; color: var(--ink-2); page-break-after: avoid; }
+  p { margin: 0 0 3mm; }
+  ul, ol { margin: 0 0 3mm; padding-left: 5mm; }
+  li { margin-bottom: 1.6mm; }
+  .lead { font-size: 11pt; color: var(--ink-2); margin-bottom: 5mm; }
+  .eyebrow {
+    font-size: 8pt; text-transform: uppercase; letter-spacing: .09em;
+    color: var(--navy); font-weight: 700; margin-bottom: 1.5mm;
+  }
+
+  .note {
+    border-left: 3px solid var(--navy); background: var(--tint);
+    padding: 3mm 4mm; margin: 0 0 4mm; border-radius: 0 2mm 2mm 0;
+    page-break-inside: avoid;
+  }
+  .note--warn { border-color: var(--warn-line); background: var(--warn-bg); }
+  .note--danger { border-color: var(--danger-line); background: var(--danger-bg); }
+  .note--ok { border-color: var(--ok-line); background: var(--ok-bg); }
+  .note p:last-child { margin-bottom: 0; }
+  .note strong.title { display: block; margin-bottom: 1mm; }
+
+  table { width: 100%; border-collapse: collapse; margin: 0 0 4mm; font-size: 9.4pt; page-break-inside: avoid; }
+  th, td { text-align: left; padding: 2mm 3mm; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { background: var(--tint); color: var(--navy); font-size: 8.4pt; text-transform: uppercase; letter-spacing: .05em; }
+  td.k { white-space: nowrap; font-family: var(--mono); font-size: 8.8pt; }
+  .yes { color: var(--ok-line); font-weight: 700; }
+  .no { color: var(--danger-line); font-weight: 700; }
+
+  code {
+    font-family: var(--mono); font-size: 9pt;
+    background: #f2f5f9; border: 1px solid var(--rule);
+    padding: 0.3mm 1.2mm; border-radius: 1mm;
+  }
+
+  /* Screenshots come in three shapes and must be sized by shape, not one rule:
+     the capture scripts take full-page shots, so an aspect-0.20 panel is 890mm
+     tall at content width and would silently run off several pages. */
+  figure { margin: 0 0 5mm; page-break-inside: avoid; }
+  figure img {
+    width: 100%; border: 1px solid var(--rule); border-radius: 2mm; display: block;
+  }
+  figure.tall img { height: 92mm; object-fit: cover; object-position: top center; }
+  figure.tall--deep img { height: 130mm; }
+  figure.phone img { width: auto; height: 104mm; margin: 0 auto; }
+  figcaption { font-size: 8.8pt; color: var(--ink-3); margin-top: 1.8mm; }
+  figcaption b { color: var(--ink-2); }
+
+  .toc { list-style: none; padding: 0; margin: 0; }
+  .toc li { padding: 2.4mm 0; border-bottom: 1px solid var(--rule); display: flex; gap: 4mm; }
+  .toc .n { font-family: var(--mono); color: var(--navy); font-weight: 600; min-width: 8mm; }
+  .toc .d { color: var(--ink-3); font-size: 9.2pt; }
+
+  .roles { display: flex; gap: 2mm; flex-wrap: wrap; margin: 0 0 4mm; }
+  .pill {
+    font-size: 8.2pt; font-weight: 700; padding: 1mm 2.5mm; border-radius: 10mm;
+    background: var(--tint); color: var(--navy); border: 1px solid var(--rule);
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <img class="cover__mark" src="APP_ICON" alt="">
+  <h1>9ThirtyOne</h1>
+  <p class="sub">How-To Guide</p>
+  <p class="who">Every screen, for every role &middot; Alpha 0.18</p>
+  <div class="meta">
+    <strong>Who this is for</strong>
+    Anyone using 9ThirtyOne after a detachment has set it up — cadets, instructors, cadre,
+    commanders and database administrators. Each role has its own chapter; read yours and skip
+    the rest.
+    <br><br>
+    Installing it in the first place is a different document: the <em>Installation and Setup
+    Guide</em>. Whether to adopt it at all is a third: the <em>Introduction</em> deck.
+  </div>
+</div>
+
+<section>
+  <h2>What this guide covers</h2>
+  <p class="lead">One chapter per role, and a closing chapter on what each role deliberately
+  cannot reach. Every screen shown here is a real screenshot of the running app with seeded
+  data, not a mock-up.</p>
+
+  <ol class="toc">
+    <li><span class="n">1</span><span><strong>Everyone — getting in</strong><span class="d"> — the join link, signing in, and the home screen</span></span></li>
+    <li><span class="n">2</span><span><strong>Cadet</strong><span class="d"> — finding your feedback, answering it, and what happens to your answer</span></span></li>
+    <li><span class="n">3</span><span><strong>Instructor</strong><span class="d"> — forms, feedback requests, responses, analysis, cadets, database</span></span></li>
+    <li><span class="n">4</span><span><strong>Cadre</strong><span class="d"> — the second panel, restricted spaces, and overseeing instructors</span></span></li>
+    <li><span class="n">5</span><span><strong>Commander</strong><span class="d"> — your own area, and seeing everyone</span></span></li>
+    <li><span class="n">6</span><span><strong>Database administrator</strong><span class="d"> — the roster, invitations, backups and the activity log</span></span></li>
+    <li><span class="n">7</span><span><strong>What each role cannot reach</strong><span class="d"> — the refusals, and which ones are real boundaries</span></span></li>
+  </ol>
+
+  <h3>A word on roles</h3>
+  <p>Roles are held by an account, and one account can hold several. An instructor who also
+  administers the database holds both roles and sees both doors. Nothing in this guide assumes
+  you hold only one.</p>
+  <div class="roles">
+    <span class="pill">Cadet</span><span class="pill">Instructor</span><span class="pill">Cadre</span>
+    <span class="pill">Commander</span><span class="pill">Database admin</span>
+  </div>
+</section>
+
+<!-- ============================ 1. EVERYONE ============================ -->
+<section>
+  <h2><span class="num">1</span>Everyone — getting in</h2>
+  <p class="lead">There is nothing to install and no password to remember. You need the address
+  your detachment uses, and the Google account it has on file for you.</p>
+
+  <h3>The join link</h3>
+  <p>Most people never type the address at all. A join link carries the detachment's
+  configuration inside it, so tapping one sets your device up and signs you in.</p>
+  <figure>
+    <img src="SHOT[0-signed-out/join-link.png]" alt="The join screen reached from a join link">
+    <figcaption>A join link opens straight to this. <b>Nothing to paste, nothing to configure.</b></figcaption>
+  </figure>
+  <div class="note note--ok">
+    <strong class="title">Or a QR code on a projector</strong>
+    <p>An administrator can put the same link on screen as a QR code and point a room at it —
+    the fastest way to enrol a whole flight at once. Chapter 6 covers producing one.</p>
+  </div>
+
+  <h3>Signing in</h3>
+  <p>9ThirtyOne issues no passwords of its own. You sign in with Google, and whether you get in
+  is decided by your detachment's <em>roster</em> — a list an administrator keeps. An address
+  that is not on it is turned away, however valid the Google account.</p>
+  <div class="note note--warn">
+    <strong class="title">Use the address your detachment has for you</strong>
+    <p>If sign-in refuses you, the usual cause is signing in with a different Google account
+    from the one on the roster — a personal address where the detachment listed a school one,
+    or the other way round. Ask your administrator which address they hold.</p>
+  </div>
+
+  <h3>The home screen</h3>
+  <p>Home shows the doors you can open. It is deliberately spare: on a shared detachment laptop
+  this is the screen someone walks up to.</p>
+  <figure class="tall">
+    <img src="SHOT[1-student/home.png]" alt="The home screen">
+    <figcaption>Doors you cannot open are marked <b>Sign-in required</b>, and one you hold no role
+    for is not shown at all.</figcaption>
+  </figure>
+
+  <h3>Settings, and installing it on a phone</h3>
+  <p>Settings holds appearance, accessibility and the database location. Every role has it.</p>
+  <p>On a phone, use your browser's <em>Add to Home Screen</em> to install 9ThirtyOne as an app.
+  It then opens full screen, works offline, and keeps your session between uses.</p>
+</section>
+
+<!-- ============================ 2. CADET ============================ -->
+<section>
+  <h2><span class="num">2</span>Cadet</h2>
+  <p class="lead">Your side of the app is small on purpose: see what is assigned to you, answer
+  it, and know what happened to your answer.</p>
+
+  <h3>Finding your feedback</h3>
+  <p>The cadet screen lists the feedback requests assigned to you — what is open, when it is
+  due, and what you have already submitted. Nobody else's work appears here, and you cannot see
+  other cadets' answers.</p>
+  <figure class="tall">
+    <img src="SHOT[1-student/my-feedback.png]" alt="A cadet's list of assigned feedback">
+    <figcaption>Filter by school year, semester and AS level when a term's worth has built up.</figcaption>
+  </figure>
+
+  <h3>Answering</h3>
+  <p>Open a request and answer it. Two things are worth knowing before you start.</p>
+  <ul>
+    <li><strong>You choose a word, not a number.</strong> Ratings are anchored words —
+    <em>Detrimental</em> through <em>Outstanding</em> — and the arithmetic runs on the number
+    underneath. You never pick a digit.</li>
+    <li><strong>You get one attempt.</strong> A second try at the same request is refused at the
+    form, so nothing is double-counted.</li>
+  </ul>
+  <figure class="phone">
+    <img src="SHOT[1-student/filling-a-form-phone.png]" alt="Filling in a feedback form on a phone">
+    <figcaption>Built for a phone first — the scale is thumb-sized, and an answer written with no
+    signal is held on the device and sent when the connection returns.</figcaption>
+  </figure>
+
+  <h3>What happens to your answer</h3>
+  <p>Your answer goes to a small script running inside your <strong>detachment's own Google
+  account</strong>, which checks who you are and writes the file. You are never asked for access
+  to your own Google Drive, and you never get access to the detachment's folder.</p>
+  <p>On an anonymous form, two separate files are written: <strong>the response</strong>, which
+  carries no name, and <strong>the receipt</strong>, which records that you took part. Keeping
+  them apart is what lets the detachment chase the people who still owe feedback without
+  attaching anyone's words to their name.</p>
+
+  <div class="note note--ok">
+    <strong class="title">Anonymous results are withheld below three responses</strong>
+    <p>Not "enough", not "several" — three. Below that line, only the count of who has taken part
+    is shown, so a single answer cannot be picked out by elimination.</p>
+  </div>
+
+  <div class="note note--warn">
+    <strong class="title">What anonymity cannot do</strong>
+    <p>Removing names cannot change what you wrote. An answer describing a role only one person
+    holds, or an incident only one person witnessed, identifies its author whatever the system
+    stored. Treat anonymous feedback as feedback, not as statistics.</p>
+  </div>
+
+  <div class="note note--danger">
+    <strong class="title">This is not a reporting channel</strong>
+    <p>Written answers are screened for wording that may need a person's attention, and a match
+    is put in front of cadre quickly. But the screen matches <strong>words, never meaning</strong>,
+    and nobody is monitoring submissions in real time. Do not report a crime, an assault, a
+    threat or a safety emergency here. If someone is in danger, contact emergency services; use
+    your detachment's designated channels for everything else.</p>
+  </div>
+</section>
+<!-- ============================ 3. INSTRUCTOR ============================ -->
+<section>
+  <h2><span class="num">3</span>Instructor</h2>
+  <p class="lead">The Instructor Panel is where a detachment's ordinary feedback work happens:
+  build a form, issue it, read what comes back, and keep the record.</p>
+
+  <h3>The panel, and its tabs</h3>
+  <p>Everything lives behind five tabs. The panel opens on what needs attention rather than on a
+  list to work through.</p>
+  <table>
+    <tr><th style="width:34%">Tab</th><th>What it is for</th></tr>
+    <tr><td><strong>Feedback requests</strong></td><td>What has been issued, to whom, open and due dates, and how many have answered.</td></tr>
+    <tr><td><strong>Responses &amp; analysis</strong></td><td>What came back, analysed — distributions, splits, written answers.</td></tr>
+    <tr><td><strong>By instructor</strong></td><td>Results gathered by who they are about, rather than by which form they came from.</td></tr>
+    <tr><td><strong>Cadets</strong></td><td>Who is on the roster for the classes you work with, and what they still owe.</td></tr>
+    <tr><td><strong>Database</strong></td><td>Backups, exports and the health of the folder.</td></tr>
+  </table>
+
+  <h3>Creating a form and issuing it</h3>
+  <p>A <strong>form</strong> is a reusable set of questions. A <strong>feedback request</strong>
+  is that form issued to a class, an event, or named cadets, with an open date and a due date.
+  Separating the two is what stops the wording drifting term to term: save a form as a template,
+  and next term starts from the same questions.</p>
+  <figure class="tall tall--deep">
+    <img src="SHOT[2-instructor/create-feedback.png]" alt="Creating a feedback request">
+    <figcaption>Choose the class or event, set the dates, and decide whether responses are
+    anonymous. <b>Anonymity is decided here, when the request is issued</b> — not afterwards.</figcaption>
+  </figure>
+
+  <h3>Reading what comes back</h3>
+  <p>Ratings are analysed rather than stacked. The panel reports a distribution, names the
+  questions where the room genuinely split, and flags a lone dissenting view instead of letting
+  an average bury it.</p>
+  <figure class="tall">
+    <img src="SHOT[analysis-question.png]" alt="Analysis of a single question">
+    <figcaption>A mean of 6.57 that describes nobody: two clusters, and the panel says so rather
+    than reporting the midpoint.</figcaption>
+  </figure>
+  <div class="note">
+    <strong class="title">Why the average is not the headline</strong>
+    <p>An average is the one number that can be true of a group and describe none of its members.
+    Where a set is polarised, the panel names the split and shows both groups.</p>
+  </div>
+
+  <h3>Written answers, and the safety screen</h3>
+  <p>Written answers are grouped and searchable, and every one is screened against word lists for
+  hazing, harassment, discrimination, violence, self-harm, substance misuse and integrity
+  concerns. A match is put in front of cadre quickly.</p>
+  <div class="note note--warn">
+    <strong class="title">A match is not a finding, and a clear screen is not proof</strong>
+    <p>The screen matches <strong>words, never meaning</strong>. It cannot tell "we discussed
+    hazing prevention" from "I was hazed", it raises some matches that are nothing, and a clear
+    screen is never proof that nothing was reported. It exists to get a real disclosure in front
+    of a person faster — never to decide whether one happened. A match means <em>read that
+    answer now</em>, and follow the detachment's own reporting procedures.</p>
+  </div>
+  <div class="note note--danger">
+    <strong class="title">Flagged feedback cannot be deleted from this panel</strong>
+    <p>If a response contains language the safety screen flagged, an instructor cannot remove it.
+    A database administrator can, and the deletion is recorded against their name. If you are the
+    subject of the feedback, refer it rather than handling it yourself.</p>
+  </div>
+
+  <h3>Chasing people without unmasking them</h3>
+  <p>Because taking part is recorded in a different file from what was said, the panel can tell
+  you that two cadets still owe feedback on an anonymous request without telling you what anyone
+  wrote. Use the Cadets tab to see who is outstanding.</p>
+  <figure class="tall">
+    <img src="SHOT[2-instructor/panel-students.png]" alt="The cadets tab of the Instructor Panel">
+    <figcaption>Who is on the roster, and what they still owe.</figcaption>
+  </figure>
+
+  <h3>By instructor — your own results</h3>
+  <p>This tab answers "how am I doing?" by gathering feedback about a person rather than about a
+  form. As an instructor you see <strong>your own</strong> results here.</p>
+  <div class="note">
+    <strong class="title">What this view is, stated precisely</strong>
+    <p>By instructor narrows to the subjects your role oversees. It is <strong>not</strong> a
+    confidentiality boundary between instructors: the detachment's shared feedback remains
+    readable to instructors through Responses &amp; analysis. Treat it as a lens that gathers
+    results by subject, not as a guarantee that colleagues cannot see each other's.</p>
+  </div>
+</section>
+
+<!-- ============================ 4. CADRE ============================ -->
+<section>
+  <h2><span class="num">4</span>Cadre</h2>
+  <p class="lead">Cadre hold everything an instructor holds, plus a second panel pointed at
+  folders instructors cannot open at all.</p>
+
+  <h3>Two panels, one interface</h3>
+  <p>The Cadre Panel <em>is</em> the Instructor Panel — same tabs, same filters, same form
+  creator. The only difference is which folder the records come out of. That is deliberate: a
+  cadre member should not have to learn a second interface to do the same job with restricted
+  material.</p>
+  <figure class="tall">
+    <img src="SHOT[3-cadre/cadre-panel.png]" alt="The Cadre Panel">
+    <figcaption>The same screen you already know, pointed somewhere else.</figcaption>
+  </figure>
+
+  <div class="note note--ok">
+    <strong class="title">Separate folders, not a badge on a list</strong>
+    <p>Restricted feedback is not an item in the instructor list wearing a lock icon — it is in a
+    different folder, and the server decides who may read that folder at all. So "locked" means
+    locked, and the ordinary detachment list never contains anything a cadet could not see. It
+    also means you can read a list on a shared screen without checking who is behind you.</p>
+  </div>
+
+  <h3>Issuing feedback into the cadre space</h3>
+  <p>When you create a request from the Cadre Panel, it is issued into the cadre space and its
+  responses land there. Cadets answer exactly as they always do; they are not told which space
+  the request belongs to.</p>
+  <figure class="tall">
+    <img src="SHOT[3-cadre/create-feedback-in-cadre-space.png]" alt="Creating feedback within the cadre space">
+    <figcaption>The space a request belongs to is chosen when it is created.</figcaption>
+  </figure>
+
+  <h3>Overseeing instructors</h3>
+  <p>In By instructor, cadre see <strong>the instructors they oversee, and themselves</strong> —
+  where an instructor sees only their own results.</p>
+  <figure class="tall">
+    <img src="SHOT[3-cadre/by-instructor-instructors.png]" alt="By-instructor as cadre see it">
+    <figcaption>Instructors you oversee, gathered by subject rather than by form.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================ 5. COMMANDER ============================ -->
+<section>
+  <h2><span class="num">5</span>Commander</h2>
+  <p class="lead">A commander holds the cadre view plus two things of their own: a private area,
+  and sight of everyone.</p>
+
+  <h3>Your own area</h3>
+  <p>The commander space is reached through the Cadre Panel, in the same space picker. Feedback
+  issued there is readable only by the commander — cadre included in the exclusion.</p>
+  <figure class="tall">
+    <img src="SHOT[4-commander/cadre-panel-with-own-space.png]" alt="The Cadre Panel showing the commander's own space">
+    <figcaption>A cadre member never sees this space listed. The picker shows each account only
+    what it actually holds.</figcaption>
+  </figure>
+
+  <h3>Everyone, cadre included</h3>
+  <p>In By instructor a commander sees <strong>every</strong> subject — instructors and cadre
+  alike. This is the view that answers "how is the cadre doing?", which no other role can ask.</p>
+  <figure class="tall">
+    <img src="SHOT[4-commander/by-instructor.png]" alt="By-instructor as a commander sees it">
+    <figcaption>The three oversight tiers in one sentence: an instructor sees themselves, cadre see
+    the instructors they oversee, a commander sees everyone.</figcaption>
+  </figure>
+  <div class="note">
+    <strong class="title">The tiers are narrowed on the server</strong>
+    <p>The submission server applies this rule itself, so the app will not serve an instructor a
+    By-instructor view of somebody else. On a detachment running without that server there is
+    nothing to enforce it, and the tiers are a lens in the browser only.</p>
+  </div>
+</section>
+<!-- ============================ 6. ADMIN ============================ -->
+<section>
+  <h2><span class="num">6</span>Database administrator</h2>
+  <p class="lead">The administrator keeps the roster, gets people in, and looks after the folder.
+  It is a separate role from instructor — holding it does not open the panels.</p>
+
+  <h3>The roster is who may sign in</h3>
+  <p>There is no password list. The roster decides who may sign in and as what, keyed on the
+  Google address each person will actually use.</p>
+  <figure class="tall">
+    <img src="SHOT[5-admin/roster.png]" alt="The roster in Database Administration">
+    <figcaption>Add people one at a time, or a whole class at once from a CSV.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Use the address they will sign in with.</strong> A school address and the Gmail
+    account behind it are two different strings; only the one on the roster works.</li>
+    <li><strong>Changing an email keeps their history.</strong> Receipts are filed under a stable
+    username, so correcting an address does not orphan what they have already submitted.</li>
+    <li><strong>Deactivate rather than delete</strong> when someone leaves. The record of their
+    participation stays intact.</li>
+    <li><strong>Keep at least two administrators.</strong> Losing a single account should not
+    lock the detachment out of its own folder.</li>
+  </ul>
+
+  <h3>Getting everyone in</h3>
+  <p>Produce a join link, or put it on a projector as a QR code and enrol a room in one go.</p>
+  <figure class="tall">
+    <img src="SHOT[5-admin/invite-and-qr.png]" alt="The invite screen with a QR code">
+    <figcaption>The link carries the configuration, so nobody has to be walked through setup.</figcaption>
+  </figure>
+  <div class="note note--warn">
+    <strong class="title">The link is configuration, not a secret</strong>
+    <p>It carries the Client ID, the folder and the server address — all of which are designed to
+    be public. It grants nothing on its own: access is still decided by the roster, so someone
+    who is not on it gets no further than the sign-in screen.</p>
+  </div>
+
+  <h3>Backups, exports and the activity log</h3>
+  <ul>
+    <li><strong>Export a backup</strong> regularly from the Database tab, and keep a copy
+    off-site.</li>
+    <li><strong>The anonymised export</strong> strips names for a copy you keep outside the
+    folder. What it cannot strip is what somebody wrote — see the limit stated in chapter 2.</li>
+    <li><strong>The activity log</strong> records deletions and roster changes with who did them.
+    Nothing in the app can delete an entry from it.</li>
+    <li><strong>Maintenance runs from the owner's device.</strong> Backup, restore, wipe and
+    reindex act on the whole folder, and the submission server deliberately offers no way to do
+    any of them remotely — an address that could empty a detachment's records on request is not
+    one worth having.</li>
+  </ul>
+</section>
+
+<!-- ============================ 7. REFUSALS ============================ -->
+<section>
+  <h2><span class="num">7</span>What each role cannot reach</h2>
+  <p class="lead">Access is decided by the role your account holds. A door you cannot open is
+  refused outright — not hidden, and not merely absent from a menu.</p>
+
+  <table>
+    <tr>
+      <th style="width:26%">Signed in as</th>
+      <th>Cadet screen</th><th>Instructor Panel</th><th>Cadre Panel</th><th>Database admin</th>
+    </tr>
+    <tr><td><strong>Nobody</strong> (signed out)</td>
+      <td class="no">refused</td><td class="no">refused</td><td class="no">refused</td><td class="no">refused</td></tr>
+    <tr><td><strong>Cadet</strong></td>
+      <td class="yes">yes</td><td class="no">refused</td><td class="no">refused</td><td class="no">refused</td></tr>
+    <tr><td><strong>Instructor</strong></td>
+      <td class="yes">yes</td><td class="yes">yes</td><td class="no">refused</td><td class="no">refused</td></tr>
+    <tr><td><strong>Cadre</strong></td>
+      <td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td><td class="no">refused</td></tr>
+    <tr><td><strong>Commander</strong></td>
+      <td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td><td class="no">refused</td></tr>
+    <tr><td><strong>Database admin</strong></td>
+      <td class="yes">yes</td><td class="no">refused</td><td class="no">refused</td><td class="yes">yes</td></tr>
+  </table>
+
+  <div class="note">
+    <strong class="title">Administering the database is not instructing</strong>
+    <p>The last row surprises people. An account holding <em>only</em> the database
+    administrator role manages the roster and the folder, and cannot open the panels. Someone who
+    does both jobs holds both roles, and then sees both doors. That is the point of separating
+    them: managing accounts should not require the ability to read everyone's feedback.</p>
+  </div>
+
+  <figure class="tall">
+    <img src="SHOT[1-student/refused/instructor-panel.png]" alt="A cadet refused entry to the Instructor Panel">
+    <figcaption>A cadet opening the Instructor Panel by deep link. <b>The route itself is refused</b>,
+    so guessing a URL gets nowhere.</figcaption>
+  </figure>
+
+  <h3>Which refusals are real boundaries</h3>
+  <p>Two different things are described in this guide, and they are worth keeping apart.</p>
+  <table>
+    <tr><th style="width:36%">What</th><th>How strong</th></tr>
+    <tr>
+      <td><strong>Panels and spaces</strong><br>cadre and commander folders</td>
+      <td><strong>A real boundary.</strong> The submission server decides what an account may read
+      at all, and it runs where the browser cannot reach it. An instructor cannot read cadre
+      material by any route the app offers.</td>
+    </tr>
+    <tr>
+      <td><strong>The By-instructor view</strong><br>own / overseen / everyone</td>
+      <td><strong>A lens, not confidentiality.</strong> It narrows results by subject and the
+      server honours it for that view — but the detachment's shared feedback stays readable to
+      instructors elsewhere in the panel. Do not describe it to anyone as instructors being
+      unable to see each other's feedback.</td>
+    </tr>
+  </table>
+
+  <div class="note note--ok">
+    <strong class="title">And one that is not access control at all</strong>
+    <p>Anonymity is not a permission. Anonymous results are withheld from <em>everyone</em>,
+    including a commander, until three responses exist — and no role anywhere in the app can
+    reveal who wrote an anonymous answer, because the name was never stored beside it.</p>
+  </div>
+</section>
+
+</body>
+</html>
