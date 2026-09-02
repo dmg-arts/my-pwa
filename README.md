@@ -969,6 +969,18 @@ render as numbers.
 
 ---
 
+## How this was built
+
+Direction, product decisions and the AFROTC domain knowledge are the author's.
+The implementation - code, tests, and most of the documentation - was written
+with Claude (Anthropic) working from that direction, decision by decision. Most
+commits carry a `Co-Authored-By: Claude` trailer, so which changes were written
+that way is visible in the history rather than summarised here.
+
+Recorded because it is true and checkable, and because a detachment's IT
+reviewer reading this code is entitled to know how it was produced. Copyright
+and responsibility sit with the author either way - see [NOTICE](NOTICE).
+
 ## Licence
 
 Apache License 2.0 - see [LICENSE](LICENSE) and [NOTICE](NOTICE).

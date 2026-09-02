@@ -15,6 +15,11 @@ limitations under the License.
 
 ---
 
+Developed by David Gaspar working with Claude (Anthropic). Direction, product
+decisions and the domain knowledge are the author's; Claude wrote code and
+documentation under that direction. Copyright in this work is held by the author
+named above. Neither Anthropic nor Claude claims authorship or ownership of it.
+
 This product includes no third-party code. It has no runtime dependencies,
 bundles no libraries, and loads nothing from a CDN. The only external script
 it loads at runtime is Google Identity Services, from accounts.google.com,
