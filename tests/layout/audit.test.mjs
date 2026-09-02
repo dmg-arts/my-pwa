@@ -286,6 +286,30 @@ const AUDIT = () => {
 
 const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
 
+/*
+ * Close the browser even when something throws on the way to the close below.
+ *
+ * app.test.mjs and drive.test.mjs wrap every assertion in a step() that catches,
+ * so they always reach their own browser.close(). This file does not: the audit
+ * loop calls page.goto directly, so a single navigation failure throws straight
+ * past the close and leaves Chrome running.
+ *
+ * A leaked Chrome matters more than it sounds. run.mjs spawns suites with
+ * stdio 'inherit', so the orphan holds the run's output stream open and the whole
+ * thing looks like it is hanging rather than like it failed. That is exactly how
+ * this was misread three times as a dying server before anyone measured it.
+ */
+const closeBrowser = async () => {
+  try { await browser.close(); } catch { /* already gone */ }
+};
+for (const event of ['uncaughtException', 'unhandledRejection']) {
+  process.once(event, async (err) => {
+    console.error(`\n${event}: ${err?.message || err}`);
+    await closeBrowser();
+    process.exit(1);
+  });
+}
+
 /** Completes setup and seeds a detachment with enough data for every screen. */
 async function seed(page) {
   await page.goto(BASE, { waitUntil: 'networkidle' });

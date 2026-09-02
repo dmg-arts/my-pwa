@@ -19,10 +19,42 @@ const ROOT = resolve(HERE, '../..');
 const PORT = process.env.PORT || '8123';
 const BASE = `http://127.0.0.1:${PORT}/index.html`;
 
+/*
+ * Refuse to run against a server we did not start.
+ *
+ * `ready()` below only asks whether *something* answers on the port. If a stale
+ * server from an earlier session is still listening, our own bind fails, that
+ * check passes anyway, and the whole suite silently runs against a stranger —
+ * which is survivable right up until the stranger exits mid-run and every
+ * remaining assertion fails with ERR_CONNECTION_REFUSED.
+ */
+const portInUse = await fetch(BASE, { signal: AbortSignal.timeout(1500) })
+  .then(() => true).catch(() => false);
+if (portInUse) {
+  console.error(`Something is already serving ${BASE}.`);
+  console.error('Stop it first — otherwise this run would test against it rather than');
+  console.error("against this working tree, and would not say so.");
+  process.exit(1);
+}
+
+// Captured, not discarded: a server that cannot bind, or that dies mid-run, used
+// to produce no diagnostic at all — only a wall of connection errors inside
+// whichever suite happened to be running when it went.
+const serverLog = [];
 const server = spawn('python3', ['serve.py', '--port', PORT, '--no-open', '--host', '127.0.0.1'], {
   cwd: ROOT,
-  stdio: 'ignore',
+  stdio: ['ignore', 'pipe', 'pipe'],
 });
+for (const stream of [server.stdout, server.stderr]) {
+  stream.setEncoding('utf8');
+  stream.on('data', (chunk) => serverLog.push(chunk));
+}
+
+let serverExit = null;
+server.on('exit', (code, signal) => { serverExit = signal || code; });
+
+/** Everything the server said, for when a failure needs explaining. */
+const serverSaid = () => (serverLog.join('').trim() || '(the server printed nothing)');
 
 const shutdown = () => { try { server.kill(); } catch { /* already gone */ } };
 process.on('exit', shutdown);
@@ -42,6 +74,8 @@ const ready = async () => {
 
 if (!(await ready())) {
   console.error(`Server never came up on ${BASE}`);
+  if (serverExit !== null) console.error(`serve.py exited early: ${serverExit}`);
+  console.error(serverSaid());
   shutdown();
   process.exit(1);
 }
@@ -73,7 +107,22 @@ const SUITES = process.argv.slice(2).length
 
 let failed = 0;
 for (const file of SUITES) {
-  failed += (await run(file)) === 0 ? 0 : 1;
+  const started = Date.now();
+  const code = await run(file);
+  const secs = ((Date.now() - started) / 1000).toFixed(0);
+  // A full run is several minutes, most of it the layout audit's 17 screens
+  // across three viewports and two themes. Printing the cost per suite is what
+  // distinguishes "slow" from "wedged" without anyone having to guess.
+  console.log(`  ${code === 0 ? 'ok  ' : 'FAIL'} ${file} — ${secs}s`);
+  if (code !== 0) {
+    failed += 1;
+    if (serverExit !== null) {
+      console.error(`\n  The server exited (${serverExit}) during this suite, which is`);
+      console.error('  the likely cause rather than anything the suite asserted:');
+      console.error(`  ${serverSaid().split('\n').join('\n  ')}`);
+      break;
+    }
+  }
 }
 shutdown();
 process.exit(failed ? 1 : 0);
