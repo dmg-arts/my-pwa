@@ -3,7 +3,7 @@
  * connect it, and build the folder tree.
  */
 
-import { BACKENDS, DB_LAYOUT, FOLDER_TREE_PREVIEW, APP } from '../config.js';
+import { BACKENDS, DB_LAYOUT, FOLDER_TREE_PREVIEW, APP, GOOGLE_CLIENT_ID } from '../config.js';
 import { el, icon, field, notice, toast, spinner, clear, mount, remount } from '../util.js';
 import { connection, markSetupComplete } from '../state.js';
 import { db, adapters } from '../storage/index.js';
@@ -21,7 +21,7 @@ export function renderSetup(root, { rerun = false } = {}) {
       step: 0,
       orgName: saved.orgName || '',
       backend: saved.backend || null,
-      clientId: saved.clientId || '',
+      clientId: saved.clientId || GOOGLE_CLIENT_ID,
       folderInput: saved.folderUrl || saved.folderId || '',
       folderId: saved.folderId || '',
       folderName: saved.folderName || '',

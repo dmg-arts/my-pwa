@@ -98,7 +98,7 @@
 <header class="masthead">
   <h1>9ThirtyOne Privacy Policy</h1>
   <p class="sub">How this application handles your information.</p>
-  <p class="updated">Last updated: <!--DATE-->31 August 2026<!--/DATE--> &middot; Applies to: 9ThirtyOne</p>
+  <p class="updated">Last updated: <!--DATE-->3 September 2026<!--/DATE--> &middot; Applies to: 9ThirtyOne</p>
 </header>
 
 <div class="callout callout--ok">
@@ -128,10 +128,11 @@
   </tr>
   <tr>
     <td><strong>Us</strong><br>(<!--PUBLISHER-->David Gaspar<!--/PUBLISHER-->, publisher of the software)</td>
-    <td>Writes the software and serves its files from a public web address. Your organisation
-    creates and operates <strong>its own</strong> Google OAuth client, so even signing you in runs
-    on its credentials rather than ours. We do not host your data, do not receive it, and cannot
-    access it.</td>
+    <td>Writes the software, serves its files from a public web address, and operates the
+    verified Google OAuth client that signs you in. That client identifies the application to
+    Google; it grants us nothing in your organisation's Drive, which the app reaches under a
+    permission <em>you</em> grant at sign-in. We do not host your data, do not receive it, and
+    cannot access it.</td>
   </tr>
 </table>
 </div>
@@ -284,8 +285,10 @@ submission server. 9ThirtyOne sets <strong>no cookies</strong>.</p>
   <span class="t">From the app: nothing at all</span>
   <p>
     The app sends data to exactly three places, all of them Google's or your organisation's:
-    Google's sign-in service, Google Drive (your organisation's account), and — if your organisation
-    deployed one — a submission server running inside your organisation's own Google account. There
+    Google's sign-in service (through the OAuth client we operate, which carries your sign-in to
+    Google and returns the result to your browser — it is not a stop the data makes with us),
+    Google Drive (your organisation's account), and — if your organisation deployed one — a
+    submission server running inside your organisation's own Google account. There
     is no fourth destination. There are no analytics, no error reporting services, no advertising
     networks, and no third-party components of any kind. (Fetching the app's own files from where
     they are published is a separate matter — see section 10.)

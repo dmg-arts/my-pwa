@@ -27,8 +27,31 @@ const CHROME = process.env.CHROME_PATH || [
 const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
 const ctx = await browser.newContext({ viewport: { width: 1180, height: 950 } });
 const page = await ctx.newPage();
+/*
+ * Console noise that is expected here and only here.
+ *
+ * The app now ships a real, verified Google Client ID, so Google Identity
+ * Services actually initialises during these runs — and refuses, because
+ * 127.0.0.1 is not an authorised origin for a production client and never should
+ * be. The refusal is GSI working correctly against a client that is configured
+ * correctly; it says nothing about the app.
+ *
+ * Kept narrow deliberately. A blanket "ignore console errors" would have hidden
+ * the real ones this check exists to catch, so this matches the two lines that
+ * specific failure produces and nothing else.
+ */
+const EXPECTED_ON_LOCALHOST = [
+  /origin is not allowed for the given client ID/i,
+  /accounts\.google\.com.*\b403\b|Failed to load resource.*\b403\b/i,
+];
+const expected = (text) => EXPECTED_ON_LOCALHOST.some((re) => re.test(text));
+
 page.on('pageerror', (e) => errors.push(`PAGEERROR: ${e.message}`));
-page.on('console', (m) => { if (m.type() === 'error') errors.push(`CONSOLE: ${m.text()}`); });
+page.on('console', (m) => {
+  if (m.type() !== 'error') return;
+  const text = m.text();
+  if (!expected(text)) errors.push(`CONSOLE: ${text}`);
+});
 
 const step = async (label, fn) => {
   try { await fn(); console.log(`  ok   ${label}`); }

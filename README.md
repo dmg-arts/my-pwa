@@ -741,11 +741,25 @@ Roughly in dependency order. The first item gates several of the others.
 
 5. **Trends and per-instructor baselines**, described below.
 
-### Verification, and why it is not a gate
+### Verification and the Client ID — settled
 
-**Each detachment creates its own Cloud project and its own Client ID**, and that
-continues through beta. Nothing needs verifying and nothing costs anything.
-Advice written for the usual multi-tenant shape does not describe this.
+**One verified Client ID, shared by every detachment.** Decided 24 Aug, reversed,
+and reinstated on 3 Sep once brand verification came through. `GOOGLE_CLIENT_ID`
+in `js/config.js` is the whole of it: a detachment supplies a Google account and
+a Drive folder, and touches the Cloud console not at all.
+
+The app is **published and brand-verified**, so there is no test-user list, no
+hundred-account cap, and no unverified-app screen for anyone. Setup dropped from
+about 45 minutes to about 25, and Part 2b of the guide — a Cloud project, the
+Drive API, a consent screen, every cadet added by hand, a Client ID copied out —
+is gone rather than shortened.
+
+The cost is the one the earlier reversal named and it has not gone away: this puts
+the maintainer inside the auth path, and a problem with that one registration
+reaches every detachment at once where per-detachment clients failed
+independently. That is now an accepted risk rather than an open question. A stored
+`clientId` still overrides the default, so a detachment that set one up before the
+change keeps working and can move when it likes.
 
 **Capacity is gated on publishing status, not on verification.** This was
 misunderstood here for a while, so it is worth stating precisely:
@@ -769,15 +783,9 @@ and buys branding, not capacity.
 [v]: https://support.google.com/cloud/answer/13463073?hl=en
 [a]: https://support.google.com/cloud/answer/15549945?hl=en
 
-**One Client ID owned by the maintainer** was decided on 24 Aug and has since been
-reversed. It would spare 145 detachments a Cloud setup each, which is a real
-support argument — but it is not a capacity argument, it puts the maintainer
-inside the auth path, and suspension of that one client would break every
-detachment at once where per-detachment clients fail independently. Revisit it if
-AFROTC HQ engages, on support-burden grounds alone.
-
 **The test-user list is what refused two ordinary Gmail accounts** during the
-first live install. That list exists only in Testing; publishing removes it.
+first live install. Publishing removed the list, and with it that whole class of
+failure — those two accounts would sign in today without anyone doing anything.
 
 ### Removing the verification burden — done
 

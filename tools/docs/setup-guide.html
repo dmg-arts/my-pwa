@@ -142,12 +142,12 @@
   <img class="cover__mark" src="APP_ICON" alt="">
   <h1>9ThirtyOne</h1>
   <p class="sub">Installation and Setup Guide</p>
-  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Alpha 0.18</p>
+  <p class="sub" style="font-size:11pt;opacity:.8">For AFROTC detachment administrators &middot; Beta 1.0</p>
   <div class="meta">
     <strong>Before you start</strong>
-    Allow about 45 minutes for a first-time setup using Google Drive. You will need
-    the detachment's Google account credentials and permission to create a Google Cloud
-    project on that account. No servers, databases or software licences are required.
+    Allow about 25 minutes for a first-time setup using Google Drive. You will need the
+    detachment's Google account credentials, and nothing else — no Google Cloud project, no
+    servers, no databases, no software licences.
     <br><br>
     Every procedure in this guide has been performed end to end against real Google Drive,
     on a Mac and an iPhone. Where something is awkward or unfinished, it is written down
@@ -167,7 +167,7 @@
 
   <ol class="toc">
     <li><span class="n">1</span><span><strong>Decide where your data will live</strong><span class="d"> — three options, and how to choose</span></span></li>
-    <li><span class="n">2</span><span><strong>Prepare the Google account</strong><span class="d"> — folder, Cloud project, Drive API, OAuth client</span></span></li>
+    <li><span class="n">2</span><span><strong>Prepare the Google account</strong><span class="d"> — the account and the Drive folder; the Google registration is already done</span></span></li>
     <li><span class="n">3</span><span><strong>Open the app</strong><span class="d"> — one address, nothing to install or host</span></span></li>
     <li><span class="n">4</span><span><strong>Run the setup wizard</strong><span class="d"> — connect the app to your folder</span></span></li>
     <li><span class="n">5</span><span><strong>Claim the folder</strong><span class="d"> — the first Google sign-in, and the access setting</span></span></li>
@@ -182,8 +182,7 @@
   <table>
     <tr><th style="width:34%">Item</th><th>Why</th></tr>
     <tr><td>A new Google account, created for the detachment</td><td>Holds every record. Create a fresh one — Part 2a explains why a school or university account is the wrong choice here.</td></tr>
-    <tr><td>Permission to create a Google Cloud project</td><td>Required once, to let the app talk to that account's Drive. A new personal Google account can always do this.</td></tr>
-    <tr><td>About 45 minutes, once</td><td>Most of it is the Google Cloud console in Part 2 and the submission server in Part 6. The app itself takes a few minutes.</td></tr>
+    <tr><td>About 25 minutes, once</td><td>Most of it is the submission server in Part 6. The app itself takes a few minutes, and Part 2 no longer asks for a Cloud project at all.</td></tr>
     <tr><td>The app's address</td><td>Part 3. The app is already published and maintained for you — there is nothing to download, deploy or keep running.</td></tr>
     <tr><td>A current browser</td><td>Chrome, Edge, Safari or Firefox, on any device.</td></tr>
   </table>
@@ -240,7 +239,8 @@
 <!-- ============================= PART 2 ============================= -->
 <section>
   <h2><span class="num">2</span>Prepare the Google account</h2>
-  <p class="lead">Do this once, on the Google account that will own the data. About 20 minutes.</p>
+  <p class="lead">Do this once, on the Google account that will own the data. About five minutes —
+  this part used to take twenty, and most of it has gone away.</p>
 
   <h3>2a. Create the detachment's Google account</h3>
   <p>
@@ -257,12 +257,10 @@
       server you deploy in Part 6, and never grants Drive access at all.
     </p>
     <p>
-      Until the app completes Google's verification review, granting that permission means passing an
-      <em>"unverified app"</em> screen. On an ordinary Google account that screen has an
-      <em>Advanced</em> link and you can go through it. On a university or workplace account, the IT
-      department can set a policy that turns the same screen into a refusal with no way past it
-      &mdash; and nobody at the detachment can override it, because the setting does not belong to
-      the detachment.
+      9ThirtyOne has completed Google's verification review, so granting that permission is now an
+      ordinary consent screen carrying the application's name. The <em>"unverified app"</em> warning
+      that every user used to meet, every time, is gone &mdash; along with the risk that a university
+      or workplace policy turned it into a refusal nobody at the detachment could override.
     </p>
     <p>
       A new account has no such policy attached, so setup always completes. This costs nothing and
@@ -301,121 +299,40 @@
     </p>
   </div>
 
-  <h3>2b. Allow the app to reach that Drive</h3>
-  <p>Google requires any app that touches a Drive account to be registered with that account. This
-  is free and takes about ten minutes.</p>
+  <h3>2b. Nothing — the app is already registered with Google</h3>
+  <p>Earlier versions of this guide spent about twenty minutes here: a Google Cloud project, the
+  Drive API, an OAuth consent screen, a list of every cadet as a <em>test user</em>, and an OAuth
+  client ID to copy out. <strong>None of that is needed any more.</strong></p>
 
-  <ol class="steps">
-    <li><strong>Go to <code>console.cloud.google.com</code></strong> signed in as the same Google account.</li>
-    <li><strong>Create a new project.</strong> Name it something recognisable, such as
-      <em>Det 025 Feedback</em>. Wait for it to finish creating and make sure it is the selected
-      project in the bar at the top.</li>
-    <li><strong>Enable the Google Drive API.</strong>
-      <ul>
-        <li>Navigate to <em>APIs &amp; Services → Library</em>.</li>
-        <li>Search for <strong>Google Drive API</strong> and open it.</li>
-        <li>Click <strong>Enable</strong>.</li>
-      </ul>
-    </li>
-    <li><strong>Configure the OAuth consent screen.</strong>
-      <ul>
-        <li>Go to <em>APIs &amp; Services → OAuth consent screen</em>. Newer consoles file this
-        under <em>Google Auth Platform → Branding</em>.</li>
-        <li>Choose <strong>External</strong>. This is the only option on the new account you made
-        in Part 2a, and it is the correct one — <em>Internal</em> exists only for Google Workspace
-        domains, and would restrict sign-in to that domain's own members.</li>
-        <li>Fill in the app name and support email. Nothing else is required.</li>
-        <li><strong>Leave the publishing status on <em>Testing</em>.</strong> Do not click
-        <em>Publish app</em> — see the warning below.</li>
-      </ul>
-    </li>
+  <p>9ThirtyOne is now a verified Google application, published and registered once for every
+  detachment that uses it. Your detachment supplies the Google account and the Drive folder; the
+  registration is ours and is already done.</p>
 
-    <li><strong>Add every Google account that will use the app under <em>Test users</em>.</strong>
-      <ul>
-        <li>Cadre, administrators and <em>every cadet</em>. An account that is not on this list
-        cannot sign in at all. Add whichever address each person will actually sign in with —
-        for most detachments that is the Gmail address the det already mails them at, but a
-        school address works too, because signing in asks for no Drive permission and so does
-        not depend on that school's IT policy.</li>
-        <li><strong>The account that owns the project is not automatically a test user.</strong>
-        Add it explicitly, like any other.</li>
-        <li>The limit is 100 accounts, which covers a detachment.</li>
-      </ul>
-    </li>
-    <li><strong>Create an OAuth client ID.</strong>
-      <ul>
-        <li>Go to <em>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</em>.</li>
-        <li>Application type: <strong>Web application</strong>.</li>
-        <li>Under <strong>Authorised JavaScript origins</strong>, add exactly
-        <code>https://9thirtyone.app</code> — the same entry for every detachment, because
-        every detachment opens the same published app. Scheme and host only, with
-        <strong>no trailing slash</strong>: Google matches origins by scheme and host alone and
-        will refuse an entry that carries a path.</li>
-        <li>Leave <em>Authorised redirect URIs</em> empty. The app does not use them.</li>
-        <li>Click <strong>Create</strong> and copy the <strong>Client ID</strong>. It ends in
-        <code>.apps.googleusercontent.com</code>.</li>
-      </ul>
-    </li>
-  </ol>
-
-  <div class="note note--danger">
-    <strong class="title">Do not click "Publish app"</strong>
-    <p>
-      It sounds like the step that makes things work. It is the opposite. 9ThirtyOne asks for
-      Google Drive access on your behalf while you are setting up. Publishing to production without
-      completing Google's verification blocks <em>everyone</em>, including you, with
-      <em>"Access blocked &hellip; has not completed the Google verification process"</em> and no way
-      through. If you have already clicked it, open the consent screen and choose
-      <strong>Back to testing</strong>.
-    </p>
-  </div>
-
-  <div class="note note--warn">
-    <strong class="title">Two different "unverified" screens &mdash; they mean different things</strong>
-    <p>
-      <strong>"Google hasn't verified this app"</strong> with an <em>Advanced</em> link is normal and
-      expected. Click <em>Advanced</em>, then <em>Go to &hellip; (unsafe)</em>. Every user sees this,
-      every time, and it cannot be turned off while the app is in Testing.
-    </p>
-    <p>
-      <strong>"Access blocked &hellip; has not completed the Google verification process"</strong> with
-      <em>no</em> Advanced link is a hard refusal. It means either the app was published to
-      production, or that account is not on the test-user list.
-    </p>
-  </div>
-
-  <div class="note note--warn">
-    <strong class="title">Known issue: some accounts cannot be added as test users</strong>
-    <p>
-      Occasionally Google refuses to accept an address on the test-user list, with no useful
-      explanation. The cause is that <strong>some Google accounts are configured never to allow
-      unverified apps</strong> — by enrolment in Google's <em>Advanced Protection Program</em>, by
-      being a supervised or Family Link account, or by a workplace or school policy. It is a
-      standing Google-side limitation, not a fault in the app, and it cannot be worked around from
-      this end.
-    </p>
-    <p>
-      There is no way to tell in advance which accounts these are. If one is refused, that person
-      signs in with a different Google account instead — an ordinary personal Gmail address will
-      work. This is the same reason Part 2a has you create a fresh account for the detachment
-      itself: the one account that <em>must</em> work is the one you control from the start.
-    </p>
+  <div class="note note--ok">
+    <strong class="title">What this removes, in practice</strong>
+    <p>No Cloud console. No consent screen to configure. <strong>No test-user list</strong>, so
+    the hundred-account cap is gone and nobody has to be added before they can sign in. No Client
+    ID to copy, paste or mistype — the app carries it.</p>
+    <p>Cadets and cadre now meet an ordinary Google sign-in showing the 9ThirtyOne name, rather
+    than the <em>"Google hasn't verified this app"</em> warning every user used to see every time.</p>
   </div>
 
   <div class="note">
-    <strong class="title">The Client ID is not a password</strong>
-    <p>It identifies the app to Google and is designed to be public — it is visible in any browser
-    that loads the page. Access is controlled by Google sign-in and by who you shared the folder
-    with, not by keeping this string secret. There is no client <em>secret</em> to protect.</p>
+    <strong class="title">What you are agreeing to at sign-in has not changed</strong>
+    <p>Google still asks each person's permission before the app touches their Drive, and the
+    permission it asks for is still <code>drive.file</code> — files this app created, and nothing
+    else in that account. A verified badge changes who vouches for the app's identity. It does not
+    widen what the app may reach, and the folder still belongs to your detachment.</p>
   </div>
 
   <div class="note note--warn">
-    <strong class="title">The origin never changes</strong>
-    <p>The app is published at one fixed address, so this is the only origin you will ever enter.
-    If sign-in fails with a redirect or <code>origin_mismatch</code> error, the entry is almost
-    always mistyped — check it reads <code>https://9thirtyone.app</code> exactly, with no path
-    and no trailing slash. A correction can take a few minutes to take effect.</p>
+    <strong class="title">If you set up a detachment before this change</strong>
+    <p>An installation configured against your own Cloud project keeps working — it is a valid
+    Client ID and nothing revokes it. You may leave it alone. If you would rather move onto the
+    shared registration, re-run setup from <em>Settings &rarr; Re-run setup</em>; the Drive folder
+    and everything in it is untouched by that.</p>
   </div>
+
 </section>
 
 <!-- ============================= PART 3 ============================= -->
@@ -838,24 +755,15 @@
       <td><em>Authorised JavaScript origins</em> does not list <code>https://9thirtyone.app</code>. Add it exactly — scheme and host only, with no trailing slash. Wait a few minutes.</td>
     </tr>
     <tr>
-      <td>Google shows "app is not verified" or blocks sign-in</td>
-      <td>The OAuth consent screen is set to <em>External</em> and this person is not a test user. Add their Google address under <em>Test users</em>, or switch to <em>Internal</em> if you use Workspace.</td>
-    </tr>
-    <tr>
       <td>The sign-in popup does not open</td>
       <td>Popups are blocked for the site. Allow them and try again.</td>
     </tr>
     <tr>
-      <td>"Access blocked &hellip; has not completed the Google verification process", with no <em>Advanced</em> link</td>
-      <td>Either the app was published to production, or this account is not a test user. Open the OAuth consent screen: if it says <em>In production</em>, click <strong>Back to testing</strong>. If it says <em>Testing</em>, add the account under <em>Test users</em> &mdash; including the account that owns the project, which is not added automatically.</td>
-    </tr>
-    <tr>
-      <td>"Google hasn't verified this app", <em>with</em> an <em>Advanced</em> link</td>
-      <td>Expected, not an error. Click <em>Advanced</em>, then <em>Go to &hellip; (unsafe)</em>. Unavoidable while the app is in Testing.</td>
-    </tr>
-    <tr>
-      <td>Google refuses to add an address as a test user</td>
-      <td>A Google-side behaviour with no published fix. Check whether the account holds a role under <em>IAM &amp; Admin</em>, whether it is enrolled in Advanced Protection, and try the classic <em>Credentials</em> view. If it still will not take, that person needs a different Google account.</td>
+      <td>"Google hasn't verified this app"</td>
+      <td>Should no longer appear &mdash; the app is verified and published. If you see it, the
+      install is pointed at an <em>older detachment-created</em> Client ID from before the change.
+      Re-run setup from <em>Settings &rarr; Re-run setup</em> to pick up the shared one; your Drive
+      folder is not touched.</td>
     </tr>
     <tr>
       <td>Sign-in popup closes immediately, or <code>origin_mismatch</code></td>
@@ -911,15 +819,11 @@
   <table>
     <tr><th style="width:34%">Limit</th><th>What it means for you</th></tr>
     <tr>
-      <td><strong>100 people per detachment</strong></td>
-      <td>Google caps an app in Testing at 100 authorised accounts. Comfortable for a detachment;
-      not enough for a wing. Lifting it needs Google's verification process, which is a decision
-      for whoever runs the programme rather than for one detachment.</td>
-    </tr>
-    <tr>
-      <td><strong>Some Google accounts refuse unverified apps</strong></td>
-      <td>A standing Google behaviour, not a fault here. Those people need a different Google
-      account. It is uncommon, and it is why verification matters beyond appearances.</td>
+      <td><strong>Sign-in depends on one shared registration</strong></td>
+      <td>Every detachment now signs in through a single verified Google application rather than
+      one of its own. That is what removed the Cloud setup, the test-user list and the
+      hundred-account cap &mdash; and it means a problem with that registration would affect every
+      detachment at once, where a per-detachment one failed alone.</td>
     </tr>
     <tr>
       <td><strong>Maintenance runs from the owner's device</strong></td>

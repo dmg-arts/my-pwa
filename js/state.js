@@ -3,7 +3,7 @@
  * cadre session. None of this is org data — org data lives in the Drive folder.
  */
 
-import { LS, DEFAULT_SETTINGS } from './config.js';
+import { LS, DEFAULT_SETTINGS, GOOGLE_CLIENT_ID } from './config.js';
 
 /* ------------------------------------------------------------------ *
  * tiny observable store
@@ -105,7 +105,9 @@ export const connection = createStore(LS.connection, {
   folderId: '',
   folderName: '',
   folderUrl: '',
-  clientId: '',
+  // The shared verified client, unless a detachment configured its own before
+  // the programme moved to one registration. A stored value always wins.
+  clientId: GOOGLE_CLIENT_ID,
   proxyUrl: '',
   connectedAt: null,
 });

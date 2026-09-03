@@ -156,8 +156,10 @@ done by the submission server before anything reaches the screen.
 ## 6. What it asks of a detachment
 
 - The **Det Google Account** you already have.
-- A **Google Cloud project** on that account, so sign-in works. About 45 minutes,
-  once, following the setup guide.
+- Nothing at Google beyond that account. Sign-in runs through one verified
+  application registered for the whole programme, so there is no Cloud project to
+  create and no list of cadets to authorise. About 25 minutes, once, following the
+  setup guide.
 - One **Drive folder**, which the app creates itself.
 - The **submission server**, deployed into that same account. Roughly 15 minutes,
   and it is what makes everything above about anonymity true.

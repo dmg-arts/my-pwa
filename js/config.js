@@ -6,10 +6,30 @@
  * bumping the schema is a one-file change.
  */
 
+/**
+ * The Google OAuth client every detachment signs in through.
+ *
+ * One verified client for the whole programme, rather than one Cloud project per
+ * detachment. That reversal is the difference between a detachment spending
+ * twenty minutes in the Cloud console — consent screen, Drive API, a test-user
+ * list holding every cadet, a client ID to copy out — and spending none.
+ *
+ * It is public by design. A Client ID identifies the application to Google and is
+ * visible to anyone who loads the page; there is no client *secret* here and
+ * nothing to protect. What stops a stranger reaching a detachment's records is
+ * Google sign-in and that detachment's own roster, never the obscurity of this
+ * string.
+ *
+ * A detachment that configured its own client before this change keeps working:
+ * a stored clientId overrides this default, and nothing revokes an existing one.
+ */
+export const GOOGLE_CLIENT_ID =
+  '536562746421-uf9hu736m0bq0t41s0ck8h9fmu9ggkos.apps.googleusercontent.com';
+
 export const APP = {
   name: '9ThirtyOne',
   shortName: '9ThirtyOne',
-  version: '0.18.1',
+  version: '1.0.0-beta.1',
   /**
    * Bump when the on-disk record shape changes, and add a matching entry to
    * MIGRATIONS in js/migrations.js. The runner upgrades a detachment's existing
