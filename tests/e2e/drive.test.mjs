@@ -202,6 +202,11 @@ async function runWizardToDrive(page) {
   await page.waitForSelector('.choice-list');
   await page.click('input[value="drive"]', { force: true });
   await page.click('.wizard .btn--primary');
+  // The Client ID stopped being a setup step when the programme moved to one
+  // shared verified client, so the field now sits behind a disclosure. This
+  // suite still needs it: it points the app at a fake Google, which the real
+  // shared client would never reach.
+  await page.click('details.disclosure summary');
   await page.waitForSelector('.input.mono', { timeout: 10000 });
   await page.fill('.input.mono', '123456-abcdef.apps.googleusercontent.com');
   await page.click('button:has-text("create the folder")');

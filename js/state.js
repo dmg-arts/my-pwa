@@ -3,7 +3,7 @@
  * cadre session. None of this is org data — org data lives in the Drive folder.
  */
 
-import { LS, DEFAULT_SETTINGS, GOOGLE_CLIENT_ID } from './config.js';
+import { LS, DEFAULT_SETTINGS } from './config.js';
 
 /* ------------------------------------------------------------------ *
  * tiny observable store
@@ -105,9 +105,18 @@ export const connection = createStore(LS.connection, {
   folderId: '',
   folderName: '',
   folderUrl: '',
-  // The shared verified client, unless a detachment configured its own before
-  // the programme moved to one registration. A stored value always wins.
-  clientId: GOOGLE_CLIENT_ID,
+  /*
+   * Empty until a backend that needs Google supplies one.
+   *
+   * The shared verified client is applied by the Drive path in the setup wizard,
+   * and arrives in a join link for everyone else. It is deliberately *not* the
+   * default here: an installation with no Client ID is a real state — *This
+   * device only*, evaluated before any Google setup exists — and it is the state
+   * the email sign-in option in Settings exists to serve. Defaulting this to the
+   * shared client made that state unreachable and quietly retired a working
+   * escape hatch, along with the copy in sign-in.js and settings.js explaining it.
+   */
+  clientId: '',
   proxyUrl: '',
   connectedAt: null,
 });

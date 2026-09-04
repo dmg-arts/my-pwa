@@ -278,17 +278,22 @@ function connectDrive(body, root) {
 
   mount(body,
     el('h2', { class: 'section-title' }, 'Connect your detachment\'s Google Drive'),
-    notice('info', 'One-time Google setup',
-      el('ol', { style: { margin: '0', paddingLeft: '1.1rem' } },
-        el('li', {}, 'Sign in to the Google account your detachment owns.'),
-        el('li', {}, 'In Google Cloud Console, create a project and enable the ', el('strong', {}, 'Google Drive API'), '.'),
-        el('li', {}, 'Create an ', el('strong', {}, 'OAuth client ID'), ' of type Web application, '
-          + 'and add this site\'s address as an authorised JavaScript origin: ',
-          el('code', { class: 'mono' }, location.origin), '.'))),
-    field('OAuth Client ID', clientInput, {
-      required: true,
-      hint: 'From Google Cloud Console → Credentials. Safe to store on the device: a browser client ID is an identifier, not a password.',
-    }),
+    notice('info', 'Sign in as the account that will own the records',
+      el('p', {}, '9ThirtyOne is a verified Google application, registered once for every '
+        + 'detachment. There is no Cloud project to create, no consent screen to configure and '
+        + 'no client ID to paste — this used to be twenty minutes of setup and is now none.'),
+      el('p', {}, 'Google will ask your permission before the app touches this account\'s '
+        + 'Drive. It asks only for files it creates itself.')),
+    // The Client ID is correct out of the box, so it is not a step. It stays
+    // reachable because config.js promises a stored value overrides the shared
+    // one — for anyone running their own copy, or a detachment that registered
+    // its own client before the programme moved to one.
+    el('details', { class: 'disclosure' },
+      el('summary', {}, 'Advanced — use a different Google client'),
+      field('OAuth Client ID', clientInput, {
+        hint: 'Leave this alone unless you are running your own copy of the app against your '
+          + 'own Google registration. Replacing it with anything else will stop sign-in working.',
+      })),
     notice('info', 'The app makes its own folder',
       el('p', {}, 'You do not need to create anything in Drive first. This app can only see '
         + 'files it made itself — it has no access to the rest of your Drive and cannot ask '
@@ -378,7 +383,11 @@ function stepFinish(body, root) {
         folderName: draft.folderName,
         folderUrl: draft.backend === BACKENDS.drive
           ? `https://drive.google.com/drive/folders/${draft.folderId}` : '',
-        clientId: draft.clientId,
+        // Only the Drive backend needs Google. Storing the shared client on a
+        // *This device only* install would leave it with a Client ID it never
+        // uses, and that is exactly the condition the email sign-in option keys
+        // off — so a local trial would silently lose its only way in.
+        clientId: draft.backend === BACKENDS.drive ? draft.clientId : '',
         connectedAt: new Date().toISOString(),
       });
       db.use(draft.backend, { clientId: draft.clientId, folderId: draft.folderId });
